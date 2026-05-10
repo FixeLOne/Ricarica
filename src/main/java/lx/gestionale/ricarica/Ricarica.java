@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.format.annotation.NumberFormat;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,7 +25,6 @@ public class Ricarica {
 
     // ----------------------Dati della Transazione (Input Utente)----------------------
 
-    @NumberFormat
     private String numero;
 
     @Enumerated(EnumType.STRING)
@@ -57,7 +55,7 @@ public class Ricarica {
     // ogni volta che viene salvata o modificata una ricarica nel db.
     @PrePersist
     @PreUpdate
-    private void calcolaProfitto() {
+    public void calcolaProfitto() {
         if (this.costoCliente != null && this.costoEffettivo != null) {
             this.profitto = this.costoCliente.subtract(this.costoEffettivo);
         }

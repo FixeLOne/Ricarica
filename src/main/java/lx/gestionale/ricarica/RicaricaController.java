@@ -34,9 +34,5 @@ public class RicaricaController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/oggi")
-    public List<Ricarica> getRicaricheOggi() {
-        return ricaricaService.getRicaricheOggi();
-    }
 
 }
