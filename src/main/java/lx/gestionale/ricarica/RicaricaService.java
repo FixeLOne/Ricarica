@@ -18,17 +18,13 @@ public class RicaricaService {
 
     private final TariffaService tariffaService;
 
-    private Operatore assegnaOperatore(String numero) throws IllegalArgumentException{
+    private Operatore assegnaOperatore(String numero) {
 
-
-        // Controllo di sicurezza
         if (numero.isEmpty()) {
             throw new IllegalArgumentException("Il numero inserito è vuoto.");
         }
-        // estrae la prima cifra
         char x = numero.charAt(0);
 
-        // imposto l'operatore
         return switch (x) {
             case '2', '4' -> Operatore.ooredoo;
             case '5' -> Operatore.orange;
@@ -69,7 +65,6 @@ public class RicaricaService {
             r.setCostoEffettivo(req.getCostoEffettivo());
             r.setCostoCliente(req.getCostoCliente());
         } else {
-            // Se non è manuale, chiedo al TariffaService la tariffa giusta
             Tariffa t = tariffaService.getTariffaApplicabile(op, req.getGiga());
             r.setCostoEffettivo(t.getCostoAcquisto());
             r.setCostoCliente(t.getPrezzoVendita());
@@ -77,7 +72,6 @@ public class RicaricaService {
     }
 
     public void eliminaRicarica(Long id) {
-        // Controllo se esiste prima di provare a cancellarla
         if (!ricaricaRepository.existsById(id)) {
             throw new IllegalArgumentException("Impossibile eliminare: Ricarica con ID " + id + " non trovata.");
         }
@@ -94,8 +88,8 @@ public class RicaricaService {
     }
 
     private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request) {
+        validaNumero(request.getNumero());
         String numPulito = request.getNumero().trim();
-        validaNumero(numPulito);
         Operatore operatore = assegnaOperatore(numPulito);
 
         r.setNumero(numPulito);
@@ -105,9 +99,7 @@ public class RicaricaService {
         impostaPrezzi(r, request, operatore);
     }
 
-    public List<Ricarica> getRicaricheOggi() {
-        return ricaricaRepository.findByDataSolo(LocalDate.now());
+    public List<Ricarica> getRicaricheTra(LocalDate dal, LocalDate al) {
+        return ricaricaRepository.findByDataSoloBetween(dal, al);
     }
-
-
 }
