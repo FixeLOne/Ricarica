@@ -1,15 +1,17 @@
 package lx.gestionale.tariffa;
 
 import lx.gestionale.ricarica.Operatore;
+import lx.gestionale.utente.Utente;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface TariffaRepository extends JpaRepository<Tariffa, Long> {
 
-    Optional<Tariffa> findByOperatoreAndGiga(Operatore operatore, double giga);
+    Optional<Tariffa> findByOperatoreAndGigaAndAdmin(Operatore operatore, double giga, Utente admin);
 
-    // Cerca la tariffa STANDARD (quella che vale per tutti).
-    // Presuppone che nel DB la tariffa standard abbia la colonna 'operatore' a NULL
-    Optional<Tariffa> findByOperatoreIsNullAndGiga(double giga);
+    Optional<Tariffa> findByOperatoreIsNullAndGigaAndAdmin(double giga, Utente admin);
+
+    List<Tariffa> findByAdmin(Utente admin);
 }

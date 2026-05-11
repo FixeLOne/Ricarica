@@ -2,8 +2,11 @@ package lx.gestionale.ricarica;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.dto.CreaRicaricaRequest;
+import lx.gestionale.negozio.Boutique;
+import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.tariffa.Tariffa;
 import lx.gestionale.tariffa.TariffaService;
+import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -18,17 +21,15 @@ public class RicaricaService {
 
     private final TariffaService tariffaService;
 
-    private Operatore assegnaOperatore(String numero) throws IllegalArgumentException{
+    private final BoutiqueRepository boutiqueRepository;
 
+    private Operatore assegnaOperatore(String numero) {
 
-        // Controllo di sicurezza
         if (numero.isEmpty()) {
             throw new IllegalArgumentException("Il numero inserito è vuoto.");
         }
-        // estrae la prima cifra
         char x = numero.charAt(0);
 
-        // imposto l'operatore
         return switch (x) {
             case '2', '4' -> Operatore.ooredoo;
             case '5' -> Operatore.orange;
@@ -50,18 +51,20 @@ public class RicaricaService {
         }
     }
 
-    public Ricarica salvaRicarica(CreaRicaricaRequest request) {
+    public Ricarica salvaRicarica(CreaRicaricaRequest request, Long boutiqueId) {
+        Boutique boutique = boutiqueRepository.findById(boutiqueId)
+                .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+
         Ricarica r = new Ricarica();
-
-        popolaDatiRicarica(r, request);
-
+        r.setBoutique(boutique);
         r.setDataOra(LocalDateTime.now());
         r.setDataSolo(LocalDate.now());
 
+        popolaDatiRicarica(r, request, boutique.getAdmin());
+
         return ricaricaRepository.save(r);
     }
-
-    private void impostaPrezzi(Ricarica r, CreaRicaricaRequest req, Operatore op) {
+    private void impostaPrezzi(Ricarica r, CreaRicaricaRequest req, Operatore op, Utente admin) {
         if (req.isManuale()) {
             if (req.getCostoEffettivo() == null || req.getCostoCliente() == null) {
                 throw new IllegalArgumentException("Prezzi manuali obbligatori");
@@ -69,45 +72,44 @@ public class RicaricaService {
             r.setCostoEffettivo(req.getCostoEffettivo());
             r.setCostoCliente(req.getCostoCliente());
         } else {
-            // Se non è manuale, chiedo al TariffaService la tariffa giusta
-            Tariffa t = tariffaService.getTariffaApplicabile(op, req.getGiga());
+            Tariffa t = tariffaService.getTariffaApplicabile(op, req.getGiga(), admin);
             r.setCostoEffettivo(t.getCostoAcquisto());
             r.setCostoCliente(t.getPrezzoVendita());
         }
+        r.setProfitto(r.getCostoCliente().subtract(r.getCostoEffettivo()));
     }
-
-    public void eliminaRicarica(Long id) {
-        // Controllo se esiste prima di provare a cancellarla
-        if (!ricaricaRepository.existsById(id)) {
-            throw new IllegalArgumentException("Impossibile eliminare: Ricarica con ID " + id + " non trovata.");
+    public void eliminaRicarica(Long id, Long boutiqueId) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getId().equals(boutiqueId)) {
+            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
         }
         ricaricaRepository.deleteById(id);
     }
 
-    public Ricarica modificaRicarica(Long id, CreaRicaricaRequest request) {
+    public Ricarica modificaRicarica(Long id, CreaRicaricaRequest request, Long boutiqueId) {
         Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Impossibile modificare: Ricarica con ID " + id + " non trovata."));
-
-        popolaDatiRicarica(r, request);
-
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getId().equals(boutiqueId)) {
+            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
+        }
+        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
         return ricaricaRepository.save(r);
     }
 
-    private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request) {
+    private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request, Utente admin) {
+        validaNumero(request.getNumero());
         String numPulito = request.getNumero().trim();
-        validaNumero(numPulito);
         Operatore operatore = assegnaOperatore(numPulito);
 
         r.setNumero(numPulito);
         r.setOperatore(operatore);
         r.setGiga(request.getGiga());
 
-        impostaPrezzi(r, request, operatore);
+        impostaPrezzi(r, request, operatore, admin);
     }
 
-    public List<Ricarica> getRicaricheOggi() {
-        return ricaricaRepository.findByDataSolo(LocalDate.now());
+    public List<Ricarica> getRicaricheTra(Long boutiqueId, LocalDate dal, LocalDate al) {
+        return ricaricaRepository.findByBoutiqueIdAndDataSoloBetween(boutiqueId, dal, al);
     }
-
-
 }

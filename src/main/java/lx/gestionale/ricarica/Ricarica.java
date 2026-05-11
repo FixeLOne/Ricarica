@@ -1,10 +1,9 @@
 package lx.gestionale.ricarica;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.format.annotation.NumberFormat;
+import lx.gestionale.negozio.Boutique;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -26,7 +25,6 @@ public class Ricarica {
 
     // ----------------------Dati della Transazione (Input Utente)----------------------
 
-    @NumberFormat
     private String numero;
 
     @Enumerated(EnumType.STRING)
@@ -47,19 +45,8 @@ public class Ricarica {
 
     private String note;
 
-    private Integer IdUtente;
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
 
-
-
-    // -------------------------------- LOGICA DI BUSINESS AUTOMATICA ----------------------
-
-    // Questo metodo viene eseguito da Spring in automatico
-    // ogni volta che viene salvata o modificata una ricarica nel db.
-    @PrePersist
-    @PreUpdate
-    private void calcolaProfitto() {
-        if (this.costoCliente != null && this.costoEffettivo != null) {
-            this.profitto = this.costoCliente.subtract(this.costoEffettivo);
-        }
-    }
 }
