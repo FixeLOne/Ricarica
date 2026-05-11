@@ -74,7 +74,7 @@ lx.gestionale
 
 ### JWT Token
 - Scadenza: **8 ore** (configurabile via `jwt.expiration` in properties)
-- Payload claims: `subject` (username), `ruolo` (es. `"ADMIN"`), `boutiqueId` (null per SUPER_ADMIN e ADMIN)
+- Payload claims: `subject` (username), `ruolo` (es. `"ADMIN"`), `utenteId` (presente per tutti i ruoli), `boutiqueId` (presente solo per DIPENDENTE, null per ADMIN e SUPER_ADMIN)
 - Validazione: `JwtFilter` intercetta ogni richiesta, valida il token e popola il `SecurityContext`
 
 ### UserPrincipal
@@ -197,12 +197,7 @@ La versione legacy aveva un modulo fatture con:
 - Calcolo automatico: Totale HT, TVA, Netto a Pagare
 - Stampa/PDF inline
 
-**Da progettare:**
-- Entity `Fattura` legata all'Admin (non alla boutique)
-- Entity `DatiAzienda` — un record per Admin con logo (path o base64), ragione sociale, indirizzo, matricule fiscale
-- Entity `RigaFattura` — relazione OneToMany con Fattura
-- Numerazione: sequenza per anno per Admin (non globale)
-- Export PDF: Apache PDFBox o iText (da valutare licenza)
+**Da progettare — vedi sezione TODO per i dettagli aggiornati.**
 
 ---
 
@@ -230,3 +225,100 @@ In sviluppo: `allowedOrigins("*")`.
 - I **DTO** separano sempre il contratto API dalle entity JPA. Mai esporre entity direttamente nei response.
 - Ogni operazione di scrittura su risorse altrui deve verificare l'ownership prima di procedere.
 - Il profitto viene sempre calcolato nel service immediatamente dopo aver fissato i prezzi.
+
+---
+
+## TODO — Backlog Feature
+
+Aggiungere nuove voci liberamente in fondo a ogni sezione.
+Formato: `[ ]` da fare — `[x]` fatto — `[-]` scartato con motivazione.
+
+---
+
+### 🧾 Fatture
+
+```
+[ ] Entity Fattura — legata a Boutique, visibile all'Admin proprietario
+[ ] Entity RigaFattura — OneToMany con Fattura (descrizione, qty, prezzo HT, aliquota TVA)
+[ ] Entity DatiAzienda — OneToOne con Utente Admin
+      campi: ragione sociale, indirizzo, matricule fiscale, logo (base64 nel DB)
+      nota: OneToOne — un Admin ha una sola ragione sociale; base64 scelto per semplicità cloud (1-2 loghi, S3 overkill)
+[ ] Tipi documento: Facture, Bon de livraison, Devis, Avoir
+      nota: Avoir sostituisce il soft delete — per annullare si emette un Avoir
+[ ] Numerazione automatica annuale per Admin: FAC-YYYY-NNNN
+      nota: contatore unico per Admin, non per Boutique (stesso numero aziendale)
+[ ] Timbre fiscal — toggle on/off, valore fisso configurabile
+[ ] Remise globale — sconto in DT sul totale documento
+[ ] Calcolo automatico: Totale HT, TVA per riga, Timbre, Netto a Pagare
+[ ] Export PDF — valutare Apache PDFBox (licenza libera) vs iText (licenza da verificare)
+[ ] Watermark/logo aziendale nell'anteprima PDF
+[ ] Endpoint: GET /api/v2/fatture (lista per boutique o per admin)
+[ ] Endpoint: POST /api/v2/fatture
+[ ] Endpoint: GET /api/v2/fatture/{id}
+[ ] Endpoint: DELETE /api/v2/fatture/{id} — solo se status = BOZZA, altrimenti emettere Avoir
+```
+
+---
+
+### 👤 Profilo & Anagrafica
+
+```
+[ ] Aggiungere campi a Boutique: indirizzo completo, telefono
+[ ] Endpoint profilo Boutique — restituisce boutique + lista dipendenti associati
+[ ] Endpoint profilo Admin — dati personali + lista boutique + dati azienda
+[ ] Endpoint cambio password — disponibile a tutti i ruoli per la propria utenza
+      nota: non prioritario, l'Admin può reimpostare la password del dipendente
+[ ] Gestione multi-dipendente per Boutique — rimandato, ora 1 account per boutique
+```
+
+---
+
+### 📊 Report & Dashboard
+
+```
+[ ] Report mensile — aggregato per mese, visibile all'Admin (tutte le sue boutique)
+[ ] Report annuale — aggregato per anno, visibile all'Admin
+[ ] Statistiche per operatore — ricariche e profitto per Ooredoo/Orange/Telecom/Fisso
+[ ] Dati grafici dashboard Admin — trend per periodo, breakdown per operatore
+      nota: il backend espone dati aggregati JSON, i grafici sono lato frontend
+[ ] Dashboard dipendente — già implementata (riepilogo giornaliero per boutique)
+```
+
+---
+
+### 🔍 Ricerca & Navigazione
+
+```
+[ ] Ricerca ricariche per numero cliente
+      endpoint: GET /api/v2/ricariche?numero=XXXXXXXX
+[ ] Paginazione lista ricariche
+      endpoint: GET /api/v2/ricariche?page=0&size=20
+[ ] Paginazione lista fatture
+[ ] Filtro ricariche per operatore
+[ ] Filtro ricariche per range date (già implementato nell'export, da esporre anche come API)
+```
+
+---
+
+### 🔒 Sicurezza & Qualità
+
+```
+[ ] Sostituire allowedOrigins("*") con URL frontend in produzione
+[ ] Valutare blacklist token JWT per invalidazione anticipata (es. cambio password)
+[ ] Aggiungere @NotBlank / @Valid sui DTO che ancora mancano di validazione (CreaRicaricaRequest)
+[-] Soft delete Ricarica — SCARTATO: in contabilità tunisina si emette Avoir, non si cancella
+[ ] DataInitializer — rimuovere o disabilitare prima del deploy in produzione
+      nota: usare profilo Spring @Profile("dev") per isolarlo
+```
+
+---
+
+### 🏗️ Infrastruttura
+
+```
+[ ] Separare DataInitializer con @Profile("dev")
+[ ] Configurare profilo produzione (application-prod.properties)
+[ ] Configurare PostgreSQL in produzione (ora probabilmente H2 o configurazione locale)
+[ ] Logging strutturato — aggiungere @Slf4j nei service principali
+[ ] Gestione upload logo azienda — endpoint multipart, salvataggio su disco o storage
+```
