@@ -10,14 +10,11 @@ import java.util.List;
 
 public interface RicaricaRepository extends JpaRepository<Ricarica, Long> {
 
-    List<Ricarica> findByDataSolo(LocalDate data);
+    List<Ricarica> findByBoutiqueIdAndDataSoloBetween(Long boutiqueId, LocalDate dal, LocalDate al);
 
-    @Query("SELECT SUM(r.profitto) FROM Ricarica r WHERE r.dataSolo = :data")
-    BigDecimal sumProfittoByData(LocalDate data);
+    @Query("SELECT SUM(r.profitto) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data")
+    BigDecimal sumProfittoByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
 
-    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.dataSolo = :data")
-    long countRicaricheByData(LocalDate data);
-
-    List<Ricarica> findByDataSoloBetween(LocalDate dal, LocalDate al);
-    //@Param ovunque dice claude chiedere a gemini
+    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data")
+    long countRicaricheByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
 }

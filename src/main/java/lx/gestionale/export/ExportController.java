@@ -2,12 +2,14 @@ package lx.gestionale.export;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.dto.ExportFileResponse;
+import lx.gestionale.security.UserPrincipal;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -27,9 +29,11 @@ public class ExportController {
     @GetMapping("/ricariche")
     public ResponseEntity<Resource> downloadExcel(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dal,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate al) {
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate al,
+            @AuthenticationPrincipal UserPrincipal principal) { // <-- 1. CATTURIAMO L'UTENTE
 
-        ExportFileResponse report = exportService.generaReport(dal, al);
+        // 2. PASSIAMO L'ID DELLA BOUTIQUE AL SERVICE
+        ExportFileResponse report = exportService.generaReport(dal, al, principal.getBoutiqueId());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, report.contentDisposition())

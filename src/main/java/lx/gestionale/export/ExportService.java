@@ -37,9 +37,12 @@ public class ExportService {
     // METODO PRINCIPALE CHIAMATO DAL CONTROLLER
     // ==========================================================
 
-    public ExportFileResponse generaReport(LocalDate dal, LocalDate al) {
+    public ExportFileResponse generaReport(LocalDate dal, LocalDate al, Long boutiqueId) { // <-- Aggiunto boutiqueId
         validaRange(dal, al);
-        List<Ricarica> ricariche = ricaricaService.getRicaricheTra(dal, al);
+
+        // Passiamo il boutiqueId al RicaricaService per filtrare solo i dati di questo negozio!
+        List<Ricarica> ricariche = ricaricaService.getRicaricheTra(boutiqueId, dal, al);
+
         String nomeFile = "Report_Recharges_" + dal.format(FMT_DATA_FILE) + "_" + al.format(FMT_DATA_FILE) + ".xlsx";
         try {
             ByteArrayInputStream stream = generaExcelRicariche(ricariche, dal, al);

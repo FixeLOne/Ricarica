@@ -3,6 +3,7 @@ package lx.gestionale.tariffa;
 import jakarta.persistence.*;
 import lombok.Data;
 import lx.gestionale.ricarica.Operatore;
+import lx.gestionale.utente.Utente;
 
 import java.math.BigDecimal;
 
@@ -20,4 +21,8 @@ public class Tariffa {
 
     private BigDecimal costoAcquisto;
     private BigDecimal prezzoVendita;
+
+    @ManyToOne
+    @JoinColumn(name = "admin_id")
+    private Utente admin;
 }

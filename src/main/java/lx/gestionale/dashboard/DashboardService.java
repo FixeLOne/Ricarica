@@ -14,14 +14,12 @@ public class DashboardService {
 
     private final RicaricaRepository ricaricaRepository;
 
-    public DashboardRiepilogo getRiepilogoOggi() {
+    public DashboardRiepilogo getRiepilogoOggi(Long boutiqueId) {
         LocalDate oggi = LocalDate.now();
 
-        // Recuperiamo i dati dal DB
-        BigDecimal profitto = ricaricaRepository.sumProfittoByData(oggi);
-        long conteggio = ricaricaRepository.countRicaricheByData(oggi);
+        BigDecimal profitto = ricaricaRepository.sumProfittoByBoutiqueAndData(boutiqueId, oggi);
+        long conteggio = ricaricaRepository.countRicaricheByBoutiqueAndData(boutiqueId, oggi);
 
-        // Gestiamo il caso in cui non ci siano ricariche (SUM restituisce null)
         BigDecimal profittoSicuro = (profitto != null) ? profitto : BigDecimal.ZERO;
 
         return new DashboardRiepilogo(conteggio, profittoSicuro);

@@ -39,3 +39,4 @@ src/main/resources/application.yml
 # OS
 .DS_Store
 Thumbs.db
+.aider*

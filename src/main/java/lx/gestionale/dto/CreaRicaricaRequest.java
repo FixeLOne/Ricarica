@@ -6,9 +6,9 @@ import java.math.BigDecimal;
 
 @Data
 public class CreaRicaricaRequest {
-    String numero;
-    double giga;
-    boolean manuale;
-    BigDecimal costoEffettivo;
-    BigDecimal costoCliente;
+    private String numero;
+    private double giga;
+    private boolean manuale;
+    private BigDecimal costoEffettivo;
+    private BigDecimal costoCliente;
 }
