@@ -1,7 +1,11 @@
 package lx.gestionale.fattura;
 
 import lombok.RequiredArgsConstructor;
+import lx.gestionale.fattura.contatore.ContatoreFatturaService;
 import lx.gestionale.fattura.dto.*;
+import lx.gestionale.fattura.riga.RigaFattura;
+import lx.gestionale.fattura.riga.dto.RigaFatturaRequest;
+import lx.gestionale.fattura.riga.dto.RigaFatturaResponse;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.utente.Utente;
@@ -178,7 +182,7 @@ public class FatturaService {
     }
 
     // ── Lista fatture ─────────────────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public List<FatturaResponse> getFatture(Long utenteId, Long boutiqueId) {
         List<Fattura> fatture = boutiqueId != null
                 ? fatturaRepository.findByBoutiqueId(boutiqueId)
@@ -189,7 +193,7 @@ public class FatturaService {
     }
 
     // ── Fattura per ID ────────────────────────────────────────────────────────
-
+    @Transactional(readOnly = true)
     public FatturaResponse getFatturaById(Long id, Long utenteId, Long boutiqueId) {
         Fattura fattura = trovaFattura(id);
         verificaOwnership(fattura, utenteId, boutiqueId);

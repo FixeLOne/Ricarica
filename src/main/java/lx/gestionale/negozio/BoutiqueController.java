@@ -2,7 +2,8 @@ package lx.gestionale.negozio;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaBoutiqueRequest;
+import lx.gestionale.negozio.dto.BoutiqueResponse;
+import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -26,13 +27,13 @@ public class BoutiqueController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Boutique>> getBoutiqueDelAdmin(
+    public ResponseEntity<List<BoutiqueResponse>> getBoutiqueDelAdmin(
             @AuthenticationPrincipal UserPrincipal userPrincipal) {
         return ResponseEntity.ok(boutiqueService.getBoutiqueDelAdmin(userPrincipal.getUsername()));
     }
 
     @GetMapping("/tutte")
-    public ResponseEntity<List<Boutique>> getTutteLeBoutique() {
+    public ResponseEntity<List<BoutiqueResponse>> getTutteLeBoutique() {
         return ResponseEntity.ok(boutiqueService.getTutteLeBoutique());
     }
 

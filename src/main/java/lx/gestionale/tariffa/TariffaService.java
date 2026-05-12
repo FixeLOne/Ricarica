@@ -1,14 +1,16 @@
 package lx.gestionale.tariffa;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaTariffaRequest;
+import lx.gestionale.tariffa.dto.CreaTariffaRequest;
 import lx.gestionale.ricarica.Operatore;
+import lx.gestionale.tariffa.dto.TariffaResponse;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,14 +29,12 @@ public class TariffaService {
                         .orElseThrow(() -> new IllegalArgumentException("Tariffa non trovata in listino")));
     }
 
-    public Tariffa salvaOAggiorna(CreaTariffaRequest request, Long adminId) {
+    public TariffaResponse salvaOAggiorna(CreaTariffaRequest request, Long adminId) {
         Utente admin = utenteRepository.getReferenceById(adminId);
-
         Tariffa tariffa = cercaTariffa(request.getOperatore(), request.getGiga(), admin)
                 .orElseGet(Tariffa::new);
-
         tariffa.setAdmin(admin);
-        return popolaESalva(tariffa, request);
+        return toResponse(popolaESalva(tariffa, request));
     }
 
     // gestisce il caso null
@@ -53,15 +53,13 @@ public class TariffaService {
         return tariffaRepository.save(t);
     }
 
-    public Tariffa modificaTariffa(Long id, CreaTariffaRequest request, Long adminId) {
+    public TariffaResponse modificaTariffa(Long id, CreaTariffaRequest request, Long adminId) {
         Tariffa tariffa = tariffaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Impossibile modificare: Tariffa con ID " + id + " non trovata."));
-
         if (!tariffa.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi per modificare questa tariffa.");
         }
-
-        return popolaESalva(tariffa, request);
+        return toResponse(popolaESalva(tariffa, request));
     }
 
     public void eliminaTariffa(Long id, Long adminId) {
@@ -75,8 +73,20 @@ public class TariffaService {
         tariffaRepository.deleteById(id);
     }
 
-    public List<Tariffa> getListinoCompleto(Long adminId) {
+    public List<TariffaResponse> getListinoCompleto(Long adminId) {
         Utente admin = utenteRepository.getReferenceById(adminId);
-        return tariffaRepository.findByAdmin(admin);
+        return tariffaRepository.findByAdmin(admin).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    private TariffaResponse toResponse(Tariffa t) {
+        return new TariffaResponse(
+                t.getId(),
+                t.getOperatore(),
+                t.getGiga(),
+                t.getCostoAcquisto(),
+                t.getPrezzoVendita()
+        );
     }
 }

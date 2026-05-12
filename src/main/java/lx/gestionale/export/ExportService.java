@@ -1,11 +1,13 @@
 package lx.gestionale.export;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.ExportFileResponse;
+import lx.gestionale.export.dto.ExportFileResponse;
 import lx.gestionale.eccezioni.ExportException;
+import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.Operatore;
 import lx.gestionale.ricarica.Ricarica;
 import lx.gestionale.ricarica.RicaricaService;
+import lx.gestionale.utente.Utente;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.ContentDisposition;
@@ -22,12 +24,15 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ExportService {
 
     private final RicaricaService ricaricaService;
+
+    private final BoutiqueRepository boutiqueRepository;
 
     private static final DateTimeFormatter FMT_DATA_ORA  = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
     private static final DateTimeFormatter FMT_DATA_FILE = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -37,11 +42,20 @@ public class ExportService {
     // METODO PRINCIPALE CHIAMATO DAL CONTROLLER
     // ==========================================================
 
-    public ExportFileResponse generaReport(LocalDate dal, LocalDate al, Long boutiqueId) { // <-- Aggiunto boutiqueId
+
+    public ExportFileResponse generaReport(LocalDate dal, LocalDate al, Long boutiqueId, Long utenteId) {
         validaRange(dal, al);
 
-        // Passiamo il boutiqueId al RicaricaService per filtrare solo i dati di questo negozio!
-        List<Ricarica> ricariche = ricaricaService.getRicaricheTra(boutiqueId, dal, al);
+        List<Ricarica> ricariche;
+        if (boutiqueId != null) {
+            ricariche = ricaricaService.getRicaricheTra(boutiqueId, dal, al);
+        } else {
+            Utente admin = new Utente();
+            admin.setId(utenteId);
+            ricariche = boutiqueRepository.findByAdmin(admin).stream()
+                    .flatMap(b -> ricaricaService.getRicaricheTra(b.getId(), dal, al).stream())
+                    .collect(Collectors.toList());
+        }
 
         String nomeFile = "Report_Recharges_" + dal.format(FMT_DATA_FILE) + "_" + al.format(FMT_DATA_FILE) + ".xlsx";
         try {

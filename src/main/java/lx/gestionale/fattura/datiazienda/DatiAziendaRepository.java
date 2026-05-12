@@ -1,4 +1,4 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.datiazienda;
 
 import lx.gestionale.utente.Utente;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,7 +1,7 @@
 package lx.gestionale.export;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.ExportFileResponse;
+import lx.gestionale.export.dto.ExportFileResponse;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
@@ -24,6 +24,7 @@ public class ExportController {
 
     private final ExportService exportService;
 
+
     private static final String EXCEL_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     @GetMapping("/ricariche")
@@ -33,7 +34,7 @@ public class ExportController {
             @AuthenticationPrincipal UserPrincipal principal) { // <-- 1. CATTURIAMO L'UTENTE
 
         // 2. PASSIAMO L'ID DELLA BOUTIQUE AL SERVICE
-        ExportFileResponse report = exportService.generaReport(dal, al, principal.getBoutiqueId());
+        ExportFileResponse report = exportService.generaReport(dal, al, principal.getBoutiqueId(), principal.getUtenteId());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, report.contentDisposition())

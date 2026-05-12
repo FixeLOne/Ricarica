@@ -1,4 +1,4 @@
-package lx.gestionale.dto;
+package lx.gestionale.tariffa.dto;
 
 import lombok.Data;
 import lx.gestionale.ricarica.Operatore;

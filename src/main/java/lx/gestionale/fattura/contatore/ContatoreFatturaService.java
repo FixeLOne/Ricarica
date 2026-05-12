@@ -1,6 +1,7 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.contatore;
 
 import lombok.RequiredArgsConstructor;
+import lx.gestionale.fattura.TipoDocumento;
 import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;

@@ -1,7 +1,8 @@
 package lx.gestionale.negozio;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaBoutiqueRequest;
+import lx.gestionale.negozio.dto.BoutiqueResponse;
+import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.utente.Ruolo;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,14 +38,17 @@ public class BoutiqueService {
         utenteRepository.save(buildAccount(request, boutique));
     }
 
-    public List<Boutique> getBoutiqueDelAdmin(String usernameAdmin) {
-        return boutiqueRepository.findByAdmin(trovaAdmin(usernameAdmin));
+    public List<BoutiqueResponse> getBoutiqueDelAdmin(String usernameAdmin) {
+        return boutiqueRepository.findByAdmin(trovaAdmin(usernameAdmin)).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     // ── SUPER_ADMIN ───────────────────────────────────────────────────────────
-
-    public List<Boutique> getTutteLeBoutique() {
-        return boutiqueRepository.findAll();
+    public List<BoutiqueResponse> getTutteLeBoutique() {
+        return boutiqueRepository.findAll().stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
     // ── Privati ───────────────────────────────────────────────────────────────
@@ -83,5 +88,14 @@ public class BoutiqueService {
         }
         boutique.setFattureAbilitate(abilitato);
         boutiqueRepository.save(boutique);
+    }
+
+    private BoutiqueResponse toResponse(Boutique b) {
+        return new BoutiqueResponse(
+                b.getId(),
+                b.getNome(),
+                b.getCittà(),
+                b.isFattureAbilitate()
+        );
     }
 }

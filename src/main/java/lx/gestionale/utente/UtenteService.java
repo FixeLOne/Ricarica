@@ -1,7 +1,7 @@
 package lx.gestionale.utente;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaAdminRequest;
+import lx.gestionale.utente.dto.CreaAdminRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 

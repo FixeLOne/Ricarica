@@ -1,9 +1,11 @@
-package lx.gestionale.fattura.dto;
+package lx.gestionale.fattura.datiazienda.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 
 @Data
-public class DatiAziendaRequest {
+@AllArgsConstructor
+public class DatiAziendaResponse {
 
     private String ragioneSociale;
     private String indirizzo;

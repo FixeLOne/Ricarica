@@ -1,7 +1,7 @@
 package lx.gestionale.dashboard;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.DashboardRiepilogo;
+import lx.gestionale.dashboard.dto.DashboardRiepilogo;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

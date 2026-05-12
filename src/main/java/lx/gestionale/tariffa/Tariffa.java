@@ -1,16 +1,21 @@
 package lx.gestionale.tariffa;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 import lx.gestionale.ricarica.Operatore;
 import lx.gestionale.utente.Utente;
 
 import java.math.BigDecimal;
 
 @Entity
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@NoArgsConstructor
 public class Tariffa {
+
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

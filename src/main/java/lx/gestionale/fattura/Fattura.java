@@ -1,8 +1,8 @@
 package lx.gestionale.fattura;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import lx.gestionale.fattura.riga.RigaFattura;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.utente.Utente;
 
@@ -12,11 +12,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 public class Fattura {
 
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

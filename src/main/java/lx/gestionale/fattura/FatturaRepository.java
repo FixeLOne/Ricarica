@@ -14,6 +14,4 @@ public interface FatturaRepository extends JpaRepository<Fattura, Long> {
     // Dipendente — vede solo quelle della sua boutique
     List<Fattura> findByBoutiqueId(Long boutiqueId);
 
-    // Verifica esistenza numero (invariato)
-    boolean existsByNumero(String numero);
 }

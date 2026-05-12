@@ -1,4 +1,4 @@
-package lx.gestionale.dto;
+package lx.gestionale.security.dto;
 
 import lombok.Data;
 

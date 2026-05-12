@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lx.gestionale.fattura.StatoFattura;
 import lx.gestionale.fattura.TipoDocumento;
+import lx.gestionale.fattura.riga.dto.RigaFatturaResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

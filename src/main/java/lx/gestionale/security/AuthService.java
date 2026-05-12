@@ -1,9 +1,8 @@
 package lx.gestionale.security;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.LoginRequest;
-import lx.gestionale.dto.LoginResponse;
-import lx.gestionale.utente.UtenteRepository;
+import lx.gestionale.security.dto.LoginRequest;
+import lx.gestionale.security.dto.LoginResponse;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;

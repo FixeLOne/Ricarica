@@ -2,7 +2,7 @@ package lx.gestionale.utente;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaAdminRequest;
+import lx.gestionale.utente.dto.CreaAdminRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

@@ -1,8 +1,8 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.datiazienda;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.fattura.dto.DatiAziendaRequest;
-import lx.gestionale.fattura.dto.DatiAziendaResponse;
+import lx.gestionale.fattura.datiazienda.dto.DatiAziendaRequest;
+import lx.gestionale.fattura.datiazienda.dto.DatiAziendaResponse;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

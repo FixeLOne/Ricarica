@@ -1,8 +1,9 @@
 package lx.gestionale.tariffa;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.CreaTariffaRequest;
+import lx.gestionale.tariffa.dto.CreaTariffaRequest;
 import lx.gestionale.security.UserPrincipal;
+import lx.gestionale.tariffa.dto.TariffaResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -17,20 +18,20 @@ public class TariffaController {
     private final TariffaService tariffaService;
 
     @PostMapping
-    public ResponseEntity<Tariffa> salvaTariffa(
+    public ResponseEntity<TariffaResponse> salvaTariffa(
             @RequestBody CreaTariffaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(tariffaService.salvaOAggiorna(request, principal.getUtenteId()));
     }
 
     @GetMapping
-    public ResponseEntity<List<Tariffa>> getListinoCompleto(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<List<TariffaResponse>> getListinoCompleto(@AuthenticationPrincipal UserPrincipal principal) {
         // Ora passa per il Service e filtra per Admin!
         return ResponseEntity.ok(tariffaService.getListinoCompleto(principal.getUtenteId()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Tariffa> modificaTariffa(
+    public ResponseEntity<TariffaResponse> modificaTariffa(
             @PathVariable Long id,
             @RequestBody CreaTariffaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {

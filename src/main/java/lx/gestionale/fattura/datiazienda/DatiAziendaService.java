@@ -1,8 +1,8 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.datiazienda;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.fattura.dto.DatiAziendaRequest;
-import lx.gestionale.fattura.dto.DatiAziendaResponse;
+import lx.gestionale.fattura.datiazienda.dto.DatiAziendaRequest;
+import lx.gestionale.fattura.datiazienda.dto.DatiAziendaResponse;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
 import org.springframework.stereotype.Service;

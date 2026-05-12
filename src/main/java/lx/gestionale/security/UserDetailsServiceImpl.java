@@ -24,7 +24,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                         utente.getPassword(),
                         List.of(new SimpleGrantedAuthority("ROLE_" + utente.getRuolo().name())),
                         utente.getId(), // Passiamo l'ID dell'utente
-                        utente.getBoutique() != null ? utente.getBoutique().getId() : null // Passiamo l'ID boutique
+                        utente.getBoutique() != null ? utente.getBoutique().getId() : null, // Passiamo l'ID boutique
+                        utente.getRuolo().name()
                 ))
                 .orElseThrow(() -> new UsernameNotFoundException("Utente non trovato: " + username));
     }

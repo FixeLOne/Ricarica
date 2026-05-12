@@ -1,21 +1,23 @@
 package lx.gestionale.ricarica;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lx.gestionale.negozio.Boutique;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
 @NoArgsConstructor
 public class Ricarica {
 
     // ----------------------Campi di Identificazione e Tempo----------------------
-    @Id // Dichiara che è la Primary Key
+    @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY) // Dice al DB di generarlo in automatico
     private Long id;
 

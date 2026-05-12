@@ -1,4 +1,4 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.contatore;
 
 import lx.gestionale.utente.Utente;
 import org.springframework.data.jpa.repository.JpaRepository;

@@ -1,7 +1,7 @@
 package lx.gestionale.dashboard;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.DashboardRiepilogo;
+import lx.gestionale.dashboard.dto.DashboardRiepilogo;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.RicaricaRepository;
 import lx.gestionale.utente.Utente;

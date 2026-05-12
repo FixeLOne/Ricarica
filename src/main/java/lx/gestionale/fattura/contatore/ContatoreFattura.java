@@ -1,17 +1,19 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.contatore;
 
 import jakarta.persistence.*;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lx.gestionale.utente.Utente;
 
 @Entity
-@Data
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @Table(uniqueConstraints = @UniqueConstraint(columnNames = {"admin_id", "anno"}))
 public class ContatoreFattura {
 
     @Id
+    @EqualsAndHashCode.Include
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 

@@ -1,4 +1,4 @@
-package lx.gestionale.fattura;
+package lx.gestionale.fattura.riga;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

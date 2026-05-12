@@ -11,12 +11,14 @@ public class UserPrincipal extends User {
 
     private final Long utenteId;
     private final Long boutiqueId;
+    private final String ruolo;
 
     public UserPrincipal(String username, String password,
                          Collection<? extends GrantedAuthority> authorities,
-                         Long utenteId, Long boutiqueId) {
+                         Long utenteId, Long boutiqueId, String ruolo) {
         super(username, password, authorities);
         this.utenteId = utenteId;
         this.boutiqueId = boutiqueId;
+        this.ruolo=ruolo;
     }
 }

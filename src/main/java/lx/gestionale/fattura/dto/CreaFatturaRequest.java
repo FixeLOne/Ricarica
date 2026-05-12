@@ -2,6 +2,7 @@ package lx.gestionale.fattura.dto;
 
 import lombok.Data;
 import lx.gestionale.fattura.TipoDocumento;
+import lx.gestionale.fattura.riga.dto.RigaFatturaRequest;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;

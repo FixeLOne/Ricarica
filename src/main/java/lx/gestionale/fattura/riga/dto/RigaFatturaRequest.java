@@ -1,4 +1,4 @@
-package lx.gestionale.fattura.dto;
+package lx.gestionale.fattura.riga.dto;
 
 import lombok.Data;
 

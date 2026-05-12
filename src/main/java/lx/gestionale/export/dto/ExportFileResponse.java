@@ -1,4 +1,4 @@
-package lx.gestionale.dto;
+package lx.gestionale.export.dto;
 
 import java.io.ByteArrayInputStream;
 

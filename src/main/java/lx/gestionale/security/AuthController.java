@@ -1,8 +1,8 @@
 package lx.gestionale.security;
 
 import lombok.RequiredArgsConstructor;
-import lx.gestionale.dto.LoginRequest;
-import lx.gestionale.dto.LoginResponse;
+import lx.gestionale.security.dto.LoginRequest;
+import lx.gestionale.security.dto.LoginResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
