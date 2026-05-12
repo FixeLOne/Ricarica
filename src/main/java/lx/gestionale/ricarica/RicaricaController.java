@@ -23,7 +23,7 @@ public class RicaricaController {
             @AuthenticationPrincipal UserPrincipal principal) { //  Catturiamo chi fa la richiesta
 
         // Passiamo il suo ID negozio al Service
-        Ricarica ricaricaSalvata = ricaricaService.salvaRicarica(request, principal.getBoutiqueId());
+        Ricarica ricaricaSalvata = ricaricaService.salvaRicarica(request, principal.getUtenteId(), principal.getBoutiqueId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ricaricaSalvata);
     }
 

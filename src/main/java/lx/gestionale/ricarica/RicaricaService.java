@@ -51,10 +51,24 @@ public class RicaricaService {
         }
     }
 
-    public Ricarica salvaRicarica(CreaRicaricaRequest request, Long boutiqueId) {
-        Boutique boutique = boutiqueRepository.findById(boutiqueId)
-                .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+    public Ricarica salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId) {
+        Boutique boutique;
 
+        if (boutiqueId != null) {
+            // DIPENDENTE — usa boutiqueId dal token
+            boutique = boutiqueRepository.findById(boutiqueId)
+                    .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+        } else {
+            // ADMIN — boutiqueId obbligatorio nel body
+            if (request.getBoutiqueId() == null) {
+                throw new IllegalArgumentException("Specifica la boutique per la ricarica");
+            }
+            boutique = boutiqueRepository.findById(request.getBoutiqueId())
+                    .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+            if (!boutique.getAdmin().getId().equals(utenteId)) {
+                throw new IllegalArgumentException("Non hai i permessi su questa boutique");
+            }
+        }
         Ricarica r = new Ricarica();
         r.setBoutique(boutique);
         r.setDataOra(LocalDateTime.now());
@@ -64,6 +78,7 @@ public class RicaricaService {
 
         return ricaricaRepository.save(r);
     }
+
     private void impostaPrezzi(Ricarica r, CreaRicaricaRequest req, Operatore op, Utente admin) {
         if (req.isManuale()) {
             if (req.getCostoEffettivo() == null || req.getCostoCliente() == null) {

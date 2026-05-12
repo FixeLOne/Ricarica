@@ -35,4 +35,13 @@ public class BoutiqueController {
     public ResponseEntity<List<Boutique>> getTutteLeBoutique() {
         return ResponseEntity.ok(boutiqueService.getTutteLeBoutique());
     }
+
+    @PatchMapping("/{id}/fatture")
+    public ResponseEntity<String> impostaFattureAbilitate(
+            @PathVariable Long id,
+            @RequestParam boolean abilitato,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        boutiqueService.impostaFattureAbilitate(id, abilitato, principal.getUtenteId());
+        return ResponseEntity.ok("Fatture " + (abilitato ? "abilitate" : "disabilitate") + " con successo");
+    }
 }

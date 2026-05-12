@@ -74,4 +74,14 @@ public class BoutiqueService {
             throw new IllegalArgumentException("Username già in uso: " + username);
         }
     }
+
+    public void impostaFattureAbilitate(Long boutiqueId, boolean abilitato, Long adminId) {
+        Boutique boutique = boutiqueRepository.findById(boutiqueId)
+                .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+        if (!boutique.getAdmin().getId().equals(adminId)) {
+            throw new IllegalArgumentException("Non hai i permessi per modificare questa boutique");
+        }
+        boutique.setFattureAbilitate(abilitato);
+        boutiqueRepository.save(boutique);
+    }
 }

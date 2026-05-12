@@ -11,4 +11,5 @@ public class CreaRicaricaRequest {
     private boolean manuale;
     private BigDecimal costoEffettivo;
     private BigDecimal costoCliente;
+    private Long boutiqueId; // nullable — obbligatorio solo per ADMIN, ignorato per DIPENDENTE
 }

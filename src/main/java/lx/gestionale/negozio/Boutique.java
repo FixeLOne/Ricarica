@@ -21,6 +21,8 @@ public class Boutique {
 
     private String città;
 
+    private boolean fattureAbilitate = false;
+
     @ManyToOne
     @JoinColumn(name = "admin_id")
     private Utente admin;

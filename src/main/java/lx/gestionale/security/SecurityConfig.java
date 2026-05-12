@@ -47,9 +47,13 @@ public class SecurityConfig {
 
                         // Altre rotte esistenti
                         .requestMatchers("/api/v2/export/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
-                        .requestMatchers("/api/v2/dashboard/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
+                        .requestMatchers("/api/v2/dashboard/admin").hasRole("ADMIN")
+                        .requestMatchers("/api/v2/dashboard/riepilogo").hasRole("DIPENDENTE")
                         .requestMatchers("/api/v2/tariffe/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/v2/ricariche/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
+                        .requestMatchers(HttpMethod.GET, "/api/v2/fatture/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
+                        .requestMatchers("/api/v2/fatture/**").hasAnyRole("ADMIN", "DIPENDENTE")
+                        .requestMatchers("/api/v2/azienda/**").hasRole("ADMIN")
 
                         // Chiusura
                         .anyRequest().authenticated()
