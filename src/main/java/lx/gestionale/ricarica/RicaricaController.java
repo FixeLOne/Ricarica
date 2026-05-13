@@ -1,5 +1,6 @@
 package lx.gestionale.ricarica;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
 import lx.gestionale.ricarica.dto.RicaricaResponse;
@@ -18,27 +19,26 @@ public class RicaricaController {
 
     @PostMapping
     public ResponseEntity<RicaricaResponse> creaRicarica(
-            @RequestBody CreaRicaricaRequest request,
+            @Valid @RequestBody CreaRicaricaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         RicaricaResponse ricaricaSalvata = ricaricaService.salvaRicarica(request, principal.getUtenteId(), principal.getBoutiqueId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ricaricaSalvata);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<RicaricaResponse> modificaRicarica(
-            @PathVariable Long id,
-            @RequestBody CreaRicaricaRequest request,
-            @AuthenticationPrincipal UserPrincipal principal) {
-        RicaricaResponse ricaricaAggiornata = ricaricaService.modificaRicarica(id, request, principal.getBoutiqueId(), principal.getRuolo());
-        return ResponseEntity.ok(ricaricaAggiornata);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminaRicarica(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        ricaricaService.eliminaRicarica(id, principal.getBoutiqueId(), principal.getRuolo());
+        ricaricaService.eliminaRicarica(id, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo());
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<RicaricaResponse> modificaRicarica(
+            @PathVariable Long id,
+            @Valid @RequestBody CreaRicaricaRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ricaricaService.modificaRicarica(id, request, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
 

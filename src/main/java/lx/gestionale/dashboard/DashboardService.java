@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.dashboard.dto.DashboardRiepilogo;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.RicaricaRepository;
-import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,10 +21,8 @@ public class DashboardService {
 
     public List<DashboardAdminRiepilogo> getRiepilogoAdmin(Long adminId) {
         LocalDate oggi = LocalDate.now();
-        Utente admin = new Utente();
-        admin.setId(adminId);
 
-        return boutiqueRepository.findByAdmin(admin).stream()
+        return boutiqueRepository.findByAdminId(adminId).stream()
                 .map(b -> {
                     BigDecimal profitto = ricaricaRepository.sumProfittoByBoutiqueAndData(b.getId(), oggi);
                     long conteggio = ricaricaRepository.countRicaricheByBoutiqueAndData(b.getId(), oggi);

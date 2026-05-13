@@ -17,7 +17,7 @@ public class CorsConfig {
                 // Permette a qualsiasi frontend di chiamare tutte le API (/api/**)
                 registry.addMapping("/api/**")
                         .allowedOrigins("*") // In sviluppo va bene "*". In produzione ci va l'URL del frontend
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .allowedHeaders("*");
             }
         };

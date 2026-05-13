@@ -9,5 +9,7 @@ public interface BoutiqueRepository extends JpaRepository<Boutique, Long> {
 
     List<Boutique> findByAdmin(Utente admin);
 
+    List<Boutique> findByAdminId(Long adminId);
+
     boolean existsByNomeAndAdmin(String nome, Utente admin);
 }

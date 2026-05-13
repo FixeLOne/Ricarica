@@ -53,23 +53,21 @@ public class TariffaService {
         return tariffaRepository.save(t);
     }
 
-    public TariffaResponse modificaTariffa(Long id, CreaTariffaRequest request, Long adminId) {
+    public TariffaResponse modificaTariffa(Long id, CreaTariffaRequest request, Long adminId, String ruolo) {
         Tariffa tariffa = tariffaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Impossibile modificare: Tariffa con ID " + id + " non trovata."));
-        if (!tariffa.getAdmin().getId().equals(adminId)) {
+        if (!"SUPER_ADMIN".equals(ruolo) && !tariffa.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi per modificare questa tariffa.");
         }
         return toResponse(popolaESalva(tariffa, request));
     }
 
-    public void eliminaTariffa(Long id, Long adminId) {
+    public void eliminaTariffa(Long id, Long adminId, String ruolo) {
         Tariffa tariffa = tariffaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Tariffa non trovata."));
-
-        if (!tariffa.getAdmin().getId().equals(adminId)) {
+        if (!"SUPER_ADMIN".equals(ruolo) && !tariffa.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa tariffa.");
         }
-
         tariffaRepository.deleteById(id);
     }
 

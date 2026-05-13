@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.utente.dto.CreaAdminRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,7 @@ public class UtenteController {
     private final UtenteService utenteService;
 
     @PostMapping("/admin")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<String> creaAdmin(@Valid @RequestBody CreaAdminRequest request) {
         utenteService.creaAdmin(request);
         return ResponseEntity.ok("Admin creato con successo");

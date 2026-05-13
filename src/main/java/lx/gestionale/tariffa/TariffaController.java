@@ -35,12 +35,12 @@ public class TariffaController {
             @PathVariable Long id,
             @RequestBody CreaTariffaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(tariffaService.modificaTariffa(id, request, principal.getUtenteId()));
+        return ResponseEntity.ok(tariffaService.modificaTariffa(id, request, principal.getUtenteId(), principal.getRuolo()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminaTariffa(@PathVariable Long id, @AuthenticationPrincipal UserPrincipal principal) {
-        tariffaService.eliminaTariffa(id, principal.getUtenteId());
+        tariffaService.eliminaTariffa(id, principal.getUtenteId(), principal.getRuolo());
         return ResponseEntity.noContent().build();
     }
 }

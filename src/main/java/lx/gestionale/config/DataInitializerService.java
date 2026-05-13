@@ -1,6 +1,8 @@
 package lx.gestionale.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import lx.gestionale.fattura.contatore.ContatoreFatturaService;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.Operatore;
@@ -15,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class DataInitializerService {
@@ -24,14 +27,15 @@ class DataInitializerService {
     private final BoutiqueRepository boutiqueRepository;
     private final PasswordEncoder passwordEncoder;
 
+
     @Transactional
     public void eseguiInizializzazione() {
         if (utenteRepository.count() > 0) {
-            System.out.println("ℹ️ [DEV] Database già inizializzato, skip.");
+            log.info("[DEV] Database già inizializzato, skip.");
             return;
         }
 
-        System.out.println("🚀 [DEV] Avvio inizializzazione database...");
+        log.info("[DEV] Avvio inizializzazione database...");
 
         // ── 1. CREAZIONE UTENTI (SUPER_ADMIN E ADMIN) ────────────────────────
         Utente superAdmin = creaUtente("Super Admin", "superadmin", "superadmin123", Ruolo.SUPER_ADMIN, null);
@@ -63,7 +67,7 @@ class DataInitializerService {
         salvaTariffa(adminB, Operatore.orange, 10.0, "6.200", "9.000");
         salvaTariffa(adminB, null, 10.0, "5.000", "7.500");
 
-        System.out.println("✅ [DEV] Database inizializzato con successo.");
+        log.info("[DEV] Database inizializzato con successo.");
     }
 
     private Utente creaUtente(String nome, String username, String password, Ruolo ruolo, Boutique boutique) {

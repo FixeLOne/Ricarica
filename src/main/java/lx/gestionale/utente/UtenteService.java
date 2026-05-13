@@ -1,6 +1,7 @@
 package lx.gestionale.utente;
 
 import lombok.RequiredArgsConstructor;
+import lx.gestionale.fattura.contatore.ContatoreFatturaService;
 import lx.gestionale.utente.dto.CreaAdminRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -11,15 +12,14 @@ public class UtenteService {
 
     private final UtenteRepository utenteRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ContatoreFatturaService contatoreFatturaService;
 
     // ── SUPER_ADMIN ───────────────────────────────────────────────────────────
 
     public void creaAdmin(CreaAdminRequest request) {
         verificaUsernameDisponibile(request.getUsername());
-
-        utenteRepository.save(
-                buildUtente(request.getNome(), request.getUsername(), request.getPassword())
-        );
+        Utente admin = utenteRepository.save(buildUtente(request.getNome(), request.getUsername(), request.getPassword()));
+        contatoreFatturaService.inizializzaContatore(admin);
     }
 
     // ── Privati ───────────────────────────────────────────────────────────────

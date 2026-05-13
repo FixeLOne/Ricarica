@@ -1,5 +1,6 @@
 package lx.gestionale.fattura;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
 import lx.gestionale.fattura.dto.FatturaResponse;
@@ -20,27 +21,25 @@ public class FatturaController {
 
     @PostMapping
     public ResponseEntity<FatturaResponse> creaFattura(
-            @RequestBody CreaFatturaRequest request,
+            @Valid @RequestBody CreaFatturaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(fatturaService.creaFattura(request, principal.getUtenteId(), principal.getBoutiqueId()));
+                .body(fatturaService.creaFattura(request, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<FatturaResponse> modificaFattura(
             @PathVariable Long id,
-            @RequestBody CreaFatturaRequest request,
+            @Valid @RequestBody CreaFatturaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(fatturaService.modificaFattura(
-                id, request, principal.getUtenteId(), principal.getBoutiqueId()));
+        return ResponseEntity.ok(fatturaService.modificaFattura(id, request, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @PatchMapping("/{id}/emetti")
     public ResponseEntity<FatturaResponse> emettiFattura(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(fatturaService.emettiFattura(
-                id, principal.getUtenteId(), principal.getBoutiqueId()));
+        return ResponseEntity.ok(fatturaService.emettiFattura(id, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @PostMapping("/{id}/avoir")
@@ -48,29 +47,28 @@ public class FatturaController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(fatturaService.creaAvoir(id, principal.getUtenteId(), principal.getBoutiqueId()));
+                .body(fatturaService.creaAvoir(id, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @GetMapping
     public ResponseEntity<List<FatturaResponse>> getFatture(
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(fatturaService.getFatture(
-                principal.getUtenteId(), principal.getBoutiqueId()));
+                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<FatturaResponse> getFatturaById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(fatturaService.getFatturaById(
-                id, principal.getUtenteId(), principal.getBoutiqueId()));
+        return ResponseEntity.ok(fatturaService.getFatturaById(id, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminaFattura(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        fatturaService.eliminaFattura(id, principal.getUtenteId(), principal.getBoutiqueId());
+        fatturaService.eliminaFattura(id, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo());
         return ResponseEntity.noContent().build();
     }
 }

@@ -35,80 +35,110 @@ public class FatturaService {
     // ── Crea fattura ──────────────────────────────────────────────────────────
 
     @Transactional
-    public FatturaResponse creaFattura(CreaFatturaRequest request, Long utenteId, Long boutiqueId) {
-        Utente admin;
-        Boutique boutique = null;
+    public FatturaResponse creaFattura(CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        // 1. Risolvi admin e boutique dal contesto del chiamante
+        AdminBoutiquePair pair = risolviAmministratore(request, utenteId, boutiqueId);
 
+        // 2. Se è un AVOIR, annulla la fattura origine
+        Fattura fatturaOrigine = gestisciAvoirOrigine(request, utenteId, boutiqueId, ruolo);
+
+        // 3. Costruisci le righe dalla request
+        List<RigaFattura> righe = request.getRighe().stream()
+                .map(r -> buildRiga(r, null))
+                .collect(Collectors.toList());
+
+        // 4. Genera numero e determina lo stato iniziale
+        String numero = contatoreFatturaService.generaNumero(pair.admin(), request.getTipo());
+
+        // FIX: un AVOIR è emesso immediatamente — tenerlo in BOZZA lascerebbe
+        // la fattura origine ANNULLATA senza una rettifica ufficiale
+        StatoFattura stato = request.getTipo() == TipoDocumento.AVOIR
+                ? StatoFattura.EMESSA
+                : StatoFattura.BOZZA;
+
+        // Per un AVOIR la data è sempre oggi, non quella passata nella request
+        LocalDate dataEmissione = request.getTipo() == TipoDocumento.AVOIR
+                ? LocalDate.now()
+                : request.getDataEmissione();
+
+        return assemblaSalvaErispondi(
+                numero,
+                request.getTipo(),
+                stato,
+                dataEmissione,
+                request.getNomeCliente(),
+                request.isTimbreFiscal(),
+                request.getRemiseGlobale(),
+                pair.admin(),
+                pair.boutique(),
+                fatturaOrigine,
+                righe
+        );
+    }
+
+    /**
+     * Risolve admin e boutique in base a chi sta chiamando:
+     * - dipendente (boutiqueId != null): la boutique è quella del token, l'admin è il suo admin
+     * - admin diretto: l'admin è l'utente corrente, la boutique è opzionale dalla request
+     */
+    private AdminBoutiquePair risolviAmministratore(CreaFatturaRequest request, Long utenteId, Long boutiqueId) {
         if (boutiqueId != null) {
-            // ── DIPENDENTE ─────────────────────────────────────────────────────
-            // Il boutiqueId viene dal token JWT: non è manipolabile dal client.
-            // Non usiamo MAI request.getBoutiqueId() per i dipendenti.
-            boutique = boutiqueRepository.findById(boutiqueId)
-                    .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
-            if (!boutique.isFattureAbilitate()) {
-                throw new IllegalArgumentException("Le fatture non sono abilitate per questa boutique");
-            }
-            admin = boutique.getAdmin();
-
-        } else {
-            // ── ADMIN ──────────────────────────────────────────────────────────
-            admin = utenteRepository.findById(utenteId)
-                    .orElseThrow(() -> new IllegalArgumentException("Admin non trovato"));
-
-            // L'Admin può facoltativamente assegnare la fattura a una sua boutique
-            // passando boutiqueId nel body della request.
-            if (request.getBoutiqueId() != null) {
-                boutique = boutiqueRepository.findById(request.getBoutiqueId())
-                        .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
-
-                // SICUREZZA: verifica che la boutique appartenga all'admin del token.
-                // Senza questo controllo, un admin potrebbe creare fatture
-                // su boutique di altri admin passando un ID arbitrario nel body.
-                if (!boutique.getAdmin().getId().equals(utenteId)) {
-                    throw new IllegalArgumentException("Non hai i permessi su questa boutique");
-                }
-
-                if (!boutique.isFattureAbilitate()) {
-                    throw new IllegalArgumentException("Le fatture non sono abilitate per questa boutique");
-                }
-            }
+            Boutique boutique = caricaBoutiqueAbilitata(boutiqueId);
+            return new AdminBoutiquePair(boutique.getAdmin(), boutique);
         }
 
-        String numero = contatoreFatturaService.generaNumero(admin, request.getTipo());
-        Fattura fattura = new Fattura();
-        fattura.setNumero(numero);
-        fattura.setTipo(request.getTipo());
-        fattura.setStato(StatoFattura.BOZZA);
-        fattura.setDataEmissione(request.getDataEmissione());
-        fattura.setNomeCliente(request.getNomeCliente());
-        fattura.setTimbreFiscal(request.isTimbreFiscal());
-        fattura.setRemiseGlobale(request.getRemiseGlobale());
-        fattura.setAdmin(admin);
-        fattura.setBoutique(boutique); // null se l'Admin non ha specificato una boutique
+        Utente admin = utenteRepository.findById(utenteId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin non trovato"));
 
-        if (request.getTipo() == TipoDocumento.AVOIR && request.getFatturaOrigineId() != null) {
-            Fattura origine = trovaFattura(request.getFatturaOrigineId());
-            if (origine.getStato() != StatoFattura.EMESSA) {
-                throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
-            }
-            fattura.setFatturaOrigine(origine);
+        if (request.getBoutiqueId() == null) {
+            return new AdminBoutiquePair(admin, null);
         }
 
-        request.getRighe().stream()
-                .map(r -> buildRiga(r, fattura))
-                .forEach(fattura.getRighe()::add);
+        Boutique boutique = caricaBoutiqueAbilitata(request.getBoutiqueId());
+        if (!boutique.getAdmin().getId().equals(utenteId)) {
+            throw new IllegalArgumentException("Non hai i permessi su questa boutique");
+        }
+        return new AdminBoutiquePair(admin, boutique);
+    }
 
-        calcolaTotali(fattura);
-        fatturaRepository.save(fattura);
-        return toResponse(fattura);
+    /**
+     * Se la request è di tipo AVOIR e porta un ID origine, carica la fattura,
+     * verifica i permessi, e la porta in stato ANNULLATA.
+     * Restituisce null se non è un AVOIR o non c'è un origine.
+     */
+    private Fattura gestisciAvoirOrigine(CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        if (request.getTipo() != TipoDocumento.AVOIR || request.getFatturaOrigineId() == null) {
+            return null;
+        }
+
+        Fattura origine = trovaFattura(request.getFatturaOrigineId());
+        verificaOwnership(origine, utenteId, boutiqueId, ruolo);
+
+        if (origine.getStato() != StatoFattura.EMESSA) {
+            throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
+        }
+
+        origine.setStato(StatoFattura.ANNULLATA);
+        fatturaRepository.save(origine);
+        return origine;
+    }
+
+    /** Carica una boutique e verifica che le fatture siano abilitate. */
+    private Boutique caricaBoutiqueAbilitata(Long boutiqueId) {
+        Boutique boutique = boutiqueRepository.findById(boutiqueId)
+                .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+        if (!boutique.isFattureAbilitate()) {
+            throw new IllegalArgumentException("Le fatture non sono abilitate per questa boutique");
+        }
+        return boutique;
     }
 
     // ── Modifica fattura ──────────────────────────────────────────────────────
 
     @Transactional
-    public FatturaResponse modificaFattura(Long id, CreaFatturaRequest request, Long utenteId, Long boutiqueId) {
+    public FatturaResponse modificaFattura(Long id, CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
         Fattura fattura = trovaFattura(id);
-        verificaOwnership(fattura, utenteId, boutiqueId);
+        verificaOwnership(fattura, utenteId, boutiqueId, ruolo);
 
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere modificate");
@@ -132,9 +162,9 @@ public class FatturaService {
     // ── Emetti fattura ────────────────────────────────────────────────────────
 
     @Transactional
-    public FatturaResponse emettiFattura(Long id, Long utenteId, Long boutiqueId) {
+    public FatturaResponse emettiFattura(Long id, Long utenteId, Long boutiqueId, String ruolo) {
         Fattura fattura = trovaFattura(id);
-        verificaOwnership(fattura, utenteId, boutiqueId);
+        verificaOwnership(fattura, utenteId, boutiqueId, ruolo);
 
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere emesse");
@@ -145,67 +175,73 @@ public class FatturaService {
         return toResponse(fattura);
     }
 
-    // ── Crea Avoir ────────────────────────────────────────────────────────────
+    // ── Crea Avoir (da fattura esistente, copia automatica delle righe) ───────
 
     @Transactional
-    public FatturaResponse creaAvoir(Long fatturaOrigineId, Long utenteId, Long boutiqueId) {
+    public FatturaResponse creaAvoir(Long fatturaOrigineId, Long utenteId, Long boutiqueId, String ruolo) {
         Fattura origine = trovaFattura(fatturaOrigineId);
-        verificaOwnership(origine, utenteId, boutiqueId);
+        verificaOwnership(origine, utenteId, boutiqueId, ruolo);
 
         if (origine.getStato() != StatoFattura.EMESSA) {
             throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
         }
 
+        List<RigaFattura> righe = origine.getRighe().stream()
+                .map(r -> buildRigaDaEsistente(r, null))
+                .collect(Collectors.toList());
+
         String numero = contatoreFatturaService.generaNumero(origine.getAdmin(), TipoDocumento.AVOIR);
-        Fattura avoir = new Fattura();
-        avoir.setNumero(numero);
-        avoir.setTipo(TipoDocumento.AVOIR);
-        avoir.setStato(StatoFattura.EMESSA);
-        avoir.setDataEmissione(LocalDate.now());
-        avoir.setNomeCliente(origine.getNomeCliente());
-        avoir.setTimbreFiscal(origine.isTimbreFiscal());
-        avoir.setRemiseGlobale(origine.getRemiseGlobale());
-        avoir.setAdmin(origine.getAdmin());
-        avoir.setBoutique(origine.getBoutique());
-        avoir.setFatturaOrigine(origine);
-
-        origine.getRighe().stream()
-                .map(r -> buildRigaDaEsistente(r, avoir))
-                .forEach(avoir.getRighe()::add);
-
-        calcolaTotali(avoir);
 
         origine.setStato(StatoFattura.ANNULLATA);
         fatturaRepository.save(origine);
-        fatturaRepository.save(avoir);
-        return toResponse(avoir);
+
+        return assemblaSalvaErispondi(
+                numero,
+                TipoDocumento.AVOIR,
+                StatoFattura.EMESSA,
+                LocalDate.now(),
+                origine.getNomeCliente(),
+                origine.isTimbreFiscal(),
+                origine.getRemiseGlobale(),
+                origine.getAdmin(),
+                origine.getBoutique(),
+                origine,
+                righe
+        );
     }
 
     // ── Lista fatture ─────────────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
-    public List<FatturaResponse> getFatture(Long utenteId, Long boutiqueId) {
-        List<Fattura> fatture = boutiqueId != null
-                ? fatturaRepository.findByBoutiqueId(boutiqueId)
-                : fatturaRepository.findByAdminId(utenteId);
+    public List<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo) {
+        List<Fattura> fatture;
+        if ("SUPER_ADMIN".equals(ruolo)) {
+            fatture = fatturaRepository.findAll();
+        } else if (boutiqueId != null) {
+            fatture = fatturaRepository.findByBoutiqueId(boutiqueId);
+        } else {
+            fatture = fatturaRepository.findByAdminId(utenteId);
+        }
         return fatture.stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
     // ── Fattura per ID ────────────────────────────────────────────────────────
+
     @Transactional(readOnly = true)
-    public FatturaResponse getFatturaById(Long id, Long utenteId, Long boutiqueId) {
+    public FatturaResponse getFatturaById(Long id, Long utenteId, Long boutiqueId, String ruolo) {
         Fattura fattura = trovaFattura(id);
-        verificaOwnership(fattura, utenteId, boutiqueId);
+        verificaOwnership(fattura, utenteId, boutiqueId, ruolo);
         return toResponse(fattura);
     }
 
     // ── Elimina fattura ───────────────────────────────────────────────────────
 
     @Transactional
-    public void eliminaFattura(Long id, Long utenteId, Long boutiqueId) {
+    public void eliminaFattura(Long id, Long utenteId, Long boutiqueId, String ruolo) {
         Fattura fattura = trovaFattura(id);
-        verificaOwnership(fattura, utenteId, boutiqueId);
+        verificaOwnership(fattura, utenteId, boutiqueId, ruolo);
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture BOZZA possono essere eliminate. Per annullare una fattura emessa, emettere un Avoir.");
         }
@@ -257,24 +293,18 @@ public class FatturaService {
         fattura.setTotaleNet(totaleNet);
     }
 
-    private void verificaOwnership(Fattura fattura, Long utenteId, Long boutiqueId) {
+    private void verificaOwnership(Fattura fattura, Long utenteId, Long boutiqueId, String ruolo) {
+        if ("SUPER_ADMIN".equals(ruolo)) {
+            return;
+        }
         if (boutiqueId != null) {
-            // ── DIPENDENTE ─────────────────────────────────────────────────────
-            // Verifica che la fattura appartenga alla boutique del token.
             if (fattura.getBoutique() == null || !fattura.getBoutique().getId().equals(boutiqueId)) {
                 throw new IllegalArgumentException("Non hai i permessi per accedere a questa fattura");
             }
-            // Catena boutique → admin: difesa in profondità contro incongruenze dei dati.
-            // Garantisce che anche se un boutiqueId fosse stato assegnato erroneamente,
-            // la boutique appartenga comunque all'admin corretto.
             if (!fattura.getBoutique().getAdmin().getId().equals(fattura.getAdmin().getId())) {
                 throw new IllegalStateException("Incongruenza tra boutique e admin sulla fattura: ID " + fattura.getId());
             }
-
         } else {
-            // ── ADMIN ──────────────────────────────────────────────────────────
-            // Il campo admin è sempre valorizzato alla creazione (sia per fatture
-            // orfane che per fatture con boutique), quindi questo check copre entrambi i casi.
             if (!fattura.getAdmin().getId().equals(utenteId)) {
                 throw new IllegalArgumentException("Non hai i permessi per accedere a questa fattura");
             }
@@ -315,4 +345,43 @@ public class FatturaService {
                 f.getFatturaOrigine() != null ? f.getFatturaOrigine().getNumero() : null
         );
     }
+
+    private FatturaResponse assemblaSalvaErispondi(
+            String numero,
+            TipoDocumento tipo,
+            StatoFattura stato,
+            LocalDate dataEmissione,
+            String nomeCliente,
+            boolean timbreFiscal,
+            BigDecimal remiseGlobale,
+            Utente admin,
+            Boutique boutique,
+            Fattura fatturaOrigine,
+            List<RigaFattura> righe) {
+
+        Fattura fattura = new Fattura();
+        fattura.setNumero(numero);
+        fattura.setTipo(tipo);
+        fattura.setStato(stato);
+        fattura.setDataEmissione(dataEmissione);
+        fattura.setNomeCliente(nomeCliente);
+        fattura.setTimbreFiscal(timbreFiscal);
+        fattura.setRemiseGlobale(remiseGlobale);
+        fattura.setAdmin(admin);
+        fattura.setBoutique(boutique);
+        fattura.setFatturaOrigine(fatturaOrigine);
+
+        righe.forEach(r -> {
+            r.setFattura(fattura);
+            fattura.getRighe().add(r);
+        });
+
+        calcolaTotali(fattura);
+        fatturaRepository.save(fattura);
+        return toResponse(fattura);
+    }
+
+    // ── Record di supporto ────────────────────────────────────────────────────
+
+    private record AdminBoutiquePair(Utente admin, Boutique boutique) {}
 }

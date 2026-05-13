@@ -41,7 +41,7 @@ public class JwtFilter extends OncePerRequestFilter {
         try {
             username = jwtService.estraiUsername(token);
         } catch (JwtException e) {
-            filterChain.doFilter(request, response);
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token non valido");
             return;
         }
 
@@ -54,6 +54,9 @@ public class JwtFilter extends OncePerRequestFilter {
                 );
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
+            } else {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token non valido");
+                return;
             }
         }
 

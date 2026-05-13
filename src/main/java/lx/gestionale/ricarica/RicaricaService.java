@@ -95,24 +95,23 @@ public class RicaricaService {
         }
         r.setProfitto(r.getCostoCliente().subtract(r.getCostoEffettivo()));
     }
-    public void eliminaRicarica(Long id, Long boutiqueId, String ruolo) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!ruolo.equals("SUPER_ADMIN") && !r.getBoutique().getId().equals(boutiqueId)) {
-            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
+
+    public void eliminaRicarica(Long id, Long utenteId, Long boutiqueId, String ruolo) {
+        switch (ruolo) {
+            case "DIPENDENTE"  -> eliminaRicaricaDipendente(id, boutiqueId);
+            case "ADMIN"       -> eliminaRicaricaAdmin(id, utenteId);
+            case "SUPER_ADMIN" -> eliminaRicaricaSuperAdmin(id);
+            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
         }
-        ricaricaRepository.deleteById(id);
     }
 
-    public RicaricaResponse modificaRicarica(Long id, CreaRicaricaRequest request, Long boutiqueId, String ruolo) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!ruolo.equals("SUPER_ADMIN") && !r.getBoutique().getId().equals(boutiqueId)) {
-            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
-        }
-        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        ricaricaRepository.save(r);
-        return toResponse(r);
+    public RicaricaResponse modificaRicarica(Long id, CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        return switch (ruolo) {
+            case "DIPENDENTE"  -> modificaRicaricaDipendente(id, request, boutiqueId);
+            case "ADMIN"       -> modificaRicaricaAdmin(id, request, utenteId);
+            case "SUPER_ADMIN" -> modificaRicaricaSuperAdmin(id, request);
+            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
+        };
     }
 
     private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request, Utente admin) {
@@ -123,6 +122,7 @@ public class RicaricaService {
         r.setNumero(numPulito);
         r.setOperatore(operatore);
         r.setGiga(request.getGiga());
+        r.setNote(request.getNote());
 
         impostaPrezzi(r, request, operatore, admin);
     }
@@ -146,5 +146,64 @@ public class RicaricaService {
                 r.getBoutique().getId(),
                 r.getBoutique().getNome()
         );
+    }
+
+
+    // ELIMINAZIONE
+
+    void eliminaRicaricaDipendente(Long id, Long boutiqueId) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getId().equals(boutiqueId)) {
+            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
+        }
+        ricaricaRepository.deleteById(id);
+    }
+
+    void eliminaRicaricaAdmin(Long id, Long utenteId) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
+            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
+        }
+        ricaricaRepository.deleteById(id);
+    }
+
+    void eliminaRicaricaSuperAdmin(Long id) {
+        ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        ricaricaRepository.deleteById(id);
+    }
+
+    // MODIFICA
+
+    RicaricaResponse modificaRicaricaDipendente(Long id, CreaRicaricaRequest request, Long boutiqueId) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getId().equals(boutiqueId)) {
+            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
+        }
+        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
+        ricaricaRepository.save(r);
+        return toResponse(r);
+    }
+
+    RicaricaResponse modificaRicaricaAdmin(Long id, CreaRicaricaRequest request, Long utenteId) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
+            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
+        }
+        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
+        ricaricaRepository.save(r);
+        return toResponse(r);
+    }
+
+    RicaricaResponse modificaRicaricaSuperAdmin(Long id, CreaRicaricaRequest request) {
+        Ricarica r = ricaricaRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
+        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
+        ricaricaRepository.save(r);
+        return toResponse(r);
     }
 }

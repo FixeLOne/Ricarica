@@ -7,7 +7,6 @@ import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.Operatore;
 import lx.gestionale.ricarica.Ricarica;
 import lx.gestionale.ricarica.RicaricaService;
-import lx.gestionale.utente.Utente;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.http.ContentDisposition;
@@ -50,9 +49,7 @@ public class ExportService {
         if (boutiqueId != null) {
             ricariche = ricaricaService.getRicaricheTra(boutiqueId, dal, al);
         } else {
-            Utente admin = new Utente();
-            admin.setId(utenteId);
-            ricariche = boutiqueRepository.findByAdmin(admin).stream()
+            ricariche = boutiqueRepository.findByAdminId(utenteId).stream()
                     .flatMap(b -> ricaricaService.getRicaricheTra(b.getId(), dal, al).stream())
                     .collect(Collectors.toList());
         }

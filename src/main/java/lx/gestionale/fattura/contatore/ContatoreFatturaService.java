@@ -17,7 +17,6 @@ public class ContatoreFatturaService {
 
     /**
      * Genera il prossimo numero documento per l'admin e il tipo indicati.
-     *
      * MANDATORY: questo metodo deve essere chiamato all'interno di una transazione
      * già aperta (quella di FatturaService). Se viene invocato fuori transazione
      * Spring lancia IllegalTransactionStateException — comportamento voluto,
@@ -34,7 +33,6 @@ public class ContatoreFatturaService {
                     nuovo.setAnno(anno);
                     return contatoreFatturaRepository.save(nuovo);
                 });
-
         contatore.setUltimoNumero(contatore.getUltimoNumero() + 1);
         contatoreFatturaRepository.save(contatore);
 
@@ -46,5 +44,16 @@ public class ContatoreFatturaService {
         };
 
         return String.format("%s-%d-%04d", prefisso, anno, contatore.getUltimoNumero());
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void inizializzaContatore(Utente admin) {
+        int anno = LocalDate.now().getYear();
+        if (contatoreFatturaRepository.findByAdminAndAnno(admin, anno).isEmpty()) {
+            ContatoreFattura nuovo = new ContatoreFattura();
+            nuovo.setAdmin(admin);
+            nuovo.setAnno(anno);
+            contatoreFatturaRepository.save(nuovo);
+        }
     }
 }
