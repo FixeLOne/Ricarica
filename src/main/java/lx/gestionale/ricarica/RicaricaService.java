@@ -1,5 +1,6 @@
 package lx.gestionale.ricarica;
 
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
 import lx.gestionale.negozio.Boutique;
@@ -10,6 +11,7 @@ import lx.gestionale.tariffa.TariffaService;
 import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -86,6 +88,10 @@ public class RicaricaService {
             if (req.getCostoEffettivo() == null || req.getCostoCliente() == null) {
                 throw new IllegalArgumentException("Prezzi manuali obbligatori");
             }
+            if (req.getCostoEffettivo().compareTo(BigDecimal.ZERO) < 0 ||
+                    req.getCostoCliente().compareTo(BigDecimal.ZERO) < 0) {
+                throw new IllegalArgumentException("I prezzi manuali non possono essere negativi");
+            }
             r.setCostoEffettivo(req.getCostoEffettivo());
             r.setCostoCliente(req.getCostoCliente());
         } else {
@@ -96,6 +102,7 @@ public class RicaricaService {
         r.setProfitto(r.getCostoCliente().subtract(r.getCostoEffettivo()));
     }
 
+    @Transactional
     public void eliminaRicarica(Long id, Long utenteId, Long boutiqueId, String ruolo) {
         switch (ruolo) {
             case "DIPENDENTE"  -> eliminaRicaricaDipendente(id, boutiqueId);
@@ -105,6 +112,7 @@ public class RicaricaService {
         }
     }
 
+    @Transactional
     public RicaricaResponse modificaRicarica(Long id, CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
         return switch (ruolo) {
             case "DIPENDENTE"  -> modificaRicaricaDipendente(id, request, boutiqueId);
@@ -157,7 +165,7 @@ public class RicaricaService {
         if (!r.getBoutique().getId().equals(boutiqueId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
         }
-        ricaricaRepository.deleteById(id);
+        ricaricaRepository.delete(r);
     }
 
     void eliminaRicaricaAdmin(Long id, Long utenteId) {
@@ -166,13 +174,13 @@ public class RicaricaService {
         if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
         }
-        ricaricaRepository.deleteById(id);
+        ricaricaRepository.delete(r);
     }
 
     void eliminaRicaricaSuperAdmin(Long id) {
-        ricaricaRepository.findById(id)
+        Ricarica r = ricaricaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        ricaricaRepository.deleteById(id);
+        ricaricaRepository.delete(r);
     }
 
     // MODIFICA

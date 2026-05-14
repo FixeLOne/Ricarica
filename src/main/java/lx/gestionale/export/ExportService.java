@@ -3,6 +3,7 @@ package lx.gestionale.export;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.export.dto.ExportFileResponse;
 import lx.gestionale.eccezioni.ExportException;
+import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.Operatore;
 import lx.gestionale.ricarica.Ricarica;
@@ -42,28 +43,29 @@ public class ExportService {
     // ==========================================================
 
 
-    public ExportFileResponse generaReport(LocalDate dal, LocalDate al, Long boutiqueId, Long utenteId) {
+    public ExportFileResponse generaReport(LocalDate dal, LocalDate al, Long boutiqueId, Long utenteId, String ruolo) {
         validaRange(dal, al);
 
-        List<Ricarica> ricariche;
-        if (boutiqueId != null) {
-            ricariche = ricaricaService.getRicaricheTra(boutiqueId, dal, al);
-        } else {
-            ricariche = boutiqueRepository.findByAdminId(utenteId).stream()
-                    .flatMap(b -> ricaricaService.getRicaricheTra(b.getId(), dal, al).stream())
-                    .collect(Collectors.toList());
-        }
+        List<Ricarica> ricariche = resolveRicariche(dal, al, boutiqueId, utenteId, ruolo);
 
         String nomeFile = "Report_Recharges_" + dal.format(FMT_DATA_FILE) + "_" + al.format(FMT_DATA_FILE) + ".xlsx";
         try {
             ByteArrayInputStream stream = generaExcelRicariche(ricariche, dal, al);
-            String disposition = ContentDisposition.attachment()
-                    .filename(nomeFile)
-                    .build().toString();
+            String disposition = ContentDisposition.attachment().filename(nomeFile).build().toString();
             return new ExportFileResponse(stream, disposition);
         } catch (IOException e) {
             throw new ExportException("Errore durante la creazione del file Excel", e);
         }
+    }
+
+    // ==========================================================
+    // caso SUPER ADMIN
+    // ==========================================================
+
+    private List<Boutique> resolveBoutiques(Long utenteId, String ruolo) {
+        return "SUPER_ADMIN".equals(ruolo)
+                ? boutiqueRepository.findAll()
+                : boutiqueRepository.findByAdminId(utenteId);
     }
 
     // ==========================================================
@@ -241,5 +243,14 @@ public class ExportService {
     private String sanificaTesto(String testo) {
         if (testo == null || testo.isBlank()) return "";
         return testo.matches("^[=+\\-@].*") ? "'" + testo : testo;
+    }
+
+    private List<Ricarica> resolveRicariche(LocalDate dal, LocalDate al, Long boutiqueId, Long utenteId, String ruolo) {
+        if (boutiqueId != null) {
+            return ricaricaService.getRicaricheTra(boutiqueId, dal, al);
+        }
+        return resolveBoutiques(utenteId, ruolo).stream()
+                .flatMap(b -> ricaricaService.getRicaricheTra(b.getId(), dal, al).stream())
+                .collect(Collectors.toList());
     }
 }

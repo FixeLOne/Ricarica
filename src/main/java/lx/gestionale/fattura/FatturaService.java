@@ -117,6 +117,9 @@ public class FatturaService {
         if (origine.getStato() != StatoFattura.EMESSA) {
             throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
         }
+        if (origine.getTipo() == TipoDocumento.AVOIR) {
+            throw new IllegalArgumentException("Non è possibile emettere un Avoir su un altro Avoir");
+        }
 
         origine.setStato(StatoFattura.ANNULLATA);
         fatturaRepository.save(origine);
@@ -169,6 +172,10 @@ public class FatturaService {
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere emesse");
         }
+        if (fattura.getTotaleNet().compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException(
+                    "Impossibile emettere la fattura: il totale netto è negativo. Verificare la remise globale.");
+        }
 
         fattura.setStato(StatoFattura.EMESSA);
         fatturaRepository.save(fattura);
@@ -184,6 +191,9 @@ public class FatturaService {
 
         if (origine.getStato() != StatoFattura.EMESSA) {
             throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
+        }
+        if (origine.getTipo() == TipoDocumento.AVOIR) {
+            throw new IllegalArgumentException("Non è possibile emettere un Avoir su un altro Avoir");
         }
 
         List<RigaFattura> righe = origine.getRighe().stream()

@@ -2,6 +2,7 @@ package lx.gestionale.dashboard;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.dashboard.dto.DashboardRiepilogo;
+import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.ricarica.RicaricaRepository;
 import org.springframework.stereotype.Service;
@@ -19,23 +20,25 @@ public class DashboardService {
 
     private final BoutiqueRepository boutiqueRepository;
 
-    public List<DashboardAdminRiepilogo> getRiepilogoAdmin(Long adminId) {
+    public List<DashboardAdminRiepilogo> getRiepilogoAdmin(Long adminId, String ruolo) {
         LocalDate oggi = LocalDate.now();
-
-        return boutiqueRepository.findByAdminId(adminId).stream()
-                .map(b -> {
-                    BigDecimal profitto = ricaricaRepository.sumProfittoByBoutiqueAndData(b.getId(), oggi);
-                    long conteggio = ricaricaRepository.countRicaricheByBoutiqueAndData(b.getId(), oggi);
-                    return new DashboardAdminRiepilogo(
-                            b.getId(),
-                            b.getNome(),
-                            conteggio,
-                            profitto != null ? profitto : BigDecimal.ZERO
-                    );
-                })
+        return resolveBoutiques(adminId, ruolo).stream()
+                .map(b -> costruisciRiepilogo(b, oggi))
                 .collect(Collectors.toList());
     }
 
+    private List<Boutique> resolveBoutiques(Long adminId, String ruolo) {
+        return "SUPER_ADMIN".equals(ruolo)
+                ? boutiqueRepository.findAll()
+                : boutiqueRepository.findByAdminId(adminId);
+    }
+
+    private DashboardAdminRiepilogo costruisciRiepilogo(Boutique b, LocalDate data) {
+        BigDecimal profitto = ricaricaRepository.sumProfittoByBoutiqueAndData(b.getId(), data);
+        long conteggio = ricaricaRepository.countRicaricheByBoutiqueAndData(b.getId(), data);
+        return new DashboardAdminRiepilogo(b.getId(), b.getNome(), conteggio,
+                profitto != null ? profitto : BigDecimal.ZERO);
+    }
     public DashboardRiepilogo getRiepilogoOggi(Long boutiqueId) {
         LocalDate oggi = LocalDate.now();
 

@@ -21,7 +21,7 @@ public class DashboardController {
     /**
      * DIPENDENTE  → riepilogo della propria boutique (boutiqueId dal token)
      * ADMIN       → riepilogo aggregato di tutte le sue boutique
-     * SUPER_ADMIN → stessa vista dell'admin (aggrega tutto tramite utenteId)
+     * SUPER_ADMIN → aggrega tutte le boutique del sistema
      */
     @GetMapping("/riepilogo")
     public ResponseEntity<?> getRiepilogo(@AuthenticationPrincipal UserPrincipal principal) {
@@ -29,7 +29,7 @@ public class DashboardController {
             DashboardRiepilogo riepilogo = dashboardService.getRiepilogoOggi(principal.getBoutiqueId());
             return ResponseEntity.ok(riepilogo);
         }
-        List<DashboardAdminRiepilogo> riepilogo = dashboardService.getRiepilogoAdmin(principal.getUtenteId());
+        List<DashboardAdminRiepilogo> riepilogo = dashboardService.getRiepilogoAdmin(principal.getUtenteId(), principal.getRuolo());
         return ResponseEntity.ok(riepilogo);
     }
 }

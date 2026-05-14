@@ -2,9 +2,11 @@ package lx.gestionale.eccezioni;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +38,16 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining(", "));
         return ResponseEntity.badRequest().body(Map.of("errore", messaggio));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> gestisciJsonMalformato(HttpMessageNotReadableException ex) {
+        return ResponseEntity.badRequest().body(Map.of("errore", "Formato JSON non valido o valore non riconosciuto"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> gestisciTipoErrato(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(Map.of("errore", "Parametro non valido: " + ex.getName()));
     }
 
 }

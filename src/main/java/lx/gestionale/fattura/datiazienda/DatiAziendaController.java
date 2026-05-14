@@ -1,5 +1,6 @@
 package lx.gestionale.fattura.datiazienda;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.datiazienda.dto.DatiAziendaRequest;
 import lx.gestionale.fattura.datiazienda.dto.DatiAziendaResponse;
@@ -17,7 +18,7 @@ public class DatiAziendaController {
 
     @PutMapping
     public ResponseEntity<String> salvaOAggiorna(
-            @RequestBody DatiAziendaRequest request,
+            @Valid @RequestBody DatiAziendaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         datiAziendaService.salvaOAggiorna(request, principal.getUtenteId());
         return ResponseEntity.ok("Dati azienda salvati con successo");

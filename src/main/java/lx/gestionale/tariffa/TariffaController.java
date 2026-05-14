@@ -1,5 +1,6 @@
 package lx.gestionale.tariffa;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.tariffa.dto.CreaTariffaRequest;
 import lx.gestionale.security.UserPrincipal;
@@ -19,21 +20,22 @@ public class TariffaController {
 
     @PostMapping
     public ResponseEntity<TariffaResponse> salvaTariffa(
-            @RequestBody CreaTariffaRequest request,
+            @Valid @RequestBody CreaTariffaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(tariffaService.salvaOAggiorna(request, principal.getUtenteId()));
+        return ResponseEntity.ok(tariffaService.salvaOAggiorna(request, principal.getUtenteId(), principal.getRuolo()));
     }
 
     @GetMapping
-    public ResponseEntity<List<TariffaResponse>> getListinoCompleto(@AuthenticationPrincipal UserPrincipal principal) {
-        // Ora passa per il Service e filtra per Admin!
-        return ResponseEntity.ok(tariffaService.getListinoCompleto(principal.getUtenteId()));
+    public ResponseEntity<List<TariffaResponse>> getListinoCompleto(
+            @RequestParam(required = false) Long adminId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(tariffaService.getListinoCompleto(adminId, principal.getUtenteId(), principal.getRuolo()));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<TariffaResponse> modificaTariffa(
             @PathVariable Long id,
-            @RequestBody CreaTariffaRequest request,
+            @Valid @RequestBody CreaTariffaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(tariffaService.modificaTariffa(id, request, principal.getUtenteId(), principal.getRuolo()));
     }

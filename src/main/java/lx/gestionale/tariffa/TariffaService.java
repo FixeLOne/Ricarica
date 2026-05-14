@@ -29,7 +29,10 @@ public class TariffaService {
                         .orElseThrow(() -> new IllegalArgumentException("Tariffa non trovata in listino")));
     }
 
-    public TariffaResponse salvaOAggiorna(CreaTariffaRequest request, Long adminId) {
+    public TariffaResponse salvaOAggiorna(CreaTariffaRequest request, Long utenteId, String ruolo) {
+        Long adminId = "SUPER_ADMIN".equals(ruolo) && request.getAdminId() != null
+                ? request.getAdminId()
+                : utenteId;
         Utente admin = utenteRepository.getReferenceById(adminId);
         Tariffa tariffa = cercaTariffa(request.getOperatore(), request.getGiga(), admin)
                 .orElseGet(Tariffa::new);
@@ -37,7 +40,17 @@ public class TariffaService {
         return toResponse(popolaESalva(tariffa, request));
     }
 
-    // gestisce il caso null
+    public List<TariffaResponse> getListinoCompleto(Long adminIdParam, Long utenteId, String ruolo) {
+        Long adminId = "SUPER_ADMIN".equals(ruolo) && adminIdParam != null
+                ? adminIdParam
+                : utenteId;
+        Utente admin = utenteRepository.getReferenceById(adminId);
+        return tariffaRepository.findByAdmin(admin).stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+
     private Optional<Tariffa> cercaTariffa(Operatore op, double giga, Utente admin) {
         if (op == null) {
             return tariffaRepository.findByOperatoreIsNullAndGigaAndAdmin(giga, admin);
@@ -69,13 +82,6 @@ public class TariffaService {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa tariffa.");
         }
         tariffaRepository.deleteById(id);
-    }
-
-    public List<TariffaResponse> getListinoCompleto(Long adminId) {
-        Utente admin = utenteRepository.getReferenceById(adminId);
-        return tariffaRepository.findByAdmin(admin).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
     }
 
     private TariffaResponse toResponse(Tariffa t) {

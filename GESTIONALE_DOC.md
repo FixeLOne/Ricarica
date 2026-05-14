@@ -19,7 +19,6 @@ Frontend separato (non incluso in questo documento).
 
 Ogni entità è **isolata per Admin**: le tariffe, le boutique e le ricariche di un Admin non sono mai visibili o modificabili da un altro Admin.
 
-```
 SUPER_ADMIN (1)
 │
 │  può creare
@@ -34,13 +33,13 @@ Boutique A1    Boutique A2          Boutique B1    Boutique B2
 │                 │                    │                 │
 Listino A      Listino A            Listino B      Listino B
 (condiviso tra    │                  (condiviso tra    │
- le boutique      │                   le boutique      │
- di A)            │                   di B)            │
+le boutique      │                   le boutique      │
+di A)            │                   di B)            │
 │                 │                    │                 │
 DIPENDENTE A1  DIPENDENTE A2       DIPENDENTE B1  DIPENDENTE B2
 (vede/scrive       (vede/scrive        (vede/scrive       (vede/scrive
- solo A1)           solo A2)            solo B1)           solo B2)
-```
+solo A1)           solo A2)            solo B1)           solo B2)
+
 
 **Isolamento dati:** ADMIN A non vede mai dati di ADMIN B e viceversa.
 Il `boutiqueId` nel JWT garantisce che ogni dipendente operi solo sul suo negozio.
@@ -49,7 +48,6 @@ Il `boutiqueId` nel JWT garantisce che ogni dipendente operi solo sul suo negozi
 
 ## Architettura dei Package
 
-```
 lx.gestionale
 ├── security/         # JWT, filtri, UserPrincipal, SecurityConfig
 ├── utente/           # Entity Utente, repository, ruoli
@@ -60,7 +58,7 @@ lx.gestionale
 ├── export/           # Generazione Excel (Apache POI)
 ├── eccezioni/        # GlobalExceptionHandler, ExportException
 └── dto/              # Request/Response objects (mai entity esposte direttamente)
-```
+
 
 ---
 
@@ -97,6 +95,8 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 | `GET /api/v2/dashboard/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `GET /api/v2/export/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `* /api/v2/ricariche/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
+| `* /api/v2/fatture/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
+| `* /api/v2/azienda/**` | ADMIN |
 
 ---
 
@@ -186,18 +186,37 @@ Riga finale con totali aggregati. Stili colore per operatore (rosso Ooredoo, ara
 
 ---
 
-### 6. Fatture (Feature da Implementare)
-La versione legacy aveva un modulo fatture con:
-- Dati emittente per Admin (ragione sociale, indirizzo, matricule fiscale/partita IVA, logo)
-- Numerazione automatica `FAC-YYYY-NNNN`
-- Tipo documento: Factura / Bon de Livraison
-- Righe articolo con quantità, prezzo HT, aliquota TVA
-- Timbre fiscal (opzionale)
-- Remise globale (sconto)
-- Calcolo automatico: Totale HT, TVA, Netto a Pagare
-- Stampa/PDF inline
+### 6. Fatture
+**Entity:** `Fattura` — ha `numero`, `tipo` (TipoDocumento), `stato` (StatoFattura), `dataEmissione`, `nomeCliente`, `timbreFiscal`, `remiseGlobale`, `totaleHT`, `totaleTVA`, `totaleNet`, riferimento all'`admin` e alla `boutique` (opzionale).
+**Entity:** `RigaFattura` — ha `descrizione`, `quantita`, `prezzoUnitarioHT`, `aliquotaTVA`, `montanteHT`, riferimento alla `fattura`.
+**Entity:** `DatiAzienda` — OneToOne con `Utente` Admin, ha `ragioneSociale`, `indirizzo`, `matriculeFiscale`, `logo` (base64 nel DB).
 
-**Da progettare — vedi sezione TODO per i dettagli aggiornati.**
+**Tipi documento:** `FATTURA`, `BON_DE_LIVRAISON`, `DEVIS`, `AVOIR`
+**Stati fattura:** `BOZZA`, `EMESSA`, `ANNULLATA`
+
+**Logica chiave:**
+- Numerazione automatica annuale per Admin: `FAC-YYYY-NNNN` — gestita da `ContatoreFatturaService` con `@Lock(PESSIMISTIC_WRITE)` per evitare race condition
+- Il calcolo dei totali (HT, TVA, Timbre, Netto) avviene nel service, mai nell'entity
+- Un AVOIR creato tramite `POST /api/v2/fatture` o `POST /api/v2/fatture/{id}/avoir` viene emesso direttamente in stato `EMESSA` e la fattura origine passa in `ANNULLATA`
+- Non è possibile emettere un AVOIR su un documento che è già un AVOIR
+- `emettiFattura` blocca l'emissione se `totaleNet < 0` (protezione contro remise globale eccessiva)
+- Ownership verificata su ogni operazione; SUPER_ADMIN bypassa il check
+
+**Operazioni:**
+- `POST /api/v2/fatture` — crea fattura (BOZZA) o AVOIR (EMESSA immediata)
+- `PUT /api/v2/fatture/{id}` — modifica (solo se BOZZA)
+- `PATCH /api/v2/fatture/{id}/emetti` — porta da BOZZA a EMESSA
+- `POST /api/v2/fatture/{id}/avoir` — crea nota di credito dalla fattura EMESSA
+- `GET /api/v2/fatture` — lista fatture (DIPENDENTE: sua boutique; ADMIN: tutte le sue; SUPER_ADMIN: tutte)
+- `GET /api/v2/fatture/{id}` — dettaglio singola fattura
+- `DELETE /api/v2/fatture/{id}` — elimina (solo se BOZZA; per annullare una EMESSA usare AVOIR)
+
+**Ruoli ammessi:** SUPER_ADMIN, ADMIN, DIPENDENTE su tutti gli endpoint `/api/v2/fatture/**`
+
+**Vincoli di business:**
+- Solo fatture in stato `BOZZA` possono essere modificate o eliminate
+- Solo fatture in stato `EMESSA` possono generare un AVOIR
+- `fattureAbilitate` su Boutique: se `false`, la creazione lancia eccezione (controllo solo in scrittura — vedi TODO)
 
 ---
 
@@ -243,6 +262,8 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | CRITICA | Security | JwtFilter — token invalido (firma errata o malformato) trattato come anonimo invece di 401 | ✅ risolto |
 | CRITICA | Validation | GlobalExceptionHandler — MethodArgumentNotValidException non gestita → 500 (tutti i @Valid silenziosi) | ✅ risolto |
 | CRITICA | Logica | CreaFatturaRequest.tipo senza @NotNull → NPE in ContatoreFatturaService.generaNumero | ✅ risolto |
+| ALTA | Business | TariffaService — Margine negativo (acquisto > vendita) non bloccato | da fare |
+| ALTA | Logica | Boutique / Ricariche — Errore 500 su IDOR o parametri mancanti | da fare |
 | ALTA | Logica | RicaricaService — ADMIN non può modificare/eliminare proprie ricariche (NPE/false su equals(null)) | ✅ risolto |
 | ALTA | Logica | FatturaService — SUPER_ADMIN bloccato su tutte le operazioni (ownership check rigido) | ✅ risolto |
 | ALTA | Logica | FatturaService — getFatture restituisce lista vuota per SUPER_ADMIN | ✅ risolto |
@@ -250,7 +271,8 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | ALTA | Logica | TariffaService — SUPER_ADMIN bloccato su modifica/eliminazione tariffe | ✅ risolto |
 | ALTA | Coerenza | FatturaRepository.existsByNumero non scoped per admin (numeri collidono tra admin) | ✅ risolto |
 | ALTA | Coerenza | FatturaController — modificaFattura/emettiFattura/eliminaFattura non passano ruolo al service | ✅ risolto |
-| ALTA | Coerenza | SecurityConfig fatture — SUPER_ADMIN escluso da POST/PUT/DELETE/PATCH | ✅ risolto |
+| ALTA | Coerenza | SecurityConfig fatture — SUPER_ADMIN escluso da POST/PUT/DELETE/PATCH | ✅ risolto (tutti gli endpoint /fatture/** aperti a SUPER_ADMIN, ADMIN, DIPENDENTE) |
+| MEDIA | Security | SecurityConfig — Ritorna 403 invece di 401 su token scaduti/invalidi | da fare |
 | MEDIA | Logica | TariffaService.salvaOAggiorna / getListinoCompleto non gestiscono SUPER_ADMIN | da fare |
 | MEDIA | Logica | DashboardService.getRiepilogoAdmin restituisce vuoto per SUPER_ADMIN | da fare |
 | MEDIA | Logica | ExportService.generaReport produce file vuoto per SUPER_ADMIN | da fare |
@@ -271,6 +293,9 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | BASSA | Logica | BoutiqueController crea boutique senza defense-in-depth nel service | da fare |
 | BASSA | Logging | DataInitializerService — System.out.println invece di @Slf4j | ✅ risolto |
 | BASSA | Logging | JwtFilter non logga request URI nei warning di token | da fare |
+| MEDIA | Validation | GlobalExceptionHandler — HttpMessageNotReadableException (JSON malformato) non gestita → 500 | ✅ risolto (gestisciJsonMalformato → 400) |
+| MEDIA | Validation | GlobalExceptionHandler — MethodArgumentTypeMismatchException (type mismatch URL) non gestita → 500 | ✅ risolto (gestisciTipoErrato → 400) |
+| MEDIA | Validation | GlobalExceptionHandler — Enum Jackson non riconosciuto causa 500 | ✅ risolto (catturato da HttpMessageNotReadableException → 400 con messaggio generico) |
 
 ---
 
@@ -283,15 +308,14 @@ Formato: `[ ]` da fare — `[x]` fatto — `[-]` scartato con motivazione.
 
 ### Fatture
 
-```
 [x] Entity Fattura — legata a Boutique, visibile all'Admin proprietario
 [x] Entity RigaFattura — OneToMany con Fattura (descrizione, qty, prezzo HT, aliquota TVA)
 [x] Entity DatiAzienda — OneToOne con Utente Admin
-      campi: ragione sociale, indirizzo, matricule fiscale, logo (base64 nel DB)
+campi: ragione sociale, indirizzo, matricule fiscale, logo (base64 nel DB)
 [x] Tipi documento: Facture, Bon de livraison, Devis, Avoir
 [x] Numerazione automatica annuale per Admin: FAC-YYYY-NNNN
-      ContatoreFattura estratto in ContatoreFatturaService con @Transactional(MANDATORY)
-      e @Lock(PESSIMISTIC_WRITE) sul repository — race condition risolta
+ContatoreFattura estratto in ContatoreFatturaService con @Transactional(MANDATORY)
+e @Lock(PESSIMISTIC_WRITE) sul repository — race condition risolta
 [x] Timbre fiscal — toggle on/off, valore fisso configurabile
 [x] Remise globale — sconto in DT sul totale documento
 [x] Calcolo automatico: Totale HT, TVA per riga, Timbre, Netto a Pagare
@@ -303,238 +327,245 @@ Formato: `[ ]` da fare — `[x]` fatto — `[-]` scartato con motivazione.
 [x] Endpoint emissione fattura (BOZZA -> EMESSA)
 [x] emettiFattura blocca correttamente AVOIR e fatture già emesse (check stato != BOZZA)
 [x] creaFattura — AVOIR emesso direttamente in stato EMESSA (fix bug: era in BOZZA)
-      dataEmissione forzata a LocalDate.now() per coerenza con creaAvoir dedicato
+dataEmissione forzata a LocalDate.now() per coerenza con creaAvoir dedicato
 [ ] Export PDF — valutare Apache PDFBox (licenza libera) vs iText (licenza da verificare)
 [ ] Watermark/logo aziendale nell'anteprima PDF
 [ ] Validare che la somma delle righe sia > 0 prima di emettere
 [ ] Flag fattureAbilitate su Boutique controllato anche in lettura (oggi solo in scrittura)
-```
+
 
 ---
 
 ### 👤 Profilo & Anagrafica
 
-```
 [ ] Aggiungere campi a Boutique: indirizzo completo, telefono
 [ ] Endpoint profilo Boutique — restituisce boutique + lista dipendenti associati
 [ ] Endpoint profilo Admin — dati personali + lista boutique + dati azienda
 [ ] Endpoint cambio password — disponibile a tutti i ruoli per la propria utenza
-      nota: non prioritario, l'Admin può reimpostare la password del dipendente
+nota: non prioritario, l'Admin può reimpostare la password del dipendente
 [ ] Gestione multi-dipendente per Boutique — rimandato, ora 1 account per boutique
-```
+
 
 ---
 
 ### 📊 Report & Dashboard
 
-```
 [ ] Report mensile — aggregato per mese, visibile all'Admin (tutte le sue boutique)
 [ ] Report annuale — aggregato per anno, visibile all'Admin
 [ ] Statistiche per operatore — ricariche e profitto per Ooredoo/Orange/Telecom/Fisso
 [ ] Dati grafici dashboard Admin — trend per periodo, breakdown per operatore
-      nota: il backend espone dati aggregati JSON, i grafici sono lato frontend
+nota: il backend espone dati aggregati JSON, i grafici sono lato frontend
 [x] Dashboard dipendente — riepilogo giornaliero per boutique implementato
-```
+
 
 ---
 
 ### 🔍 Ricerca & Navigazione
 
-```
 [ ] Ricerca ricariche per numero cliente
-      endpoint: GET /api/v2/ricariche?numero=XXXXXXXX
+endpoint: GET /api/v2/ricariche?numero=XXXXXXXX
 [ ] Paginazione lista ricariche
-      endpoint: GET /api/v2/ricariche?page=0&size=20
+endpoint: GET /api/v2/ricariche?page=0&size=20
 [ ] Paginazione lista fatture
 [ ] Filtro ricariche per operatore
 [ ] Filtro ricariche per range date (già implementato nell'export, da esporre anche come API)
-```
+
 
 ---
 
 ### Sicurezza & Qualità
 
-```
 [ ] Sostituire allowedOrigins("*") con URL frontend in produzione
-      nota: con allowCredentials true il wildcard è invalido per spec CORS
+nota: con allowCredentials true il wildcard è invalido per spec CORS
 [ ] Valutare blacklist token JWT per invalidazione anticipata (es. cambio password, logout)
-[ ] Aggiungere @NotBlank / @Positive / @Valid sui DTO mancanti
-      - CreaRicaricaRequest: numero, giga, costoEffettivo/costoCliente (@Positive quando manuale=true)
-      - CreaFatturaRequest: nomeCliente, righe (@Valid + @NotEmpty), remiseGlobale (@PositiveOrZero)
-      - RigaFatturaRequest: descrizione (@NotBlank), quantita (@Positive),
-                           prezzoUnitarioHT (@PositiveOrZero), aliquotaTVA (@Min 0 @Max 100)
-      - CreaBoutiqueRequest: nome, citta, usernameDipendente, passwordDipendente
-      - CreaAdminRequest: tutti i campi obbligatori
-      - LoginRequest: @NotBlank su username e password
-      - DatiAziendaRequest: ragioneSociale, matriculeFiscale
-      nota: aggiungere @Valid sui @RequestBody nei controller oltre alle annotazioni sui DTO
-[ ] Aggiungere @PreAuthorize("hasRole('SUPER_ADMIN')") su UtenteController.creaAdmin
-      motivazione: defense-in-depth, oggi è protetto solo da SecurityConfig
-[-] Soft delete Ricarica — SCARTATO: in contabilità tunisina si emette Avoir, non si cancella
-[ ] DataInitializer — annotare con @Profile("dev") prima del deploy in produzione
-      gravità: CRITICA — crea utenti con password note ("admin123")
-[ ] JWT secret — verificare che in produzione sia >= 256 bit casuale, non hardcoded nel repo
-[ ] Password policy — minima lunghezza, complessità, scadenza periodica
-[ ] Rate limiting su /api/v2/auth/login per prevenire brute force
-[ ] Audit log delle azioni sensibili (creazione admin, emissione fatture, modifiche tariffe)
-```
+[x] Aggiungere @NotBlank / @Positive / @Valid sui DTO — fatto sui DTO principali
+- CreaRicaricaRequest: numero, giga, costoEffettivo/costoCliente ✅
+- CreaFatturaRequest: nomeCliente, righe (@Valid + @NotEmpty), remiseGlobale (@PositiveOrZero) ✅
+- RigaFatturaRequest: descrizione, quantita, prezzoUnitarioHT, aliquotaTVA ✅
+  [ ] Ancora da fare: CreaBoutiqueRequest, CreaAdminRequest, LoginRequest, DatiAziendaRequest
+  [x] Aggiungere @PreAuthorize("hasRole('SUPER_ADMIN')") su UtenteController.creaAdmin — fatto
+  [-] Soft delete Ricarica — SCARTATO: in contabilità tunisina si emette Avoir, non si cancella
+  [ ] DataInitializer — annotare con @Profile("dev") prima del deploy in produzione
+  gravità: CRITICA — crea utenti con password note ("admin123")
+  [ ] JWT secret — verificare che in produzione sia >= 256 bit casuale, non hardcoded nel repo
+  [ ] Password policy — minima lunghezza, complessità, scadenza periodica
+  [ ] Rate limiting su /api/v2/auth/login per prevenire brute force
+  [ ] Audit log delle azioni sensibili (creazione admin, emissione fatture, modifiche tariffe)
+
 
 ---
 
 ### Bug Noti & Debito Tecnico
 
-```
+[ ] Bug Margine Negativo: Il sistema permette il salvataggio di tariffe dove costoAcquisto > prezzoVendita. È necessaria una validazione cross-field nel DTO o un controllo logico nel TariffaService prima del salvataggio.
+
+[ ] Bug Gestione Eccezioni (500): Chiamate a endpoint come GET /api/v2/boutique/{id} (IDOR) o GET /api/v2/ricariche (senza parametri) restituiscono un errore 500 invece di un 403/404 o 400. Probabile NullPointerException o gestione mancante di parametri obbligatori.
+
+[ ] Incoerenza Status Code Auth: I test su token scaduti o firme manipolate restituiscono 403 Forbidden invece del più corretto 401 Unauthorized. È necessario configurare un AuthenticationEntryPoint personalizzato in SecurityConfig.
+
 [x] @Data su tutte le entity JPA
-      sostituito con @Getter @Setter @EqualsAndHashCode(onlyExplicitlyIncluded = true) + @EqualsAndHashCode.Include su id
+sostituito con @Getter @Setter @EqualsAndHashCode(onlyExplicitlyIncluded = true) + @EqualsAndHashCode.Include su id
 
 [x] LazyInitializationException su getFatture e getFatturaById in FatturaService
-      aggiunto @Transactional(readOnly = true) su entrambi i metodi
+aggiunto @Transactional(readOnly = true) su entrambi i metodi
 
 [x] TariffaController, RicaricaController, BoutiqueController esponevano entity JPA direttamente
-      creati TariffaResponse, RicaricaResponse, BoutiqueResponse con mapping toResponse() nei service
+creati TariffaResponse, RicaricaResponse, BoutiqueResponse con mapping toResponse() nei service
 
 [x] ExportService restituiva file vuoto per ADMIN (boutiqueId null)
-      aggiunto utenteId al generaReport, per ADMIN aggrega le ricariche di tutte le sue boutique
+aggiunto utenteId al generaReport, per ADMIN aggrega le ricariche di tutte le sue boutique
 
 [x] SUPER_ADMIN NPE su eliminaRicarica e modificaRicarica
-      aggiunto bypass ruolo con short-circuit in RicaricaService, ruolo passato dal controller
+aggiunto bypass ruolo con short-circuit in RicaricaService, ruolo passato dal controller
 
 [x] ContatoreFatturaService — race condition su creazione contatore
-      estratto in service dedicato con @Transactional(MANDATORY) e @Lock(PESSIMISTIC_WRITE)
-      constraint UNIQUE su (admin_id, anno) come ulteriore protezione
+estratto in service dedicato con @Transactional(MANDATORY) e @Lock(PESSIMISTIC_WRITE)
+constraint UNIQUE su (admin_id, anno) come ulteriore protezione
 
-[ ] RicaricaService — modificaRicarica/eliminaRicarica falliscono per ADMIN
-      risolto passando ruolo dal controller e gestendo il percorso ADMIN esplicitamente nel service
+[x] RicaricaService — modificaRicarica/eliminaRicarica falliscono per ADMIN
+implementati modificaRicaricaAdmin e eliminaRicaricaAdmin con routing per ruolo (switch)
+check ownership: r.getBoutique().getAdmin().getId().equals(utenteId)
 
 [x] DashboardController — NPE per ADMIN su GET /riepilogo (boutiqueId null)
-      endpoint /admin e /riepilogo unificati in /riepilogo con routing per ruolo nel controller
+endpoint /admin e /riepilogo unificati in /riepilogo con routing per ruolo nel controller
 
 [x] DashboardService — entità Utente detached in getRiepilogoAdmin
-      sostituito new Utente() + setId() con boutiqueRepository.findByAdminId(adminId)
+sostituito new Utente() + setId() con boutiqueRepository.findByAdminId(adminId)
 
 [x] ExportService — entità Utente detached in generaReport
-      sostituito new Utente() + setId() con boutiqueRepository.findByAdminId(utenteId)
+sostituito new Utente() + setId() con boutiqueRepository.findByAdminId(utenteId)
 
 [x] JwtFilter — token invalido (parsabile ma firma errata) trattato come anonimo invece di 401
-      aggiunto sendError(SC_UNAUTHORIZED) + return nel ramo isTokenValido == false
+aggiunto sendError(SC_UNAUTHORIZED) + return nel ramo isTokenValido == false
 
 [x] RicaricaService — campo note mai salvato in popolaDatiRicarica
-      aggiunto r.setNote(request.getNote())
+aggiunto r.setNote(request.getNote())
 
 [x] RicaricaService.eliminaRicaricaSuperAdmin — due query inutili (existsById + deleteById)
-      sostituito con findById().orElseThrow() + deleteById()
+sostituito con findById().orElseThrow() + deleteById()
 
 [x] ContatoreFatturaService — race condition su primo contatore a inizio anno
-      aggiunto inizializzaContatore() chiamato da creaAdmin e DataInitializer
-      generaNumero usa orElseThrow() — il record è garantito esistere
-      inizializzaContatore usa Propagation.REQUIRES_NEW per commit immediato
+aggiunto inizializzaContatore() chiamato da creaAdmin e DataInitializer
+generaNumero usa orElseThrow() — il record è garantito esistere
+inizializzaContatore usa Propagation.REQUIRES_NEW per commit immediato
 
 [x] SecurityConfig — endpoint dashboard disallineati dopo unificazione
-      sostituiti /dashboard/admin e /dashboard/riepilogo con /dashboard/**
-      ruoli: SUPER_ADMIN, ADMIN, DIPENDENTE
+sostituiti /dashboard/admin e /dashboard/riepilogo con /dashboard/
+ruoli: SUPER_ADMIN, ADMIN, DIPENDENTE
 
 [x] DataInitializerService — System.out.println sostituito con @Slf4j + log.info()
 
 [x] FatturaService — emettiFattura non bloccava correttamente le note di credito (AVOIR)
-      il check stato != BOZZA blocca già correttamente qualsiasi tentativo di riemissione
+il check stato != BOZZA blocca già correttamente qualsiasi tentativo di riemissione
 
-[ ] FatturaRepository.existsByNumero è globale (non scoped per admin) — attualmente codice morto
-      causa: cerca il numero su tutte le fatture del sistema
-      soluzione: rimuovere il metodo oppure sostituire con existsByNumeroAndAdminId(String, Long)
+[x] FatturaRepository.existsByNumero è globale (non scoped per admin) — era codice morto
+metodo rimosso dal repository; il repository espone solo findByAdminId e findByBoutiqueId
 
-[ ] FatturaController — modificaFattura, emettiFattura, eliminaFattura non passano ruolo al service
-      causa: pattern non allineato con RicaricaController che passa principal.getRuolo()
-      soluzione: aggiungere ruolo alla firma quando si implementa il bypass SUPER_ADMIN
+[x] FatturaController — modificaFattura, emettiFattura, eliminaFattura non passavano ruolo al service
+tutti e tre i metodi passano principal.getRuolo() allineati con il pattern di RicaricaController
 
-[ ] CreaRicaricaRequest — validazione mancante a livello DTO
-      campi: numero (@NotBlank), giga (@Positive), costoEffettivo/costoCliente (@Positive quando manuale=true)
-      la validazione avviene solo nel service, i campi possono arrivare null
+[x] CreaRicaricaRequest — validazione mancante a livello DTO
+aggiunti @NotBlank su numero, @Positive su giga, @Positive su costoEffettivo/costoCliente quando manuale=true
+aggiunto @Valid su @RequestBody nel controller
 
-[ ] CreaFatturaRequest e RigaFatturaRequest — validazione incompleta
-      mancano @Valid sulla lista righe nei DTO e @Valid sul @RequestBody nel controller
+[x] CreaFatturaRequest e RigaFatturaRequest — validazione incompleta
+aggiunti @Valid su lista righe nel DTO e @Valid su @RequestBody nel controller (FatturaController già usa @Valid)
 
+[x] UtenteController — POST /api/v2/utenti/admin senza doppia protezione
+aggiunto @PreAuthorize("hasRole('SUPER_ADMIN')") sul controller (defense-in-depth)
 
-[ ] UtenteController — POST /api/v2/utenti/admin senza doppia protezione
-      nota: SecurityConfig richiede SUPER_ADMIN ma il service non verifica nulla
-      soluzione: aggiungere @PreAuthorize("hasRole('SUPER_ADMIN')") sul controller
-
-[ ] SecurityConfig — incoerenza permessi fatture
-      GET /api/v2/fatture/** aperto a SUPER_ADMIN ma POST/PUT/DELETE no
-      soluzione: decidere se SUPER_ADMIN gestisce fatture e allineare tutti i matcher
+[x] SecurityConfig — incoerenza permessi fatture
+GET /api/v2/fatture/ era aperto a SUPER_ADMIN ma POST/PUT/DELETE/PATCH no
+risolto: matcher unificato .requestMatchers("/api/v2/fatture/").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
 
 [ ] DashboardService — getRiepilogoBoutique non valida che la boutique appartenga al dipendente
-      nota: boutiqueId dal JWT è affidabile, manca solo defense-in-depth
-      soluzione: query JPQL con doppio filtro boutique_id + utente associato
+nota: boutiqueId dal JWT è affidabile, manca solo defense-in-depth
+soluzione: query JPQL con doppio filtro boutique_id + utente associato
 
 [ ] JwtFilter — eccezioni JWT senza correlazione con la request
-      soluzione: includere request URI / IP nel log, usare MDC per tracciabilità
+soluzione: includere request URI / IP nel log, usare MDC per tracciabilità
 
 [ ] JwtService — nessuna invalidazione token
-      effetto: dopo cambio password o logout il vecchio token resta valido fino a scadenza
-      soluzione: blacklist in Redis o riduzione durata + refresh token
+effetto: dopo cambio password o logout il vecchio token resta valido fino a scadenza
+soluzione: blacklist in Redis o riduzione durata + refresh token
 
 [ ] DataInitializer — attivo anche in produzione (vedi sezione Sicurezza & Qualità)
-```
+
 
 ---
 
 ### SUPER_ADMIN — Funzionalità da Completare
 
-```
+[ ] Logica Listino SuperAdmin: Il POST /tariffe effettuato da un SUPER_ADMIN viene accettato (200 OK), ma il sistema non dovrebbe permettere a questo ruolo di possedere un listino proprio. Va implementato un blocco o una gestione per cui il SuperAdmin possa operare solo sui listini degli Admin.
+
 [x] RicaricaService — bypass ownership implementato (ruolo passato dal token)
 
 [ ] TariffaService — modificaTariffa ed eliminaTariffa rifiutano il SUPER_ADMIN
-      causa: check tariffa.getAdmin().getId().equals(adminId) fallisce
-      soluzione: bypass ruolo identico a RicaricaService
+causa: check tariffa.getAdmin().getId().equals(adminId) fallisce
+soluzione: bypass ruolo identico a RicaricaService
 
 [ ] TariffaService — salvaOAggiorna e getListinoCompleto usano adminId del SUPER_ADMIN
-      soluzione: SUPER_ADMIN passa adminId esplicito nel body
+soluzione: SUPER_ADMIN passa adminId esplicito nel body
 
-[ ] FatturaService — verificaOwnership rifiuta il SUPER_ADMIN
-      soluzione: passare ruolo e aggiungere bypass (allineare con FatturaController)
+[x] FatturaService — verificaOwnership rifiutava il SUPER_ADMIN
+verificaOwnership() fa return immediato se ruolo == "SUPER_ADMIN"
 
-[ ] FatturaService — getFatture restituisce lista vuota per il SUPER_ADMIN
-      soluzione: per SUPER_ADMIN usare findAll()
+[x] FatturaService — getFatture restituiva lista vuota per il SUPER_ADMIN
+nel ramo SUPER_ADMIN usa fatturaRepository.findAll()
 
-[ ] FatturaService — emettiFattura/eliminaFattura bloccate per SUPER_ADMIN
-      soluzione: passare ruolo e applicare bypass
+[x] FatturaService — emettiFattura/eliminaFattura bloccate per SUPER_ADMIN
+entrambi chiamano verificaOwnership() che bypassa SUPER_ADMIN — nessun intervento aggiuntivo necessario
 
 [ ] DashboardService — getRiepilogoAdmin restituisce vuoto per il SUPER_ADMIN
-      soluzione: per SUPER_ADMIN usare boutiqueRepository.findAll()
+soluzione: per SUPER_ADMIN usare boutiqueRepository.findAll()
 
 [ ] ExportService — generaReport produce file vuoto per SUPER_ADMIN
-      soluzione: per SUPER_ADMIN aggregare tutte le ricariche del sistema
+soluzione: per SUPER_ADMIN aggregare tutte le ricariche del sistema
 
 [ ] BoutiqueService — nessun percorso SUPER_ADMIN su getBoutiqueByAdmin
-      nota: SUPER_ADMIN ha già /tutte; valutare se serve filtrare per adminId specifico
+nota: SUPER_ADMIN ha già /tutte; valutare se serve filtrare per adminId specifico
 
 [ ] DatiAziendaService — nessun intervento necessario
-      SecurityConfig limita /api/v2/azienda/** solo ad ADMIN, corretto by design
-```
+SecurityConfig limita /api/v2/azienda/ solo ad ADMIN, corretto by design
+
 
 ---
 
 ### 🏗️ Infrastruttura
 
-```
-[ ] Separare DataInitializer con @Profile("dev")
+[x] Separare DataInitializer con @Profile("dev")
 [ ] Configurare profilo produzione (application-prod.properties)
 [ ] Configurare PostgreSQL in produzione (ora probabilmente H2 o configurazione locale)
 [ ] Logging strutturato — aggiungere @Slf4j nei service principali
 [ ] Gestione upload logo azienda — endpoint multipart, salvataggio su disco o storage
-```
+
 
 ### NOTE
-``` 
 ricorda di cambiare il db in update nel proprieties
 
-Bug Sconto Negativo: Manca la validazione sul remiseGlobale, il sistema permette di inserire uno sconto superiore al totale della fattura generando importi finali negativi o annullare da vedere come fare.
+[NOTA TEST] Verificare la tenuta del sistema con payload di login massivi (DoS bait) e la corretta propagazione dei messaggi di errore (es. il messaggio "Boutique non trovata" che differisce per lunghezza dai 400 standard).
 
-Bug Paradosso Avoir: Manca il blocco logico di stato, il sistema permette di emettere una Nota di Credito (AVOIR) a partire da un documento origine che è già un AVOIR.
+[APERTO] Bug Sconto Negativo: La remiseGlobale non viene validata alla creazione/modifica della fattura.
+Il sistema blocca correttamente l'EMISSIONE se totaleNet < 0 (check in emettiFattura),
+ma permette di salvare una BOZZA con sconto eccessivo.
+Da fare: aggiungere validazione @PositiveOrZero su remiseGlobale nel DTO e/o check nel service
+che remiseGlobale <= totaleHT prima di salvare.
 
-Bug NPE per assenza di Validazione: Aggiungere l'annotazione @Valid nei parametri @RequestBody dei Controller (es. DatiAziendaController, TariffaController) per bloccare i JSON vuoti o con valori null prima che arrivino al Service causando NullPointerException.
+[RISOLTO] Bug Paradosso Avoir: Il sistema bloccava la creazione di un AVOIR a partire da un AVOIR.
+Risolto in gestisciAvoirOrigine() e creaAvoir() con check esplicito origine.getTipo() == TipoDocumento.AVOIR.
 
-Bug Errori 500 su Type Mismatch: Creare un @RestControllerAdvice (Global Exception Handler) per catturare le eccezioni HttpMessageNotReadableException (es. stringhe passate al posto di numeri o date) e MethodArgumentTypeMismatchException (per i parametri URL), in modo da restituire un pulito 400 Bad Request anziché 500 Internal Server Error.
+[RISOLTO] Bug NPE per assenza di Validazione: GlobalExceptionHandler gestisce MethodArgumentNotValidException → 400.
+FatturaController usa @Valid su tutti i @RequestBody.
 
-Bug Enum Parsing: Aggiungere gestione gracefully per le stringhe non corrispondenti agli Enum (es. Operatore "SPACEX"), attualmente causano crash del traduttore Jackson.
-```
+[RISOLTO] Bug Errori 500 su Type Mismatch: GlobalExceptionHandler gestisce HttpMessageNotReadableException
+e MethodArgumentTypeMismatchException → 400 Bad Request.
+
+[RISOLTO] Bug Enum Parsing: Jackson non riconosceva enum non validi (es. Operatore "SPACEX").
+Catturato da HttpMessageNotReadableException nel GlobalExceptionHandler → 400 con messaggio generico.
+
+[APERTO] Bug 500 su parametri mancanti nell'export: GET /api/v2/export/ricariche senza dal/al
+(o con solo uno dei due) restituisce 500 invece di 400.
+Causa: GlobalExceptionHandler non gestisce MissingServletRequestParameterException,
+che Spring lancia quando un @RequestParam obbligatorio è assente.
+Fix: aggiungere @ExceptionHandler(MissingServletRequestParameterException.class)
+nel GlobalExceptionHandler → return 400 con messaggio "Parametro mancante: {name}"

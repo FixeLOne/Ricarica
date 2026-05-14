@@ -34,7 +34,7 @@ public class ExportController {
             @AuthenticationPrincipal UserPrincipal principal) { // <-- 1. CATTURIAMO L'UTENTE
 
         // 2. PASSIAMO L'ID DELLA BOUTIQUE AL SERVICE
-        ExportFileResponse report = exportService.generaReport(dal, al, principal.getBoutiqueId(), principal.getUtenteId());
+        ExportFileResponse report = exportService.generaReport(dal, al, principal.getBoutiqueId(), principal.getUtenteId(), principal.getRuolo());
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, report.contentDisposition())

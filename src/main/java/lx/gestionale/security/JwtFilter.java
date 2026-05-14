@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
@@ -41,6 +43,10 @@ public class JwtFilter extends OncePerRequestFilter {
         try {
             username = jwtService.estraiUsername(token);
         } catch (JwtException e) {
+            log.warn("Token JWT non valido — URI: {} IP: {} — {}",
+                    request.getRequestURI(),
+                    request.getRemoteAddr(),
+                    e.getMessage());
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token non valido");
             return;
         }
