@@ -11,6 +11,8 @@ import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -172,10 +174,6 @@ public class FatturaService {
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere emesse");
         }
-        if (fattura.getTotaleNet().compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException(
-                    "Impossibile emettere la fattura: il totale netto è negativo. Verificare la remise globale.");
-        }
 
         fattura.setStato(StatoFattura.EMESSA);
         fatturaRepository.save(fattura);
@@ -223,18 +221,14 @@ public class FatturaService {
     // ── Lista fatture ─────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public List<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo) {
-        List<Fattura> fatture;
-        if ("SUPER_ADMIN".equals(ruolo)) {
-            fatture = fatturaRepository.findAll();
-        } else if (boutiqueId != null) {
-            fatture = fatturaRepository.findByBoutiqueId(boutiqueId);
-        } else {
-            fatture = fatturaRepository.findByAdminId(utenteId);
-        }
-        return fatture.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public Page<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable) {
+        Page<Fattura> fatture = switch (ruolo) {
+            case "SUPER_ADMIN" -> fatturaRepository.findAll(pageable);
+            case "ADMIN"       -> fatturaRepository.findByAdminId(utenteId, pageable);
+            case "DIPENDENTE"  -> fatturaRepository.findByBoutiqueId(boutiqueId, pageable);
+            default            -> throw new IllegalArgumentException("Ruolo non riconosciuto");
+        };
+        return fatture.map(this::toResponse);
     }
 
     // ── Fattura per ID ────────────────────────────────────────────────────────
@@ -297,6 +291,10 @@ public class FatturaService {
                 .subtract(fattura.getRemiseGlobale())
                 .add(totaleTVA)
                 .add(fattura.isTimbreFiscal() ? timbreValore : BigDecimal.ZERO);
+
+        if (totaleNet.compareTo(BigDecimal.ZERO) < 0) {
+            throw new IllegalArgumentException("Lo sconto globale non può superare il totale. Il totale netto non può essere negativo.");
+        }
 
         fattura.setTotaleHT(totaleHT);
         fattura.setTotaleTVA(totaleTVA);

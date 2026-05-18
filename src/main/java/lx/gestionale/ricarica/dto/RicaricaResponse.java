@@ -18,7 +18,7 @@ public class RicaricaResponse {
     private LocalDate dataSolo;
     private String numero;
     private Operatore operatore;
-    private double giga;
+    private BigDecimal giga;
     private BigDecimal costoEffettivo;
     private BigDecimal costoCliente;
     private BigDecimal profitto;

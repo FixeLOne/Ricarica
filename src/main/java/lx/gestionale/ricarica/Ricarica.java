@@ -33,7 +33,7 @@ public class Ricarica {
     private Operatore operatore;
 
     @Column(nullable = false)
-    private double giga;
+    private BigDecimal giga;
 
     // ----------------------Dati Finanziari (Contabilità)----------------------
 

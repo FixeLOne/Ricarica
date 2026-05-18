@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
 import lx.gestionale.fattura.dto.FatturaResponse;
 import lx.gestionale.security.UserPrincipal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,10 +53,11 @@ public class FatturaController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FatturaResponse>> getFatture(
+    public ResponseEntity<Page<FatturaResponse>> getFatture(
+            Pageable pageable,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(fatturaService.getFatture(
-                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
+                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable));
     }
 
     @GetMapping("/{id}")

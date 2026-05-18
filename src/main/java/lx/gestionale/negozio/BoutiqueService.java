@@ -51,6 +51,25 @@ public class BoutiqueService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public BoutiqueResponse getBoutiqueById(Long boutiqueId, Long utenteId, String ruolo) {
+        Boutique boutique = boutiqueRepository.findById(boutiqueId)
+                .orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Boutique con ID " + boutiqueId + " non trovata."));
+
+        // Protezione IDOR: Un ADMIN può vedere solo le proprie boutique.
+        // Il SUPER_ADMIN e i DIPENDENTI (della specifica boutique) bypassano questo blocco.
+        if ("ADMIN".equals(ruolo) && !boutique.getAdmin().getId().equals(utenteId)) {
+            throw new IllegalArgumentException("Non hai i permessi per accedere a questa boutique.");
+        }
+
+        if ("DIPENDENTE".equals(ruolo)) {
+            // Se in futuro si decide di estendere i permessi di lettura ai dipendenti, devono poter leggere solo la loro
+            throw new IllegalArgumentException("I dipendenti non possono accedere a questa rotta.");
+        }
+
+        return toResponse(boutique);
+    }
+
     // ── Privati ───────────────────────────────────────────────────────────────
 
     private Utente trovaAdmin(String username) {

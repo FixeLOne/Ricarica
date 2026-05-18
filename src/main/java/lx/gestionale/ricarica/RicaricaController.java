@@ -5,10 +5,14 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
 import lx.gestionale.ricarica.dto.RicaricaResponse;
 import lx.gestionale.security.UserPrincipal;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -41,5 +45,12 @@ public class RicaricaController {
         return ResponseEntity.ok(ricaricaService.modificaRicarica(id, request, principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo()));
     }
 
+    @GetMapping
+    public ResponseEntity<Page<RicaricaResponse>> getRicariche(
+            Pageable pageable,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ricaricaService.getRicariche(
+                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable));
+    }
 
 }

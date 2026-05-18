@@ -1,5 +1,7 @@
 package lx.gestionale.ricarica;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
@@ -54,6 +56,7 @@ public class RicaricaService {
         }
     }
 
+    @Transactional
     public RicaricaResponse salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId) {
         Boutique boutique;
 
@@ -123,8 +126,8 @@ public class RicaricaService {
     }
 
     private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request, Utente admin) {
-        validaNumero(request.getNumero());
         String numPulito = request.getNumero().trim();
+        validaNumero(numPulito);
         Operatore operatore = assegnaOperatore(numPulito);
 
         r.setNumero(numPulito);
@@ -135,6 +138,7 @@ public class RicaricaService {
         impostaPrezzi(r, request, operatore, admin);
     }
 
+    @Transactional(readOnly = true)
     public List<Ricarica> getRicaricheTra(Long boutiqueId, LocalDate dal, LocalDate al) {
         return ricaricaRepository.findByBoutiqueIdAndDataSoloBetween(boutiqueId, dal, al);
     }
@@ -192,7 +196,6 @@ public class RicaricaService {
             throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
         }
         popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        ricaricaRepository.save(r);
         return toResponse(r);
     }
 
@@ -203,7 +206,6 @@ public class RicaricaService {
             throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
         }
         popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        ricaricaRepository.save(r);
         return toResponse(r);
     }
 
@@ -211,7 +213,17 @@ public class RicaricaService {
         Ricarica r = ricaricaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
         popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        ricaricaRepository.save(r);
         return toResponse(r);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<RicaricaResponse> getRicariche(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable) {
+        Page<Ricarica> ricariche = switch (ruolo) {
+            case "SUPER_ADMIN" -> ricaricaRepository.findAll(pageable);
+            case "ADMIN"       -> ricaricaRepository.findByBoutiqueAdminId(utenteId, pageable);
+            case "DIPENDENTE"  -> ricaricaRepository.findByBoutiqueId(boutiqueId, pageable);
+            default            -> throw new IllegalArgumentException("Ruolo non riconosciuto");
+        };
+        return ricariche.map(this::toResponse);
     }
 }

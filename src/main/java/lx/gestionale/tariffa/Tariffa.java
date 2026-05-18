@@ -12,6 +12,9 @@ import java.math.BigDecimal;
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"operatore", "giga", "admin_id"})
+})
 public class Tariffa {
 
     @Id
@@ -22,7 +25,7 @@ public class Tariffa {
     @Enumerated(EnumType.STRING)
     private Operatore operatore;
 
-    private double giga;
+    private BigDecimal giga;
 
     private BigDecimal costoAcquisto;
     private BigDecimal prezzoVendita;

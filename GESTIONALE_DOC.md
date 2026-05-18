@@ -3,8 +3,8 @@
 ## Contesto e Scopo
 
 Gestionale web multi-tenant per negozi di ricariche telefoniche in Tunisia.
-Progettato per un admin principale (proprietario di più boutique) che può rivendere l'accesso ad altri proprietari di negozi.
-Stack: **Spring Boot 3 + Spring Security (JWT) + JPA/Hibernate + PostgreSQL**.
+Progettato per un  super admin principale (proprietario del gestionale) che può rivendere l'accesso ai proprietari di negozi.
+Stack: **Spring Boot 4 + Spring Security (JWT) + JPA/Hibernate + PostgreSQL**.
 Frontend separato (non incluso in questo documento).
 
 ---
@@ -367,7 +367,7 @@ endpoint: GET /api/v2/ricariche?numero=XXXXXXXX
 [ ] Paginazione lista ricariche
 endpoint: GET /api/v2/ricariche?page=0&size=20
 [ ] Paginazione lista fatture
-[ ] Filtro ricariche per operatore
+[-] Filtro ricariche per operatore
 [ ] Filtro ricariche per range date (già implementato nell'export, da esporre anche come API)
 
 
@@ -382,10 +382,10 @@ nota: con allowCredentials true il wildcard è invalido per spec CORS
 - CreaRicaricaRequest: numero, giga, costoEffettivo/costoCliente ✅
 - CreaFatturaRequest: nomeCliente, righe (@Valid + @NotEmpty), remiseGlobale (@PositiveOrZero) ✅
 - RigaFatturaRequest: descrizione, quantita, prezzoUnitarioHT, aliquotaTVA ✅
-  [ ] Ancora da fare: CreaBoutiqueRequest, CreaAdminRequest, LoginRequest, DatiAziendaRequest
+  [x] Ancora da fare: CreaBoutiqueRequest, CreaAdminRequest, LoginRequest, DatiAziendaRequest ✅
   [x] Aggiungere @PreAuthorize("hasRole('SUPER_ADMIN')") su UtenteController.creaAdmin — fatto
   [-] Soft delete Ricarica — SCARTATO: in contabilità tunisina si emette Avoir, non si cancella
-  [ ] DataInitializer — annotare con @Profile("dev") prima del deploy in produzione
+  [x] DataInitializer — annotare con @Profile("dev") prima del deploy in produzione
   gravità: CRITICA — crea utenti con password note ("admin123")
   [ ] JWT secret — verificare che in produzione sia >= 256 bit casuale, non hardcoded nel repo
   [ ] Password policy — minima lunghezza, complessità, scadenza periodica
@@ -496,15 +496,15 @@ soluzione: blacklist in Redis o riduzione durata + refresh token
 
 ### SUPER_ADMIN — Funzionalità da Completare
 
-[ ] Logica Listino SuperAdmin: Il POST /tariffe effettuato da un SUPER_ADMIN viene accettato (200 OK), ma il sistema non dovrebbe permettere a questo ruolo di possedere un listino proprio. Va implementato un blocco o una gestione per cui il SuperAdmin possa operare solo sui listini degli Admin.
+[x] Logica Listino SuperAdmin: Il POST /tariffe effettuato da un SUPER_ADMIN viene accettato (200 OK), ma il sistema non dovrebbe permettere a questo ruolo di possedere un listino proprio. Va implementato un blocco o una gestione per cui il SuperAdmin possa operare solo sui listini degli Admin.
 
 [x] RicaricaService — bypass ownership implementato (ruolo passato dal token)
 
-[ ] TariffaService — modificaTariffa ed eliminaTariffa rifiutano il SUPER_ADMIN
+[x] TariffaService — modificaTariffa ed eliminaTariffa rifiutano il SUPER_ADMIN
 causa: check tariffa.getAdmin().getId().equals(adminId) fallisce
 soluzione: bypass ruolo identico a RicaricaService
 
-[ ] TariffaService — salvaOAggiorna e getListinoCompleto usano adminId del SUPER_ADMIN
+[x] TariffaService — salvaOAggiorna e getListinoCompleto usano adminId del SUPER_ADMIN
 soluzione: SUPER_ADMIN passa adminId esplicito nel body
 
 [x] FatturaService — verificaOwnership rifiutava il SUPER_ADMIN
@@ -516,16 +516,16 @@ nel ramo SUPER_ADMIN usa fatturaRepository.findAll()
 [x] FatturaService — emettiFattura/eliminaFattura bloccate per SUPER_ADMIN
 entrambi chiamano verificaOwnership() che bypassa SUPER_ADMIN — nessun intervento aggiuntivo necessario
 
-[ ] DashboardService — getRiepilogoAdmin restituisce vuoto per il SUPER_ADMIN
+[x] DashboardService — getRiepilogoAdmin restituisce vuoto per il SUPER_ADMIN
 soluzione: per SUPER_ADMIN usare boutiqueRepository.findAll()
 
-[ ] ExportService — generaReport produce file vuoto per SUPER_ADMIN
+[x] ExportService — generaReport produce file vuoto per SUPER_ADMIN
 soluzione: per SUPER_ADMIN aggregare tutte le ricariche del sistema
 
-[ ] BoutiqueService — nessun percorso SUPER_ADMIN su getBoutiqueByAdmin
+[-] BoutiqueService — nessun percorso SUPER_ADMIN su getBoutiqueByAdmin
 nota: SUPER_ADMIN ha già /tutte; valutare se serve filtrare per adminId specifico
 
-[ ] DatiAziendaService — nessun intervento necessario
+[-] DatiAziendaService — nessun intervento necessario
 SecurityConfig limita /api/v2/azienda/ solo ad ADMIN, corretto by design
 
 
@@ -545,7 +545,7 @@ ricorda di cambiare il db in update nel proprieties
 
 [NOTA TEST] Verificare la tenuta del sistema con payload di login massivi (DoS bait) e la corretta propagazione dei messaggi di errore (es. il messaggio "Boutique non trovata" che differisce per lunghezza dai 400 standard).
 
-[APERTO] Bug Sconto Negativo: La remiseGlobale non viene validata alla creazione/modifica della fattura.
+[RISOLTO] Bug Sconto Negativo: La remiseGlobale non viene validata alla creazione/modifica della fattura.
 Il sistema blocca correttamente l'EMISSIONE se totaleNet < 0 (check in emettiFattura),
 ma permette di salvare una BOZZA con sconto eccessivo.
 Da fare: aggiungere validazione @PositiveOrZero su remiseGlobale nel DTO e/o check nel service
@@ -563,7 +563,7 @@ e MethodArgumentTypeMismatchException → 400 Bad Request.
 [RISOLTO] Bug Enum Parsing: Jackson non riconosceva enum non validi (es. Operatore "SPACEX").
 Catturato da HttpMessageNotReadableException nel GlobalExceptionHandler → 400 con messaggio generico.
 
-[APERTO] Bug 500 su parametri mancanti nell'export: GET /api/v2/export/ricariche senza dal/al
+[RISOLTO] Bug 500 su parametri mancanti nell'export: GET /api/v2/export/ricariche senza dal/al
 (o con solo uno dei due) restituisce 500 invece di 400.
 Causa: GlobalExceptionHandler non gestisce MissingServletRequestParameterException,
 che Spring lancia quando un @RequestParam obbligatorio è assente.

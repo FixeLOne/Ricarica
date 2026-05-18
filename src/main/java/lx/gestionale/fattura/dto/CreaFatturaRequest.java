@@ -1,9 +1,7 @@
 package lx.gestionale.fattura.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import lx.gestionale.fattura.TipoDocumento;
 import lx.gestionale.fattura.riga.dto.RigaFatturaRequest;
@@ -18,8 +16,10 @@ public class CreaFatturaRequest {
     @NotNull(message = "Il tipo documento è obbligatorio")
     private TipoDocumento tipo;
 
-    private LocalDate dataEmissione;
+    private LocalDate dataEmissione = LocalDate.now();
 
+    @Size(max = 150, message = "Il nome cliente non può superare 150 caratteri")
+    @Pattern(regexp = "^[^<>]*$", message = "Caratteri < o > non ammessi per ragioni di sicurezza")
     private String nomeCliente;
 
     private boolean timbreFiscal = false;

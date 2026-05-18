@@ -1,9 +1,13 @@
 package lx.gestionale.eccezioni;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -48,6 +52,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, String>> gestisciTipoErrato(MethodArgumentTypeMismatchException ex) {
         return ResponseEntity.badRequest().body(Map.of("errore", "Parametro non valido: " + ex.getName()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, String>> gestisciParametroMancante(MissingServletRequestParameterException ex) {
+        return ResponseEntity.badRequest().body(Map.of("errore", "Parametro mancante: " + ex.getParameterName()));
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<Map<String, String>> gestisciEntitaNonTrovata(EntityNotFoundException ex) {
+        return ResponseEntity.badRequest().body(Map.of("errore", ex.getMessage()));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> gestisciMetodoNonSupportato(Exception ex) {
+        return ResponseEntity.status(405).body(Map.of("errore", "Metodo HTTP non supportato per questo URL"));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, String>> gestisciMediaTypeNonSupportato(
+            org.springframework.web.HttpMediaTypeNotSupportedException ex) {
+        return ResponseEntity.status(415).body(Map.of("errore", "Content-Type non supportato."));
     }
 
 }

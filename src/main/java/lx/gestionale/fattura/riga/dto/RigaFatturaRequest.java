@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 @Data
 public class RigaFatturaRequest {
     @NotBlank(message = "La descrizione è obbligatoria")
+    @Pattern(regexp = "^[^<>]*$", message = "Caratteri < o > non ammessi per ragioni di sicurezza")
     private String descrizione;
 
     @NotNull(message = "La quantità è obbligatoria")

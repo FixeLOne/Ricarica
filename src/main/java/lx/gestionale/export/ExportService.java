@@ -76,9 +76,6 @@ public class ExportService {
         if (dal.isAfter(al)) {
             throw new IllegalArgumentException("'dal' non può essere successivo ad 'al'");
         }
-        if (al.isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("'al' non può essere una data futura");
-        }
         if (ChronoUnit.DAYS.between(dal, al) > MAX_GIORNI_RANGE) {
             throw new IllegalArgumentException("Il range massimo consentito è " + MAX_GIORNI_RANGE + " giorni");
         }
@@ -155,7 +152,7 @@ public class ExportService {
         cOp.setCellStyle(stiliOp.getOrDefault(r.getOperatore(), stileRiga));
 
         Cell cGiga = row.createCell(3);
-        cGiga.setCellValue(r.getGiga() + " Go");
+        cGiga.setCellValue(r.getGiga() != null ? r.getGiga().toPlainString() + " Go" : "N/D");
         cGiga.setCellStyle(stileRiga);
 
         scriviCellaDT(row, 4, r.getCostoEffettivo(), stileRiga);
@@ -179,7 +176,7 @@ public class ExportService {
         label.setCellStyle(stileTotLabel);
 
         Cell cGigaTot = rigaTot.createCell(3);
-        cGigaTot.setCellValue(calcolaTotaleGiga(ricariche) + " Go");
+        cGigaTot.setCellValue(calcolaTotaleGiga(ricariche).toPlainString() + " Go");
         cGigaTot.setCellStyle(stileTot);
 
         scriviCellaDT(rigaTot, 4, calcolaTotaleCosto(ricariche),    stileTot);
@@ -202,10 +199,10 @@ public class ExportService {
     // CALCOLI
     // ==========================================================
 
-    private double calcolaTotaleGiga(List<Ricarica> ricariche) {
+    private BigDecimal calcolaTotaleGiga(List<Ricarica> ricariche) {
         return ricariche.stream()
-                .mapToDouble(Ricarica::getGiga)
-                .sum();
+                .map(r -> getValoreSicuro(r.getGiga()))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private BigDecimal calcolaTotaleCosto(List<Ricarica> ricariche) {

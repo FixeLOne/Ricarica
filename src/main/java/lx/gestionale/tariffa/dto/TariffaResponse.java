@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 public class TariffaResponse {
     private Long id;
     private Operatore operatore;
-    private double giga;
+    private BigDecimal giga;
     private BigDecimal costoAcquisto;
     private BigDecimal prezzoVendita;
 }

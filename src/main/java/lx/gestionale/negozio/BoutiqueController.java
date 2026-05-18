@@ -45,4 +45,11 @@ public class BoutiqueController {
         boutiqueService.impostaFattureAbilitate(id, abilitato, principal.getUtenteId());
         return ResponseEntity.ok("Fatture " + (abilitato ? "abilitate" : "disabilitate") + " con successo");
     }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BoutiqueResponse> getBoutiqueById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueService.getBoutiqueById(id, principal.getUtenteId(), principal.getRuolo()));
+    }
 }

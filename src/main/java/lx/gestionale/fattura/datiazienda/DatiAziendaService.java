@@ -6,6 +6,7 @@ import lx.gestionale.fattura.datiazienda.dto.DatiAziendaResponse;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -14,6 +15,7 @@ public class DatiAziendaService {
     private final DatiAziendaRepository datiAziendaRepository;
     private final UtenteRepository utenteRepository;
 
+    @Transactional
     public void salvaOAggiorna(DatiAziendaRequest request, Long adminId) {
         Utente admin = trovaAdmin(adminId);
         DatiAzienda dati = datiAziendaRepository.findByAdmin(admin)
@@ -33,6 +35,13 @@ public class DatiAziendaService {
         DatiAzienda dati = datiAziendaRepository.findByAdmin(admin)
                 .orElseThrow(() -> new IllegalArgumentException("Dati azienda non ancora configurati"));
         return toResponse(dati);
+    }
+
+    public DatiAziendaResponse getDatiByAdminOrNull(Long adminId) {
+        Utente admin = trovaAdmin(adminId);
+        return datiAziendaRepository.findByAdmin(admin)
+                .map(this::toResponse)
+                .orElse(null);
     }
 
     // ── Privati ───────────────────────────────────────────────────────────────

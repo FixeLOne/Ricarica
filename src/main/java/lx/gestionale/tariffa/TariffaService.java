@@ -7,7 +7,9 @@ import lx.gestionale.tariffa.dto.TariffaResponse;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -23,35 +25,57 @@ public class TariffaService {
 
 
     // restituisce la Tariffa o esplode.
-    public Tariffa getTariffaApplicabile(Operatore operatore, double giga, Utente admin) {
+    @Transactional(readOnly = true)
+    public Tariffa getTariffaApplicabile(Operatore operatore, BigDecimal giga, Utente admin) {
         return tariffaRepository.findByOperatoreAndGigaAndAdmin(operatore, giga, admin)
                 .orElseGet(() -> tariffaRepository.findByOperatoreIsNullAndGigaAndAdmin(giga, admin)
                         .orElseThrow(() -> new IllegalArgumentException("Tariffa non trovata in listino")));
     }
 
+    @Transactional
     public TariffaResponse salvaOAggiorna(CreaTariffaRequest request, Long utenteId, String ruolo) {
-        Long adminId = "SUPER_ADMIN".equals(ruolo) && request.getAdminId() != null
-                ? request.getAdminId()
-                : utenteId;
-        Utente admin = utenteRepository.getReferenceById(adminId);
+        Long adminId;
+
+        if ("SUPER_ADMIN".equals(ruolo)) {
+            if (request.getAdminId() == null) {
+                throw new IllegalArgumentException("Il SUPER_ADMIN deve specificare l'adminId nel corpo della richiesta.");
+            }
+            adminId = request.getAdminId();
+        } else {
+            adminId = utenteId;
+        }
+
+        Utente admin = utenteRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin con ID " + adminId + " non trovato"));
         Tariffa tariffa = cercaTariffa(request.getOperatore(), request.getGiga(), admin)
                 .orElseGet(Tariffa::new);
         tariffa.setAdmin(admin);
         return toResponse(popolaESalva(tariffa, request));
     }
 
+    @Transactional(readOnly = true)
     public List<TariffaResponse> getListinoCompleto(Long adminIdParam, Long utenteId, String ruolo) {
-        Long adminId = "SUPER_ADMIN".equals(ruolo) && adminIdParam != null
-                ? adminIdParam
-                : utenteId;
-        Utente admin = utenteRepository.getReferenceById(adminId);
+        Long adminId;
+
+        if ("SUPER_ADMIN".equals(ruolo)) {
+            if (adminIdParam == null) {
+                throw new IllegalArgumentException("Il SUPER_ADMIN deve specificare il parametro adminId nella query string.");
+            }
+            adminId = adminIdParam;
+        } else {
+            adminId = utenteId;
+        }
+
+        Utente admin = utenteRepository.findById(adminId)
+                .orElseThrow(() -> new IllegalArgumentException("Admin con ID " + adminId + " non trovato"));
         return tariffaRepository.findByAdmin(admin).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList());
     }
 
 
-    private Optional<Tariffa> cercaTariffa(Operatore op, double giga, Utente admin) {
+    @Transactional(readOnly = true)
+    public Optional<Tariffa> cercaTariffa(Operatore op, BigDecimal giga, Utente admin) {
         if (op == null) {
             return tariffaRepository.findByOperatoreIsNullAndGigaAndAdmin(giga, admin);
         }
@@ -66,22 +90,35 @@ public class TariffaService {
         return tariffaRepository.save(t);
     }
 
+    @Transactional
     public TariffaResponse modificaTariffa(Long id, CreaTariffaRequest request, Long adminId, String ruolo) {
         Tariffa tariffa = tariffaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Impossibile modificare: Tariffa con ID " + id + " non trovata."));
+
         if (!"SUPER_ADMIN".equals(ruolo) && !tariffa.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi per modificare questa tariffa.");
         }
+
+        // verifica che la nuova chiave naturale non appartenga a un'altra riga
+        Utente admin = tariffa.getAdmin();
+        cercaTariffa(request.getOperatore(), request.getGiga(), admin)
+                .filter(existing -> !existing.getId().equals(id))
+                .ifPresent(ignored -> {
+                    throw new IllegalArgumentException(
+                            "Esiste già una tariffa con questa combinazione di operatore e giga.");
+                });
+
         return toResponse(popolaESalva(tariffa, request));
     }
 
+    @Transactional
     public void eliminaTariffa(Long id, Long adminId, String ruolo) {
         Tariffa tariffa = tariffaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Tariffa non trovata."));
         if (!"SUPER_ADMIN".equals(ruolo) && !tariffa.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa tariffa.");
         }
-        tariffaRepository.deleteById(id);
+        tariffaRepository.delete(tariffa);
     }
 
     private TariffaResponse toResponse(Tariffa t) {
