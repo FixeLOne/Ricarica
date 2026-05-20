@@ -38,25 +38,25 @@ public class FatturaService {
 
     @Transactional
     public FatturaResponse creaFattura(CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
-        // 1. Risolvi admin e boutique dal contesto del chiamante
+        // Risolvi admin e boutique dal contesto del chiamante
         AdminBoutiquePair pair = risolviAmministratore(request, utenteId, boutiqueId);
 
-        // 2. Se è un AVOIR, annulla la fattura origine
+        // Se è un AVOIR, annulla la fattura origine
         Fattura fatturaOrigine = gestisciAvoirOrigine(request, utenteId, boutiqueId, ruolo);
 
-        // 3. Costruisci le righe dalla request
+        // Costruisci le righe dalla request
         List<RigaFattura> righe = request.getRighe().stream()
                 .map(r -> buildRiga(r, null))
                 .collect(Collectors.toList());
 
-        // 4. Genera numero e determina lo stato iniziale
-        String numero = contatoreFatturaService.generaNumero(pair.admin(), request.getTipo());
-
-        // FIX: un AVOIR è emesso immediatamente — tenerlo in BOZZA lascerebbe
-        // la fattura origine ANNULLATA senza una rettifica ufficiale
         StatoFattura stato = request.getTipo() == TipoDocumento.AVOIR
                 ? StatoFattura.EMESSA
                 : StatoFattura.BOZZA;
+
+        // Genera un numero random per la bozza
+        String numero = (stato == StatoFattura.EMESSA)
+                ? contatoreFatturaService.generaNumero(pair.admin(), request.getTipo())
+                : "BOZZA-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         // Per un AVOIR la data è sempre oggi, non quella passata nella request
         LocalDate dataEmissione = request.getTipo() == TipoDocumento.AVOIR
@@ -174,6 +174,9 @@ public class FatturaService {
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere emesse");
         }
+
+        String numeroReale = contatoreFatturaService.generaNumero(fattura.getAdmin(), fattura.getTipo());
+        fattura.setNumero(numeroReale);
 
         fattura.setStato(StatoFattura.EMESSA);
         fatturaRepository.save(fattura);
