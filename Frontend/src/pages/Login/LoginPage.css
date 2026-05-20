@@ -1,227 +1,288 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(16px); }
-        to   { opacity: 1; transform: translateY(0);    }
-    }
-    @keyframes pulseAccent {
-        0%, 100% { opacity: 0.3; transform: scale(1); }
-        50%       { opacity: 0.6; transform: scale(1.05); }
-    }
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
+/* ─────────────────────────────────────────────
+   KEYFRAMES
+───────────────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+/* Orb principale — si sposta lentamente in diagonale */
+@keyframes orbDrift {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    33%  { transform: translate(30px, -20px) scale(1.05); }
+    66%  { transform: translate(-20px, 15px) scale(0.97); }
+    100% { transform: translate(0px, 0px) scale(1); }
+}
+/* Orb secondario — opposto e più lento */
+@keyframes orbDrift2 {
+    0%   { transform: translate(0px, 0px) scale(1); }
+    50%  { transform: translate(-25px, 20px) scale(1.08); }
+    100% { transform: translate(0px, 0px) scale(1); }
+}
+/* Pulse sottile sulla card */
+@keyframes cardGlow {
+    0%, 100% { box-shadow: 0 40px 80px -20px var(--shadow); }
+    50%       { box-shadow: 0 40px 80px -20px var(--shadow), 0 0 40px -10px var(--glow); }
+}
 
-    .lp-page {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: ${t.bg};
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        padding: 24px;
-        transition: background 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        position: relative;
-        overflow: hidden;
-    }
+/* ─────────────────────────────────────────────
+   PAGE — sfondo dinamico via CSS variables
+   Tutto il colore viene da --bg iniettato dal JSX
+───────────────────────────────────────────── */
+.lp-page {
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg);
+    transition: background-color 0.5s ease;
+}
 
-    .lp-theme-btn {
-        position: absolute;
-        top: 24px;
-        right: 24px;
-        background: ${t.bgCard};
-        border: 1px solid ${t.border};
-        border-radius: 99px;
-        padding: 8px 14px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: ${t.textSub};
-        letter-spacing: 0.02em;
-        box-shadow: 0 4px 12px ${t.shadow};
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 10;
-    }
-    .lp-theme-btn:hover {
-        border-color: ${t.borderFocus};
-        color: ${t.text};
-    }
-    .lp-theme-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: ${t.accent};
-    }
+/* Griglia di sfondo */
+.lp-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 64px 64px;
+    opacity: 0.4;
+    mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, black 10%, transparent 80%);
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+}
 
-    /* Gli orb ora sono più grandi e fluidi per simulare una luce soffusa naturale */
-    .lp-orb {
-        position: absolute;
-        width: 600px;
-        height: 600px;
-        border-radius: 50%;
-        background: radial-gradient(circle, ${t.glow} 0%, transparent 70%);
-        top: -200px;
-        right: -150px;
-        pointer-events: none;
-        animation: pulseAccent 10s ease-in-out infinite;
-        transition: background 0.4s ease;
-    }
-    .lp-orb2 {
-        position: absolute;
-        width: 450px;
-        height: 450px;
-        border-radius: 50%;
-        background: radial-gradient(circle, ${t.glow} 0%, transparent 70%);
-        bottom: -150px;
-        left: -100px;
-        pointer-events: none;
-        animation: pulseAccent 12s ease-in-out infinite reverse;
-        transition: background 0.4s ease;
-    }
+/* ─────────────────────────────────────────────
+   ORB DINAMICI — si animano e cambiano colore col tema
+───────────────────────────────────────────── */
+.lp-orb-1,
+.lp-orb-2 {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    filter: blur(70px);
+    will-change: transform;
+}
 
-    .lp-card {
-        width: 100%;
-        max-width: 390px;
-        background: ${t.bgCard};
-        border: 1px solid ${t.border};
-        border-radius: 16px;
-        padding: 44px 36px;
-        box-shadow: 0 40px 80px -20px ${t.shadow};
-        animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-        position: relative;
-        transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
-    }
+.lp-orb-1 {
+    width: 500px;
+    height: 500px;
+    top: -180px;
+    right: -120px;
+    background: radial-gradient(circle, var(--orbColor1) 0%, transparent 70%);
+    animation: orbDrift 18s ease-in-out infinite;
+    transition: background 0.6s ease;
+}
 
-    .lp-mark {
-        width: 36px;
-        height: 36px;
-        border: 1px solid ${t.border};
-        background: ${t.bgInput};
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 24px;
-        transition: all 0.4s ease;
-    }
+.lp-orb-2 {
+    width: 380px;
+    height: 380px;
+    bottom: -140px;
+    left: -100px;
+    background: radial-gradient(circle, var(--orbColor2) 0%, transparent 70%);
+    animation: orbDrift2 24s ease-in-out infinite;
+    transition: background 0.6s ease;
+}
 
-    .lp-title {
-        font-size: 1.6rem;
-        font-weight: 700;
-        color: ${t.text};
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-        margin-bottom: 6px;
-        transition: color 0.4s ease;
-    }
-    .lp-sub {
-        font-size: 0.85rem;
-        font-weight: 400;
-        color: ${t.textSub};
-        margin-bottom: 32px;
-        transition: color 0.4s ease;
-    }
+/* ─────────────────────────────────────────────
+   THEME BUTTON
+───────────────────────────────────────────── */
+.lp-theme-btn {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: var(--bgCard);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 8px 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--textSub);
+    box-shadow: 0 4px 12px var(--shadow);
+    transition: all 0.25s ease;
+    z-index: 10;
+}
+.lp-theme-btn:hover {
+    border-color: var(--borderFocus);
+    color: var(--text);
+    transform: translateY(-1px);
+}
+.lp-theme-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+    transition: background 0.3s, box-shadow 0.3s;
+}
 
-    .lp-field { margin-bottom: 18px; }
+/* ─────────────────────────────────────────────
+   CARD
+───────────────────────────────────────────── */
+.lp-card {
+    width: 100%;
+    max-width: 390px;
+    background: var(--bgCard);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 44px 36px;
+    animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both,
+    cardGlow 6s ease-in-out 1s infinite;
+    position: relative;
+    z-index: 1;
+    transition: background 0.4s ease, border-color 0.4s ease;
+}
 
-    .lp-label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: ${t.textMuted};
-        letter-spacing: 0.02em;
-        margin-bottom: 8px;
-        transition: color 0.4s ease;
-    }
+/* Linea accent in cima alla card */
+.lp-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0.5;
+    border-radius: 1px;
+    transition: opacity 0.4s;
+}
 
-    .lp-input {
-        width: 100%;
-        padding: 11px 14px;
-        background: ${t.bgInput};
-        border: 1px solid ${t.border};
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.9rem;
-        color: ${t.text};
-        outline: none;
-        transition: all 0.15s ease;
-    }
-    .lp-input::placeholder { color: ${t.textMuted}; opacity: 0.6; }
-    .lp-input:focus {
-        border-color: ${t.borderFocus};
-        box-sizing: border-box;
-    }
+/* ─────────────────────────────────────────────
+   LOGO MARK
+───────────────────────────────────────────── */
+.lp-mark {
+    width: 36px; height: 36px;
+    border: 1px solid var(--border);
+    background: var(--bgInput);
+    border-radius: 10px;
+    display: flex;
+    align-items: center; justify-content: center;
+    margin-bottom: 24px;
+    transition: all 0.4s ease;
+}
 
-    /* Scatola di errore rivista in stile SaaS minimale */
-    .lp-error {
-        font-size: 0.8rem;
-        color: #ef4444;
-        background: ${t.errorBg};
-        border: 1px solid ${t.errorBorder};
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-weight: 500;
-        animation: fadeUp 0.3s ease;
-    }
+/* ─────────────────────────────────────────────
+   TIPOGRAFIA
+───────────────────────────────────────────── */
+.lp-title {
+    font-size: 1.6rem; font-weight: 700;
+    color: var(--text);
+    line-height: 1.2; margin-bottom: 6px;
+    letter-spacing: -0.025em;
+    transition: color 0.4s ease;
+}
+.lp-sub {
+    font-size: 0.85rem;
+    color: var(--textSub);
+    margin-bottom: 32px;
+    transition: color 0.4s ease;
+}
 
-    .lp-btn {
-        width: 100%;
-        padding: 12px;
-        border-radius: 8px;
-        border: none;
-        background: ${t.accent};
-        color: #0d0d11; /* Testo scuro sul pulsante chiaro */
-        font-family: inherit;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        margin-top: 8px;
-        transition: all 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-    .lp-btn:hover:not(:disabled) {
-        background: ${t.accentHover};
-        transform: translateY(-1px);
-    }
-    .lp-btn:disabled {
-        background: ${t.border};
-        color: ${t.textMuted};
-        cursor: not-allowed;
-    }
+/* ─────────────────────────────────────────────
+   FORM
+───────────────────────────────────────────── */
+.lp-field { margin-bottom: 18px; }
 
-    .lp-spinner {
-        width: 14px;
-        height: 14px;
-        border: 2px solid rgba(13,13,17,0.2);
-        border-top-color: #0d0d11;
-        border-radius: 50%;
-        animation: spin 0.6s linear infinite;
-    }
+.lp-label {
+    display: block; font-size: 0.75rem; font-weight: 600;
+    color: var(--textMuted); margin-bottom: 8px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 0.4s ease;
+}
 
-    .lp-divider {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin: 28px 0 0;
-    }
-    .lp-divider-line {
-        flex: 1;
-        height: 1px;
-        background: ${t.border};
-    }
-    .lp-divider-text {
-        font-size: 0.68rem;
-        font-weight: 500;
-        color: ${t.textMuted};
-        letter-spacing: 0.04em;
-    }
+.lp-input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--bgInput);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.4s ease;
+}
+.lp-input::placeholder { color: var(--textMuted); opacity: 0.5; }
+.lp-input:focus {
+    border-color: var(--borderFocus);
+    box-shadow: 0 0 0 3px var(--glow);
+}
+
+/* ─────────────────────────────────────────────
+   ERRORE
+───────────────────────────────────────────── */
+.lp-error {
+    font-size: 0.8rem; color: #ef4444;
+    background: var(--errorBg);
+    border: 1px solid var(--errorBorder);
+    padding: 12px; border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 500;
+    animation: fadeUp 0.3s ease;
+}
+
+/* ─────────────────────────────────────────────
+   BOTTONE
+───────────────────────────────────────────── */
+.lp-btn {
+    width: 100%; padding: 12px; border-radius: 8px; border: none;
+    background: var(--accent); color: #0d0d11;
+    font-family: inherit; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; margin-top: 8px;
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.lp-btn:hover:not(:disabled) {
+    background: var(--accentHover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px var(--glow);
+}
+.lp-btn:active:not(:disabled) { transform: translateY(0); }
+.lp-btn:disabled {
+    background: var(--border);
+    color: var(--textMuted);
+    cursor: not-allowed;
+}
+
+/* ─────────────────────────────────────────────
+   SPINNER
+───────────────────────────────────────────── */
+.lp-spinner {
+    width: 14px; height: 14px;
+    border: 2px solid rgba(13, 13, 17, 0.2);
+    border-top-color: #0d0d11;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+/* ─────────────────────────────────────────────
+   DIVIDER
+───────────────────────────────────────────── */
+.lp-divider {
+    display: flex; align-items: center; gap: 12px; margin: 28px 0 0;
+}
+.lp-divider-line {
+    flex: 1; height: 1px; background: var(--border);
+    transition: background 0.4s;
+}
+.lp-divider-text {
+    font-size: 0.68rem; font-weight: 500;
+    color: var(--textMuted);
+    letter-spacing: 0.06em;
+}

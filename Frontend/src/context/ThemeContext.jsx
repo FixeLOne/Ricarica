@@ -1,56 +1,53 @@
-const THEMES = {
+import { createContext, useContext, useState } from "react";
+
+export const THEMES = {
     dark: {
         name: "dark",
-        bg: "#08080a",
-        bgCard: "#0d0d11",
-        bgInput: "#141419",
-        border: "#1f1f29",
-        borderFocus: "#fde047", // Giallo limone/pastello chiaro e morbido
-        text: "#f4f4f5",
-        textMuted: "#71717a",   // Più leggibile
-        textSub: "#a1a1aa",
-        accent: "#fde047",
-        accentHover: "#fef08a",
-        glow: "rgba(254, 240, 138, 0.04)", // Glow giallo pastello ultra-morbido
-        shadow: "rgba(0,0,0,0.6)",
-        toggle: "#18181b",
-        errorBg: "rgba(239, 68, 68, 0.06)",
-        errorBorder: "rgba(239, 68, 68, 0.2)",
+        bg: "#08080a", bgCard: "#0d0d11", bgInput: "#141419",
+        border: "#1f1f29", borderFocus: "#fde047",
+        text: "#f4f4f5", textMuted: "#71717a", textSub: "#a1a1aa",
+        accent: "#fde047", accentHover: "#fef08a",
+        glow: "rgba(254, 240, 138, 0.04)", shadow: "rgba(0,0,0,0.6)",
+        toggle: "#18181b", errorBg: "rgba(239, 68, 68, 0.06)", errorBorder: "rgba(239, 68, 68, 0.2)",
     },
     light: {
         name: "light",
-        bg: "#faf9f5",
-        bgCard: "#ffffff",
-        bgInput: "#f5f4f0",
-        border: "#e4e2db",
-        borderFocus: "#eab308", // Giallo leggermente più saturo per il light mode
-        text: "#09090b",
-        textMuted: "#71717a",   // Accessibile
-        textSub: "#52525b",
-        accent: "#eab308",
-        accentHover: "#ca8a04",
-        glow: "rgba(234, 179, 8, 0.06)",
-        shadow: "rgba(28, 25, 23, 0.05)",
-        toggle: "#f1f0ea",
-        errorBg: "#fef2f2",
-        errorBorder: "#fca5a5",
+        bg: "#faf9f5", bgCard: "#ffffff", bgInput: "#f5f4f0",
+        border: "#e4e2db", borderFocus: "#eab308",
+        text: "#09090b", textMuted: "#71717a", textSub: "#52525b",
+        accent: "#eab308", accentHover: "#ca8a04",
+        glow: "rgba(234, 179, 8, 0.06)", shadow: "rgba(28, 25, 23, 0.05)",
+        toggle: "#f1f0ea", errorBg: "#fef2f2", errorBorder: "#fca5a5",
     },
     midnight: {
         name: "midnight",
-        bg: "#05070f",
-        bgCard: "#0b0e1a",
-        bgInput: "#111428",
-        border: "#1e2238",
-        borderFocus: "#fde047",
-        text: "#f1f3f9",
-        textMuted: "#4b526d",
-        textSub: "#7882a4",
-        accent: "#fde047",
-        accentHover: "#fef08a",
-        glow: "rgba(254, 240, 138, 0.04)",
-        shadow: "rgba(0,0,0,0.7)",
-        toggle: "#141830",
-        errorBg: "rgba(239, 68, 68, 0.06)",
-        errorBorder: "rgba(239, 68, 68, 0.2)",
+        bg: "#05070f", bgCard: "#0b0e1a", bgInput: "#111428",
+        border: "#1e2238", borderFocus: "#fde047",
+        text: "#f1f3f9", textMuted: "#4b526d", textSub: "#7882a4",
+        accent: "#fde047", accentHover: "#fef08a",
+        glow: "rgba(254, 240, 138, 0.04)", shadow: "rgba(0,0,0,0.7)",
+        toggle: "#141830", errorBg: "rgba(239, 68, 68, 0.06)", errorBorder: "rgba(239, 68, 68, 0.2)",
     },
 };
+
+const ThemeContext = createContext();
+
+export function ThemeProvider({ children }) {
+    const [themeName, setThemeName] = useState("dark");
+    const themeKeys = Object.keys(THEMES);
+
+    const cycleTheme = () => {
+        const idx = themeKeys.indexOf(themeName);
+        setThemeName(themeKeys[(idx + 1) % themeKeys.length]);
+    };
+
+    const currentTheme = THEMES[themeName];
+
+    return (
+        <ThemeContext.Provider value={{ themeName, currentTheme, cycleTheme }}>
+            {children}
+        </ThemeContext.Provider>
+    );
+}
+
+export const useTheme = () => useContext(ThemeContext);

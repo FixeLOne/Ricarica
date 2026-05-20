@@ -15,15 +15,16 @@ axiosClient.interceptors.request.use((config) => {
 });
 
 axiosClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("utente");
-      window.location.href = "/login";
+    (response) => response,
+    (error) => {
+        // Se è 401 MA la chiamata NON era verso /auth/login, allora scollega l'utente
+        if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("utente");
+            window.location.href = "/login";
+        }
+        return Promise.reject(error);
     }
-    return Promise.reject(error);
-  }
 );
 
 export default axiosClient;
