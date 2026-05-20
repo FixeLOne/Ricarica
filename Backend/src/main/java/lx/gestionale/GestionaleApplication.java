@@ -8,6 +8,8 @@ public class GestionaleApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(GestionaleApplication.class, args);
+        System.out.print("//////////////////Stiamo Gasando//////////////////");
     }
+
 
 }
