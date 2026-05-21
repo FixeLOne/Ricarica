@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useTheme } from "../../context/ThemeContext";
+import logoImg from "../../components/logo.png";
 import "./LoginPage.css";
 
 // Colori degli orb per ogni tema — separati dal ThemeContext
@@ -74,13 +75,12 @@ export default function LoginPage() {
         </button>
 
         <div className="lp-card">
-          <div className="lp-mark">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <rect x="1" y="1" width="6" height="6" rx="1.5" fill="var(--accent)" />
-              <rect x="9" y="1" width="6" height="6" rx="1.5" fill="var(--textMuted)" opacity="0.3" />
-              <rect x="1" y="9" width="6" height="6" rx="1.5" fill="var(--textMuted)" opacity="0.3" />
-              <rect x="9" y="9" width="6" height="6" rx="1.5" fill="var(--accent)" />
-            </svg>
+          <div className="lp-mark" style={{ background: "transparent", border: "none" }}>
+            <img
+                src={logoImg}
+                alt="Logo Gestionale"
+                style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            />
           </div>
 
           <h1 className="lp-title">Accedi</h1>

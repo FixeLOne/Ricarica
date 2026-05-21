@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext"; // Aggiunto import
+import { ThemeProvider } from "./context/ThemeContext";
 import LoginPage from "./pages/Login/LoginPage";
+import LandingPage from "./pages/LandingPage/LandingPage";
+import Dashboard from "./pages/Dashboard/Dashboard";
 
 // Protegge le rotte interne: se NON loggato → redirect a /login
 function RoutaProtetta({ children }) {
@@ -9,32 +11,30 @@ function RoutaProtetta({ children }) {
     return utente ? children : <Navigate to="/login" replace />;
 }
 
-// Protegge la rotta di login: se GIÀ loggato → redirect a /dashboard
+// Protegge le rotte pubbliche (Landing/Login): se GIÀ loggato → redirect a /dashboard
 function RoutaOspite({ children }) {
     const { utente } = useAuth();
     return !utente ? children : <Navigate to="/dashboard" replace />;
 }
 
-function Dashboard() {
-    const { utente, logout } = useAuth();
-    return (
-        <div style={{ padding: "2rem" }}>
-            <h2>Benvenuto, {utente?.username}!</h2>
-            <p>Ruolo: {utente?.ruolo}</p>
-            <p>Boutique ID: {utente?.boutiqueId}</p>
-            <button onClick={logout} style={{ marginTop: "1rem", padding: "0.5rem 1rem" }}>
-                Logout
-            </button>
-        </div>
-    );
-}
 
 export default function App() {
     return (
         <BrowserRouter>
             <AuthProvider>
-                <ThemeProvider> {/* Aggiunto wrapper per evitare il crash di useTheme */}
+                <ThemeProvider>
                     <Routes>
+                        {/* 1. Rotta Principale: Landing Page */}
+                        <Route
+                            path="/"
+                            element={
+                                <RoutaOspite>
+                                    <LandingPage />
+                                </RoutaOspite>
+                            }
+                        />
+
+                        {/* 2. Rotta di Accesso: Login Page */}
                         <Route
                             path="/login"
                             element={
@@ -43,6 +43,8 @@ export default function App() {
                                 </RoutaOspite>
                             }
                         />
+
+                        {/* 3. Rotte Interne: Dashboard */}
                         <Route
                             path="/dashboard"
                             element={
@@ -51,7 +53,9 @@ export default function App() {
                                 </RoutaProtetta>
                             }
                         />
-                        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+
+                        {/* 4. Fallback: Se l'utente digita una URL inesistente, torna alla Home */}
+                        <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </ThemeProvider>
             </AuthProvider>
