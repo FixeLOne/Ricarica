@@ -12,28 +12,9 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-/* Orb principale — si sposta lentamente in diagonale */
-@keyframes orbDrift {
-    0%   { transform: translate(0px, 0px) scale(1); }
-    33%  { transform: translate(30px, -20px) scale(1.05); }
-    66%  { transform: translate(-20px, 15px) scale(0.97); }
-    100% { transform: translate(0px, 0px) scale(1); }
-}
-/* Orb secondario — opposto e più lento */
-@keyframes orbDrift2 {
-    0%   { transform: translate(0px, 0px) scale(1); }
-    50%  { transform: translate(-25px, 20px) scale(1.08); }
-    100% { transform: translate(0px, 0px) scale(1); }
-}
-/* Pulse sottile sulla card */
-@keyframes cardGlow {
-    0%, 100% { box-shadow: 0 40px 80px -20px var(--shadow); }
-    50%       { box-shadow: 0 40px 80px -20px var(--shadow), 0 0 40px -10px var(--glow); }
-}
 
 /* ─────────────────────────────────────────────
-   PAGE — sfondo dinamico via CSS variables
-   Tutto il colore viene da --bg iniettato dal JSX
+   PAGE — Sfondo dinamico via CSS variables
 ───────────────────────────────────────────── */
 .lp-page {
     min-height: 100vh;
@@ -45,11 +26,11 @@
     padding: 24px;
     position: relative;
     overflow: hidden;
-    background-color: var(--bg);
+    background-color: var(--bg); /* Sfondo grigio chiarissimo e opaco */
     transition: background-color 0.5s ease;
 }
 
-/* Griglia di sfondo */
+/* Griglia di sfondo sottile */
 .lp-page::before {
     content: '';
     position: absolute;
@@ -58,42 +39,10 @@
             linear-gradient(var(--border) 1px, transparent 1px),
             linear-gradient(90deg, var(--border) 1px, transparent 1px);
     background-size: 64px 64px;
-    opacity: 0.4;
+    opacity: 0.6; /* Leggermente più visibile sul tema chiaro */
     mask-image: radial-gradient(ellipse 85% 80% at 50% 50%, black 10%, transparent 80%);
     pointer-events: none;
     transition: opacity 0.5s ease;
-}
-
-/* ─────────────────────────────────────────────
-   ORB DINAMICI — si animano e cambiano colore col tema
-───────────────────────────────────────────── */
-.lp-orb-1,
-.lp-orb-2 {
-    position: absolute;
-    border-radius: 50%;
-    pointer-events: none;
-    filter: blur(70px);
-    will-change: transform;
-}
-
-.lp-orb-1 {
-    width: 500px;
-    height: 500px;
-    top: -180px;
-    right: -120px;
-    background: radial-gradient(circle, var(--orbColor1) 0%, transparent 70%);
-    animation: orbDrift 18s ease-in-out infinite;
-    transition: background 0.6s ease;
-}
-
-.lp-orb-2 {
-    width: 380px;
-    height: 380px;
-    bottom: -140px;
-    left: -100px;
-    background: radial-gradient(circle, var(--orbColor2) 0%, transparent 70%);
-    animation: orbDrift2 24s ease-in-out infinite;
-    transition: background 0.6s ease;
 }
 
 /* ─────────────────────────────────────────────
@@ -134,45 +83,46 @@
 }
 
 /* ─────────────────────────────────────────────
-   CARD
+   CARD (Modulo Login)
 ───────────────────────────────────────────── */
 .lp-card {
     width: 100%;
     max-width: 390px;
-    background: var(--bgCard);
+    background: var(--bgCard); /* Bianco pulito */
     border: 1px solid var(--border);
     border-radius: 18px;
     padding: 44px 36px;
-    animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both,
-    cardGlow 6s ease-in-out 1s infinite;
+    animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
     position: relative;
     z-index: 1;
-    transition: background 0.4s ease, border-color 0.4s ease;
+    /* Ombra più morbida e realistica */
+    box-shadow: 0 20px 40px -10px var(--shadow), 0 0 20px -5px var(--glow);
+    transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
-/* Linea accent in cima alla card */
+/* Linea accent in cima alla card (opzionale, ma dà un bel tocco) */
 .lp-card::before {
     content: '';
     position: absolute;
     top: 0; left: 20%; right: 20%;
-    height: 1px;
+    height: 2px; /* Leggermente più spessa */
     background: linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity: 0.5;
-    border-radius: 1px;
+    opacity: 0.7; /* Più visibile sul tema chiaro */
+    border-radius: 2px;
     transition: opacity 0.4s;
 }
 
 /* ─────────────────────────────────────────────
-   LOGO MARK
+   LOGO MARK (Se usi ancora l'icona)
 ───────────────────────────────────────────── */
 .lp-mark {
-    width: 36px; height: 36px;
+    width: 48px; height: 48px; /* Leggermente più grande */
     border: 1px solid var(--border);
-    background: var(--bgInput);
-    border-radius: 10px;
+    background: var(--bgInput); /* Sfondo input per il logo */
+    border-radius: 12px; /* Arrotondamento più morbido */
     display: flex;
     align-items: center; justify-content: center;
-    margin-bottom: 24px;
+    margin: 0 auto 24px auto; /* Centrato */
     transition: all 0.4s ease;
 }
 
@@ -180,60 +130,64 @@
    TIPOGRAFIA
 ───────────────────────────────────────────── */
 .lp-title {
-    font-size: 1.6rem; font-weight: 700;
-    color: var(--text);
+    font-size: 1.7rem; font-weight: 800;
+    color: var(--text); /* Nero fumo/Antracite */
     line-height: 1.2; margin-bottom: 6px;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
+    text-align: center; /* Testo centrato */
     transition: color 0.4s ease;
 }
 .lp-sub {
-    font-size: 0.85rem;
-    color: var(--textSub);
+    font-size: 0.9rem;
+    color: var(--textSub); /* Grigio scuro leggibile */
     margin-bottom: 32px;
+    text-align: center; /* Testo centrato */
+    font-weight: 500;
     transition: color 0.4s ease;
 }
 
 /* ─────────────────────────────────────────────
    FORM
 ───────────────────────────────────────────── */
-.lp-field { margin-bottom: 18px; }
+.lp-field { margin-bottom: 20px; } /* Più spazio tra i campi */
 
 .lp-label {
-    display: block; font-size: 0.75rem; font-weight: 600;
-    color: var(--textMuted); margin-bottom: 8px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    display: block; font-size: 0.8rem; font-weight: 600;
+    color: var(--textSub); margin-bottom: 8px; /* Colore più scuro per la label */
+    letter-spacing: 0.02em;
     transition: color 0.4s ease;
 }
 
 .lp-input {
     width: 100%;
-    padding: 11px 14px;
-    background: var(--bgInput);
+    padding: 12px 16px; /* Più imbottitura */
+    background: var(--bgInput); /* Grigio chiarissimo per gli input */
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 10px; /* Arrotondamento coerente */
     font-family: inherit;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: var(--text);
     outline: none;
     transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.4s ease;
 }
-.lp-input::placeholder { color: var(--textMuted); opacity: 0.5; }
+.lp-input::placeholder { color: var(--textMuted); opacity: 0.7; }
 .lp-input:focus {
     border-color: var(--borderFocus);
-    box-shadow: 0 0 0 3px var(--glow);
+    box-shadow: 0 0 0 4px var(--glow); /* Glow dorato morbido */
+    background: var(--bgCard); /* Sfondo bianco al focus */
 }
 
 /* ─────────────────────────────────────────────
    ERRORE
 ───────────────────────────────────────────── */
 .lp-error {
-    font-size: 0.8rem; color: #ef4444;
+    font-size: 0.85rem; color: #dc2626; /* Rosso più scuro per accessibilità */
     background: var(--errorBg);
     border: 1px solid var(--errorBorder);
-    padding: 12px; border-radius: 8px;
-    margin-bottom: 20px;
+    padding: 12px 16px; border-radius: 10px;
+    margin-bottom: 24px;
     font-weight: 500;
+    text-align: center;
     animation: fadeUp 0.3s ease;
 }
 
@@ -241,48 +195,56 @@
    BOTTONE
 ───────────────────────────────────────────── */
 .lp-btn {
-    width: 100%; padding: 12px; border-radius: 8px; border: none;
-    background: var(--accent); color: #0d0d11;
-    font-family: inherit; font-size: 0.9rem; font-weight: 700;
-    cursor: pointer; margin-top: 8px;
+    width: 100%; padding: 14px; border-radius: 10px; border: none;
+    background: var(--accent); /* Oro/Giallo senape */
+    color: #ffffff; /* Testo bianco sul bottone dorato (se usi #ca8a04) */
+    font-family: inherit; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; margin-top: 12px;
     transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
     display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 4px 12px var(--glow); /* Ombra dorata morbida */
 }
 .lp-btn:hover:not(:disabled) {
-    background: var(--accentHover);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px var(--glow);
+    background: var(--accentHover); /* Oro scuro */
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px var(--glow);
 }
-.lp-btn:active:not(:disabled) { transform: translateY(0); }
+.lp-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
 .lp-btn:disabled {
-    background: var(--border);
+    background: var(--bgInput); /* Usa il colore di sfondo degli input per disabilitato */
     color: var(--textMuted);
     cursor: not-allowed;
+    border: 1px solid var(--border);
+    box-shadow: none;
 }
 
 /* ─────────────────────────────────────────────
    SPINNER
 ───────────────────────────────────────────── */
 .lp-spinner {
-    width: 14px; height: 14px;
-    border: 2px solid rgba(13, 13, 17, 0.2);
-    border-top-color: #0d0d11;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3); /* Bordo bianco trasparente */
+    border-top-color: #ffffff; /* Spinner bianco */
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
 }
 
 /* ─────────────────────────────────────────────
-   DIVIDER
+   LINK SECONDARI (Password Dimenticata)
 ───────────────────────────────────────────── */
-.lp-divider {
-    display: flex; align-items: center; gap: 12px; margin: 28px 0 0;
+.lp-link-wrap {
+    text-align: center;
+    margin-top: 24px;
 }
-.lp-divider-line {
-    flex: 1; height: 1px; background: var(--border);
-    transition: background 0.4s;
+.lp-link {
+    font-size: 0.85rem;
+    color: var(--textSub);
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s ease;
+    cursor: pointer;
 }
-.lp-divider-text {
-    font-size: 0.68rem; font-weight: 500;
-    color: var(--textMuted);
-    letter-spacing: 0.06em;
+.lp-link:hover {
+    color: var(--text);
+    text-decoration: underline;
 }

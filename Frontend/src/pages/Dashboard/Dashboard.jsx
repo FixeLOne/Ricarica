@@ -1,22 +1,21 @@
 import { useState } from "react";
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, Tooltip,
+  BarChart, Bar, AreaChart, Area, XAxis, Tooltip,
   ResponsiveContainer, CartesianGrid
 } from "recharts";
 import {
-  LayoutDashboard, Smartphone, FileText, Tag, Store, Users,
-  Settings, Moon, Sun, Bell, Search, TrendingUp, TrendingDown,
-  Plus, ChevronRight, Zap, Euro, Activity, CheckCircle2,
-  Clock, XCircle, MoreHorizontal, LogOut, RefreshCw
+  Home, Activity, CreditCard, Wallet, Grid, Settings,
+  Moon, Sun, Bell, Search, ArrowUpRight, ArrowDownLeft,
+  Plus, ChevronRight, Check, Clock, X
 } from "lucide-react";
 
 // ─── Mock Data ────────────────────────────────────────────────
 const ricaricheMensili = [
-  { mese: "GEN", tim: 42, vodafone: 28, iliad: 35, wind: 19 },
-  { mese: "FEB", tim: 37, vodafone: 31, iliad: 41, wind: 22 },
-  { mese: "MAR", tim: 55, vodafone: 39, iliad: 48, wind: 30 },
-  { mese: "APR", tim: 48, vodafone: 35, iliad: 52, wind: 27 },
-  { mese: "MAG", tim: 63, vodafone: 44, iliad: 58, wind: 33 },
+  { mese: "SET", tim: 42, vodafone: 28 },
+  { mese: "OTT", tim: 37, vodafone: 31 },
+  { mese: "NOV", tim: 55, vodafone: 39 },
+  { mese: "DIC", tim: 48, vodafone: 35 },
+  { mese: "GEN", tim: 63, vodafone: 44 },
 ];
 
 const profittoSettimanale = [
@@ -30,554 +29,437 @@ const profittoSettimanale = [
 ];
 
 const ultimeOperazioni = [
-  { id: 1, tipo: "Ricarica", cliente: "Mario Rossi", operatore: "TIM", importo: "+€12.50", profitto: "+€2.50", stato: "completata", ora: "14:32" },
-  { id: 2, tipo: "Ricarica", cliente: "Anna Bianchi", operatore: "Vodafone", importo: "+€20.00", profitto: "+€4.00", stato: "completata", ora: "13:58" },
-  { id: 3, tipo: "Fattura", cliente: "Azienda SRL", operatore: "—", importo: "+€150.00", profitto: "+€30.00", stato: "in attesa", ora: "12:15" },
-  { id: 4, tipo: "Ricarica", cliente: "Luca Ferrari", operatore: "Iliad", importo: "+€9.99", profitto: "+€1.50", stato: "completata", ora: "11:44" },
-  { id: 5, tipo: "Ricarica", cliente: "Sara Conti", operatore: "WindTre", importo: "+€15.00", profitto: "+€3.00", stato: "fallita", ora: "10:20" },
-  { id: 6, tipo: "Ricarica", cliente: "Marco Verdi", operatore: "TIM", importo: "+€30.00", profitto: "+€6.00", stato: "completata", ora: "09:55" },
+  { id: 1, tipo: "Ricarica", cliente: "Mario Rossi", data: "Oggi 14:32", importo: "+€12.50", stato: "Completata" },
+  { id: 2, tipo: "Ricarica", cliente: "Anna Bianchi", data: "Oggi 13:58", importo: "+€20.00", stato: "Completata" },
+  { id: 3, tipo: "Fattura", cliente: "Azienda SRL", data: "Ieri 12:15", importo: "+€150.00", stato: "In attesa" },
+  { id: 4, tipo: "Ricarica", cliente: "Luca Ferrari", data: "Ieri 11:44", importo: "+€9.99", stato: "Completata" },
+  { id: 5, tipo: "Ricarica", cliente: "Sara Conti", data: "20 Mag", importo: "-€15.00", stato: "Fallita" },
 ];
 
-const tariffe = [
-  { id: 1, operatore: "TIM", giga: 5, costo: "€8.00", vendita: "€10.50", margine: "23%" },
-  { id: 2, operatore: "Vodafone", giga: 10, costo: "€12.00", vendita: "€15.99", margine: "25%" },
-  { id: 3, operatore: "Iliad", giga: 50, costo: "€7.90", vendita: "€9.99", margine: "21%" },
-  { id: 4, operatore: "WindTre", giga: 20, costo: "€10.50", vendita: "€13.50", margine: "22%" },
+const contattiRapidi = [
+  { id: 1, nome: "Mario", img: "https://i.pravatar.cc/100?img=11" },
+  { id: 2, nome: "Anna", img: "https://i.pravatar.cc/100?img=5" },
+  { id: 3, nome: "Luca", img: "https://i.pravatar.cc/100?img=8" },
+  { id: 4, nome: "Sara", img: "https://i.pravatar.cc/100?img=9" },
 ];
 
-const boutique = [
-  { nome: "Sambuceto Centro", operazioni: 147, profitto: "€312.50", trend: +12 },
-  { nome: "Pescara Corso", operazioni: 89, profitto: "€198.20", trend: +5 },
-  { nome: "Chieti Scalo", operazioni: 64, profitto: "€134.80", trend: -3 },
-];
-
-// ─── Operator Colors ──────────────────────────────────────────
-const opColor = {
-  TIM: "#0066CC",
-  Vodafone: "#E60000",
-  Iliad: "#FF3C00",
-  WindTre: "#FF6600",
-  "—": "#888",
-};
-
-const opBg = {
-  TIM: "#E6F0FF",
-  Vodafone: "#FFE6E6",
-  Iliad: "#FFF0EB",
-  WindTre: "#FFF3EB",
-  "—": "#F0F0F0",
-};
-
-// ─── Theme ────────────────────────────────────────────────────
+// ─── Theme Configurations (Stile "Nova") ──────────────────────
 const getTheme = (dark) =>
-  dark
-    ? {
-        bg: "#0D1117",
-        surface: "#161B22",
-        surface2: "#1C2128",
-        border: "#30363D",
-        text: "#E6EDF3",
-        textMuted: "#8B949E",
-        accent: "#7C6FF7",
-        accentLight: "#1E1A4A",
-        accentText: "#A78BFA",
-        green: "#3FB950",
-        greenBg: "#0D2116",
-        red: "#F85149",
-        redBg: "#2C1115",
-        amber: "#D29922",
-        amberBg: "#2B2000",
-        barColors: ["#7C6FF7", "#60A5FA", "#34D399", "#F59E0B"],
-        chartGrid: "#21262D",
-        tooltipBg: "#1C2128",
-      }
-    : {
-        bg: "#EEF0F7",
-        surface: "#FFFFFF",
-        surface2: "#F6F7FE",
-        border: "#E2E5F0",
-        text: "#1A1D35",
-        textMuted: "#6B7280",
-        accent: "#6366F1",
-        accentLight: "#EEF0FF",
-        accentText: "#6366F1",
-        green: "#059669",
-        greenBg: "#ECFDF5",
-        red: "#DC2626",
-        redBg: "#FEF2F2",
-        amber: "#D97706",
-        amberBg: "#FFFBEB",
-        barColors: ["#6366F1", "#60A5FA", "#34D399", "#F59E0B"],
-        chartGrid: "#F0F2FA",
-        tooltipBg: "#FFFFFF",
-      };
+    dark
+        ? {
+          bg: "#11131F",          // Sfondo scuro profondo (blu navy)
+          surface: "#1A1D2D",     // Card scure
+          surfaceHover: "#23273B",
+          border: "rgba(255,255,255,0.05)",
+          text: "#FFFFFF",
+          textMuted: "#8A8D9E",
+          accent: "#6366F1",      // Indaco/Viola
+          accentGradient: "linear-gradient(135deg, #2E335A 0%, #1C1B33 100%)", // Gradiente scuro Nova
+          pillBg: "rgba(255,255,255,0.1)",
+          barColor: "#6366F1",
+          barColorLight: "#8B8DFF",
+          status: {
+            Completata: { bg: "transparent", color: "#FFFFFF" },
+            "In attesa": { bg: "transparent", color: "#FFFFFF", border: "1px solid #6366F1" },
+            Fallita: { bg: "transparent", color: "#EF4444" }
+          }
+        }
+        : {
+          bg: "#F4F5F8",          // Sfondo grigio chiarissimo
+          surface: "#FFFFFF",     // Card bianche
+          surfaceHover: "#F9FAFB",
+          border: "rgba(0,0,0,0.04)",
+          text: "#111827",
+          textMuted: "#6B7280",
+          accent: "#6366F1",
+          accentGradient: "linear-gradient(135deg, #E0E7FF 0%, #EDE9FE 100%)", // Gradiente chiaro Nova
+          pillBg: "rgba(255,255,255,0.6)",
+          barColor: "#6366F1",
+          barColorLight: "#A5B4FC",
+          status: {
+            Completata: { bg: "transparent", color: "#111827" },
+            "In attesa": { bg: "transparent", color: "#111827", border: "1px solid #111827" },
+            Fallita: { bg: "transparent", color: "#EF4444" }
+          }
+        };
 
 // ─── Sub-components ───────────────────────────────────────────
-function NavItem({ icon: Icon, label, active, collapsed, t, onClick }) {
-  return (
-    <div
-      onClick={onClick}
-      title={collapsed ? label : undefined}
-      style={{
-        display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
-        borderRadius: 10, cursor: "pointer", transition: "all 0.15s",
-        background: active ? t.accentLight : "transparent",
-        color: active ? t.accent : t.textMuted,
-        fontWeight: active ? 600 : 400,
-        marginBottom: 2,
-      }}
-    >
-      <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
-      {!collapsed && <span style={{ fontSize: 13 }}>{label}</span>}
-    </div>
-  );
-}
-
-function StatCard({ label, value, sub, trend, icon: Icon, t }) {
-  const up = trend >= 0;
-  return (
-    <div style={{
-      background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16,
-      padding: "18px 20px", flex: 1, minWidth: 0,
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: 12, color: t.textMuted, fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>{label}</p>
-          <p style={{ margin: "6px 0 2px", fontSize: 26, fontWeight: 700, color: t.text, letterSpacing: "-0.03em" }}>{value}</p>
-          <p style={{ margin: 0, fontSize: 12, color: up ? t.green : t.red, fontWeight: 600 }}>
-            {up ? "▲" : "▼"} {Math.abs(trend)}% vs ieri
-          </p>
-        </div>
-        <div style={{
-          width: 40, height: 40, borderRadius: 10, background: t.accentLight,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <Icon size={18} color={t.accent} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ stato, t }) {
-  const cfg = {
-    completata: { bg: t.greenBg, color: t.green, icon: CheckCircle2, label: "Completata" },
-    "in attesa": { bg: t.amberBg, color: t.amber, icon: Clock, label: "In attesa" },
-    fallita: { bg: t.redBg, color: t.red, icon: XCircle, label: "Fallita" },
-  }[stato] || { bg: t.surface2, color: t.textMuted, icon: Activity, label: stato };
-  const Icon = cfg.icon;
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11,
-      background: cfg.bg, color: cfg.color, borderRadius: 6, padding: "3px 8px", fontWeight: 600,
-    }}>
-      <Icon size={11} />
-      {cfg.label}
-    </span>
-  );
-}
-
-function OperatoreBadge({ nome }) {
-  return (
-    <span style={{
-      fontSize: 11, fontWeight: 700, background: opBg[nome] || "#F0F0F0",
-      color: opColor[nome] || "#888", borderRadius: 6, padding: "2px 8px",
-    }}>{nome}</span>
-  );
-}
-
-const CustomTooltip = ({ active, payload, label, t }) => {
+const CustomTooltip = ({ active, payload, t }) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{
-      background: t.tooltipBg, border: `1px solid ${t.border}`, borderRadius: 10,
-      padding: "10px 14px", fontSize: 12, color: t.text, boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
-    }}>
-      <p style={{ margin: "0 0 6px", fontWeight: 600 }}>{label}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ margin: "2px 0", color: p.color }}>
-          {p.name}: <strong>{typeof p.value === "number" && p.name !== "Profitto (€)" ? p.value : `€${p.value}`}</strong>
-        </p>
-      ))}
-    </div>
+      <div style={{
+        background: t.surface, border: `1px solid ${t.border}`, borderRadius: 12,
+        padding: "8px 12px", fontSize: 12, color: t.text, boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+      }}>
+        <p style={{ margin: 0, fontWeight: 700 }}>{payload[0].value}</p>
+      </div>
   );
 };
 
 // ─── Main Component ───────────────────────────────────────────
 export default function Dashboard() {
   const [dark, setDark] = useState(false);
-  const [nav, setNav] = useState("dashboard");
+  const [activeNav, setActiveNav] = useState("home");
   const t = getTheme(dark);
 
+  // Stili base per le card
+  const cardStyle = {
+    background: t.surface,
+    borderRadius: 28,
+    padding: 28,
+    border: `1px solid ${t.border}`,
+    boxShadow: dark ? "0 20px 40px rgba(0,0,0,0.2)" : "0 10px 30px rgba(0,0,0,0.03)",
+  };
+
   return (
-    <div style={{
-      display: "flex", height: "100vh", background: t.bg, color: t.text,
-      fontFamily: "'DM Sans', 'Segoe UI', system-ui, sans-serif",
-      overflow: "hidden",
-    }}>
-      {/* ── Sidebar ── */}
       <div style={{
-        width: 220, flexShrink: 0, background: t.surface,
-        borderRight: `1px solid ${t.border}`, display: "flex",
-        flexDirection: "column", padding: "20px 12px",
+        display: "flex", height: "100vh", background: t.bg, color: t.text,
+        fontFamily: "'Inter', 'Plus Jakarta Sans', sans-serif", overflow: "hidden",
+        transition: "background 0.4s ease"
       }}>
-        {/* Logo */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 10px 24px" }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 10, background: t.accent,
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Zap size={18} color="#fff" fill="#fff" />
-          </div>
-          <div>
-            <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: t.text }}>LX</p>
-            <p style={{ margin: 0, fontSize: 10, color: t.textMuted }}>Gestionale</p>
-          </div>
-        </div>
 
-        {/* Nav */}
-        <nav style={{ flex: 1 }}>
-          <p style={{ margin: "0 0 8px 14px", fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Principale</p>
-          {[
-            { id: "dashboard", icon: LayoutDashboard, label: "Dashboard" },
-            { id: "ricariche", icon: Smartphone, label: "Ricariche" },
-            { id: "fatture", icon: FileText, label: "Fatture" },
-            { id: "tariffe", icon: Tag, label: "Tariffe" },
-          ].map((item) => (
-            <NavItem key={item.id} {...item} active={nav === item.id} t={t} onClick={() => setNav(item.id)} />
-          ))}
-          <p style={{ margin: "16px 0 8px 14px", fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.08em", textTransform: "uppercase" }}>Gestione</p>
-          {[
-            { id: "negozi", icon: Store, label: "Boutique" },
-            { id: "dipendenti", icon: Users, label: "Dipendenti" },
-          ].map((item) => (
-            <NavItem key={item.id} {...item} active={nav === item.id} t={t} onClick={() => setNav(item.id)} />
-          ))}
-        </nav>
-
-        {/* Bottom */}
-        <div style={{ borderTop: `1px solid ${t.border}`, paddingTop: 12 }}>
-          <NavItem icon={Settings} label="Impostazioni" active={false} t={t} />
-          <NavItem icon={LogOut} label="Logout" active={false} t={t} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px 0" }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: "50%", background: t.accent,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: 700, fontSize: 13,
-            }}>A</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: t.text }}>Admin</p>
-              <p style={{ margin: 0, fontSize: 11, color: t.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>admin@lxgestionale.it</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Main Content ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-
-        {/* Header */}
+        {/* ── Sidebar (Stile Minimal Nova) ── */}
         <div style={{
-          background: t.surface, borderBottom: `1px solid ${t.border}`,
-          padding: "14px 24px", display: "flex", alignItems: "center", gap: 16, flexShrink: 0,
+          width: 90, flexShrink: 0, display: "flex", flexDirection: "column",
+          alignItems: "center", padding: "32px 0", gap: 32, borderRight: `1px solid ${t.border}`
         }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.text }}>Dashboard</p>
-            <p style={{ margin: 0, fontSize: 12, color: t.textMuted }}>Giovedì 21 Maggio 2026</p>
-          </div>
+          {/* Logo */}
           <div style={{
-            display: "flex", alignItems: "center", gap: 8, background: t.surface2,
-            border: `1px solid ${t.border}`, borderRadius: 10, padding: "7px 12px",
+            width: 44, height: 44, borderRadius: 14, background: t.text,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: t.bg, fontWeight: 800, fontSize: 18, cursor: "pointer"
           }}>
-            <Search size={14} color={t.textMuted} />
-            <span style={{ fontSize: 13, color: t.textMuted }}>Cerca operazione…</span>
+            LX
           </div>
-          <button
-            onClick={() => setDark(!dark)}
-            style={{
-              width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.border}`,
-              background: t.surface2, cursor: "pointer", display: "flex",
-              alignItems: "center", justifyContent: "center", color: t.textMuted,
-            }}
-          >
-            {dark ? <Sun size={16} /> : <Moon size={16} />}
-          </button>
+
+          {/* Navigation Icons */}
+          <nav style={{ display: "flex", flexDirection: "column", gap: 16, flex: 1 }}>
+            {[
+              { id: "home", icon: Home },
+              { id: "chart", icon: Activity },
+              { id: "cards", icon: CreditCard },
+              { id: "wallet", icon: Wallet },
+              { id: "grid", icon: Grid },
+              { id: "settings", icon: Settings },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeNav === item.id;
+              return (
+                  <div key={item.id} onClick={() => setActiveNav(item.id)} style={{
+                    width: 48, height: 48, borderRadius: 16, cursor: "pointer",
+                    background: isActive ? t.accent + "20" : "transparent",
+                    color: isActive ? t.accent : t.textMuted,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "all 0.2s ease"
+                  }}>
+                    <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  </div>
+              );
+            })}
+          </nav>
+
+          {/* User Profile */}
           <div style={{
-            width: 36, height: 36, borderRadius: 10, border: `1px solid ${t.border}`,
-            background: t.surface2, cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center", color: t.textMuted, position: "relative",
-          }}>
-            <Bell size={16} />
-            <div style={{
-              position: "absolute", top: 7, right: 7, width: 7, height: 7,
-              borderRadius: "50%", background: t.red, border: `1.5px solid ${t.surface}`,
-            }} />
-          </div>
+            width: 44, height: 44, borderRadius: "50%", background: t.surfaceHover,
+            border: `2px solid ${t.border}`, cursor: "pointer",
+            backgroundImage: "url('https://i.pravatar.cc/100?img=33')",
+            backgroundSize: "cover"
+          }} />
         </div>
 
-        {/* Scrollable body */}
-        <div style={{ flex: 1, overflowY: "auto", padding: 24, display: "flex", gap: 20 }}>
+        {/* ── Main Content Area ── */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflowY: "auto", padding: "32px 40px" }}>
 
-          {/* ── Left/Main ── */}
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
-
-            {/* Stats row */}
-            <div style={{ display: "flex", gap: 14 }}>
-              <StatCard label="Operazioni Oggi" value="247" trend={+8} icon={Activity} t={t} />
-              <StatCard label="Profitto Oggi" value="€389" trend={+12} icon={Euro} t={t} />
-              <StatCard label="Ricariche Mese" value="1.842" trend={+5} icon={Smartphone} t={t} />
-              <StatCard label="Fatture Pendenti" value="12" trend={-3} icon={FileText} t={t} />
+          {/* Header */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
+            <div>
+              <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em" }}>Gestionale</h1>
+              <p style={{ margin: "4px 0 0", fontSize: 15, color: t.textMuted }}>La tua area operativa personale</p>
             </div>
-
-            {/* Charts row */}
-            <div style={{ display: "flex", gap: 14 }}>
-              {/* Bar chart */}
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              {/* Top pill */}
               <div style={{
-                flex: 2, background: t.surface, border: `1px solid ${t.border}`,
-                borderRadius: 16, padding: "20px 20px 14px",
+                display: "flex", alignItems: "center", gap: 12, background: t.surface,
+                borderRadius: 99, padding: "8px 16px", border: `1px solid ${t.border}`,
+                fontSize: 14, fontWeight: 600
               }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <div>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: t.text }}>Ricariche per Operatore</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: t.textMuted }}>Ultimi 5 mesi</p>
-                  </div>
-                  <span style={{ fontSize: 12, color: t.textMuted }}>2026</span>
-                </div>
-                {/* Legend */}
-                <div style={{ display: "flex", gap: 16, margin: "10px 0 14px", flexWrap: "wrap" }}>
-                  {["TIM", "Vodafone", "Iliad", "WindTre"].map((op, i) => (
-                    <span key={op} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: t.textMuted }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 3, background: t.barColors[i] }} />
-                      {op}
-                    </span>
-                  ))}
-                </div>
-                <div style={{ position: "relative", width: "100%", height: 180 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={ricaricheMensili} barSize={8} barGap={3}>
-                      <CartesianGrid strokeDasharray="3 3" stroke={t.chartGrid} vertical={false} />
-                      <XAxis dataKey="mese" tick={{ fontSize: 11, fill: t.textMuted }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: t.textMuted }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<CustomTooltip t={t} />} />
-                      <Bar dataKey="tim" name="TIM" fill={t.barColors[0]} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="vodafone" name="Vodafone" fill={t.barColors[1]} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="iliad" name="Iliad" fill={t.barColors[2]} radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="wind" name="WindTre" fill={t.barColors[3]} radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <span>•••• 7291</span>
+                <span style={{ color: t.textMuted }}>05/26</span>
               </div>
-
-              {/* Area chart */}
-              <div style={{
-                flex: 1, background: t.accentLight, border: `1px solid ${t.border}`,
-                borderRadius: 16, padding: "20px 20px 14px",
+              {/* Theme Toggle */}
+              <button onClick={() => setDark(!dark)} style={{
+                width: 44, height: 44, borderRadius: "50%", background: t.surface,
+                border: `1px solid ${t.border}`, cursor: "pointer", color: t.text,
+                display: "flex", alignItems: "center", justifyContent: "center"
               }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: t.text }}>Andamento Profitto</p>
-                <p style={{ margin: "2px 0 0", fontSize: 12, color: t.textMuted }}>Questa settimana</p>
-                <p style={{ margin: "12px 0 0", fontSize: 32, fontWeight: 800, color: t.accent, letterSpacing: "-0.04em" }}>€1.711</p>
-                <p style={{ margin: "2px 0 14px", fontSize: 12, color: t.green, fontWeight: 600 }}>▲ +18.4% vs settimana scorsa</p>
-                <div style={{ position: "relative", width: "100%", height: 100 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={profittoSettimanale}>
-                      <defs>
-                        <linearGradient id="profGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={t.accent} stopOpacity={0.25} />
-                          <stop offset="95%" stopColor={t.accent} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Tooltip content={<CustomTooltip t={t} />} />
-                      <Area type="monotone" dataKey="profitto" name="Profitto (€)" stroke={t.accent} strokeWidth={2} fill="url(#profGrad)" dot={false} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-            </div>
-
-            {/* Operations table */}
-            <div style={{
-              background: t.surface, border: `1px solid ${t.border}`,
-              borderRadius: 16, overflow: "hidden",
-            }}>
-              <div style={{
-                padding: "16px 20px", display: "flex",
-                justifyContent: "space-between", alignItems: "center",
-                borderBottom: `1px solid ${t.border}`,
-              }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: t.text }}>Ultime Operazioni</p>
-                  <p style={{ margin: "1px 0 0", fontSize: 12, color: t.textMuted }}>Operazioni di oggi</p>
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{
-                    display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-                    borderRadius: 8, border: `1px solid ${t.border}`, background: "transparent",
-                    color: t.textMuted, cursor: "pointer", fontSize: 12,
-                  }}>
-                    <RefreshCw size={12} /> Aggiorna
-                  </button>
-                  <button style={{
-                    display: "flex", alignItems: "center", gap: 6, padding: "6px 12px",
-                    borderRadius: 8, border: "none", background: t.accent,
-                    color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                  }}>
-                    <Plus size={12} /> Nuova Ricarica
-                  </button>
-                </div>
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ background: t.surface2 }}>
-                    {["Tipo", "Cliente", "Operatore", "Ora", "Importo", "Profitto", "Stato"].map((h) => (
-                      <th key={h} style={{
-                        padding: "10px 16px", textAlign: "left", fontWeight: 600,
-                        fontSize: 11, color: t.textMuted, letterSpacing: "0.04em",
-                        textTransform: "uppercase", borderBottom: `1px solid ${t.border}`,
-                      }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {ultimeOperazioni.map((op, i) => (
-                    <tr key={op.id} style={{
-                      borderBottom: i < ultimeOperazioni.length - 1 ? `1px solid ${t.border}` : "none",
-                      transition: "background 0.1s",
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = t.surface2}
-                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                    >
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 700,
-                          color: op.tipo === "Ricarica" ? t.accent : t.amber,
-                          background: op.tipo === "Ricarica" ? t.accentLight : t.amberBg,
-                          borderRadius: 6, padding: "2px 8px",
-                        }}>{op.tipo}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px", fontWeight: 500 }}>{op.cliente}</td>
-                      <td style={{ padding: "12px 16px" }}><OperatoreBadge nome={op.operatore} /></td>
-                      <td style={{ padding: "12px 16px", color: t.textMuted }}>{op.ora}</td>
-                      <td style={{ padding: "12px 16px", fontWeight: 700, color: t.green }}>{op.importo}</td>
-                      <td style={{ padding: "12px 16px", fontWeight: 600, color: t.textMuted }}>{op.profitto}</td>
-                      <td style={{ padding: "12px 16px" }}><StatusBadge stato={op.stato} t={t} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* ── Right Panel ── */}
-          <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Boutique list */}
-            <div style={{
-              background: t.surface, border: `1px solid ${t.border}`,
-              borderRadius: 16, padding: "18px 18px 10px",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: t.text }}>Le tue Boutique</p>
-                <ChevronRight size={16} color={t.textMuted} />
-              </div>
-              {boutique.map((b, i) => (
-                <div key={i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "10px 0",
-                  borderBottom: i < boutique.length - 1 ? `1px solid ${t.border}` : "none",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 9, background: t.accentLight,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <Store size={15} color={t.accent} />
-                    </div>
-                    <div>
-                      <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: t.text }}>{b.nome}</p>
-                      <p style={{ margin: 0, fontSize: 11, color: t.textMuted }}>{b.operazioni} operazioni</p>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: t.text }}>{b.profitto}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: b.trend >= 0 ? t.green : t.red, fontWeight: 600 }}>
-                      {b.trend >= 0 ? "▲" : "▼"} {Math.abs(b.trend)}%
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Tariffe attive */}
-            <div style={{
-              background: t.surface, border: `1px solid ${t.border}`,
-              borderRadius: 16, padding: "18px 18px 10px",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-                <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: t.text }}>Tariffe Attive</p>
-                <button style={{
-                  display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-                  borderRadius: 7, border: `1px solid ${t.border}`, background: "transparent",
-                  color: t.textMuted, cursor: "pointer", fontSize: 11,
-                }}>
-                  <Plus size={11} /> Aggiungi
-                </button>
-              </div>
-              {tariffe.map((t2, i) => (
-                <div key={i} style={{
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                  padding: "9px 0",
-                  borderBottom: i < tariffe.length - 1 ? `1px solid ${t.border}` : "none",
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <OperatoreBadge nome={t2.operatore} />
-                    <span style={{ fontSize: 12, color: t.textMuted }}>{t2.giga} GB</span>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: t.text }}>{t2.vendita}</p>
-                    <p style={{ margin: 0, fontSize: 11, color: t.green, fontWeight: 600 }}>+{t2.margine}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Quick recharge */}
-            <div style={{
-              background: `linear-gradient(135deg, ${t.accent}, #8B5CF6)`,
-              borderRadius: 16, padding: 18,
-            }}>
-              <p style={{ margin: "0 0 4px", fontSize: 14, fontWeight: 700, color: "#fff" }}>Ricarica Rapida</p>
-              <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.75)" }}>Inserisci numero e importo</p>
-              <input
-                type="tel"
-                placeholder="Numero di telefono"
-                style={{
-                  width: "100%", padding: "9px 12px", borderRadius: 9, border: "none",
-                  background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 13,
-                  outline: "none", marginBottom: 8, boxSizing: "border-box",
-                }}
-              />
-              <div style={{ display: "flex", gap: 8 }}>
-                {["€10", "€20", "€30", "€50"].map((v) => (
-                  <button key={v} style={{
-                    flex: 1, padding: "7px 0", borderRadius: 7,
-                    border: "1.5px solid rgba(255,255,255,0.35)",
-                    background: "rgba(255,255,255,0.1)", color: "#fff",
-                    cursor: "pointer", fontSize: 12, fontWeight: 600,
-                  }}>{v}</button>
-                ))}
-              </div>
-              <button style={{
-                width: "100%", marginTop: 10, padding: "10px 0", borderRadius: 9,
-                border: "none", background: "#fff", color: t.accent,
-                fontWeight: 700, fontSize: 13, cursor: "pointer",
-              }}>
-                Procedi Ricarica →
+                {dark ? <Sun size={20} /> : <Moon size={20} />}
               </button>
             </div>
+          </div>
 
+          {/* Dashboard Grid Layout */}
+          <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
+
+            {/* ── Left Column (Main Stats & Charts) ── */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 32 }}>
+
+              {/* Hero Card (Fatturato) */}
+              <div style={{
+                ...cardStyle, background: t.accentGradient, position: "relative",
+                overflow: "hidden", display: "flex", justifyContent: "space-between"
+              }}>
+                {/* Graphic Blob */}
+                <div style={{
+                  position: "absolute", top: -50, right: -50, width: 300, height: 300,
+                  background: t.accent, opacity: 0.15, filter: "blur(60px)", borderRadius: "50%"
+                }} />
+
+                <div>
+                  <p style={{ margin: 0, fontSize: 14, color: dark ? t.textMuted : "#4F46E5", fontWeight: 600 }}>Fatturato Totale</p>
+                  <h2 style={{ margin: "8px 0 32px", fontSize: 42, fontWeight: 800, letterSpacing: "-0.04em", color: dark ? "#FFF" : "#111827" }}>
+                    €128.450
+                  </h2>
+
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <div style={{ background: t.pillBg, padding: "10px 16px", borderRadius: 20 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: dark ? "#FFF" : "#111827" }}>€24.1k</p>
+                      <p style={{ margin: 0, fontSize: 12, color: dark ? t.textMuted : "#4B5563" }}>Ricariche</p>
+                    </div>
+                    <div style={{ background: t.accent, padding: "10px 16px", borderRadius: 20 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#FFF" }}>€67.8k</p>
+                      <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>Fatture</p>
+                    </div>
+                    <div style={{ background: t.pillBg, padding: "10px 16px", borderRadius: 20 }}>
+                      <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: dark ? "#FFF" : "#111827" }}>€36.4k</p>
+                      <p style={{ margin: 0, fontSize: 12, color: dark ? t.textMuted : "#4B5563" }}>Servizi</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, justifyContent: "center", zIndex: 1 }}>
+                  {/* Decorative element like Nova */}
+                  <div style={{ width: 140, height: 140, background: "rgba(255,255,255,0.1)", borderRadius: 32, marginBottom: 16, border: "1px solid rgba(255,255,255,0.2)", backdropFilter: "blur(10px)" }} />
+                  <button style={{
+                    background: t.surface, color: t.text, border: "none", padding: "14px 24px",
+                    borderRadius: 99, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+                  }}>
+                    <ArrowDownLeft size={18} /> Ricevi
+                  </button>
+                  <button style={{
+                    background: t.accent, color: "#FFF", border: "none", padding: "14px 24px",
+                    borderRadius: 99, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
+                    boxShadow: "0 4px 12px rgba(99,102,241,0.3)"
+                  }}>
+                    <ArrowUpRight size={18} /> Nuova Op.
+                  </button>
+                </div>
+              </div>
+
+              {/* Charts Row */}
+              <div style={{ display: "flex", gap: 32 }}>
+
+                {/* Monthly Spending -> Ricariche Mensili */}
+                <div style={{ ...cardStyle, flex: 1, padding: "28px 28px 16px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Volume Mensile</h3>
+                    <span style={{ fontSize: 13, color: t.textMuted, fontWeight: 600 }}>2026</span>
+                  </div>
+                  <div style={{ height: 180 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={ricaricheMensili} barSize={32}>
+                        <XAxis dataKey="mese" axisLine={false} tickLine={false} tick={{ fill: t.textMuted, fontSize: 12, fontWeight: 600 }} dy={10} />
+                        <Tooltip content={<CustomTooltip t={t} />} cursor={{fill: 'transparent'}}/>
+                        <Bar dataKey="tim" stackId="a" fill={t.barColorLight} radius={[0, 0, 16, 16]} />
+                        <Bar dataKey="vodafone" stackId="a" fill={t.barColor} radius={[16, 16, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Portfolio Growth -> Andamento Profitti */}
+                <div style={{ ...cardStyle, flex: 1, background: t.accentGradient, position: "relative", overflow: "hidden" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: dark ? "#FFF" : "#111827" }}>Crescita Profitto</h3>
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: t.pillBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <ChevronRight size={16} color={dark ? "#FFF" : "#111827"} />
+                    </div>
+                  </div>
+                  <h2 style={{ margin: "16px 0 4px", fontSize: 36, fontWeight: 800, color: dark ? "#FFF" : "#111827" }}>+12.4%</h2>
+                  <p style={{ margin: 0, fontSize: 13, color: dark ? t.textMuted : "#4B5563", fontWeight: 500 }}>Rispetto all'anno precedente</p>
+
+                  <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={profittoSettimanale}>
+                        <defs>
+                          <linearGradient id="colorProf" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={t.accent} stopOpacity={0.4} />
+                            <stop offset="95%" stopColor={t.accent} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="profitto" stroke={t.accent} strokeWidth={3} fill="url(#colorProf)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Row - Scheduled Bills / Info */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Promemoria Scadenze</h3>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: t.textMuted, cursor: "pointer" }}>Vedi tutti</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {[
+                    { icon: "A", title: "Affitto Locale", sub: "Scade Oggi", amount: "€1.200", freq: "Mensile", alert: true },
+                    { icon: "U", title: "Utenze Elettriche", sub: "15 Mag", amount: "€340", freq: "Bimestrale" }
+                  ].map((bill, i) => (
+                      <div key={i} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        background: dark ? "rgba(255,255,255,0.02)" : "#F9FAFB", padding: 16, borderRadius: 20
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          <div style={{ width: 40, height: 40, borderRadius: "50%", background: t.surfaceHover, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 }}>
+                            {bill.icon}
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{bill.title}</p>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                              {bill.alert && <span style={{ width: 6, height: 6, borderRadius: "50%", background: t.accent }} />}
+                              <p style={{ margin: 0, fontSize: 12, color: t.textMuted }}>{bill.sub}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+                          <span style={{ fontSize: 14, color: t.textMuted, fontWeight: 500 }}>{bill.freq}</span>
+                          <span style={{ fontSize: 16, fontWeight: 800 }}>{bill.amount}</span>
+                        </div>
+                      </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* ── Right Column (Activity & Send Money) ── */}
+            <div style={{ width: 380, flexShrink: 0, display: "flex", flexDirection: "column", gap: 32 }}>
+
+              {/* Activity List */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>Attività</h3>
+                    <p style={{ margin: "2px 0 0", fontSize: 13, color: t.textMuted }}>Ultime operazioni</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ width: 40, height: 40, borderRadius: "50%", background: t.surfaceHover, border: "none", color: t.text, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      <Search size={18} />
+                    </button>
+                    <button style={{ background: t.text, color: t.bg, border: "none", padding: "0 16px", borderRadius: 99, fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                      Vedi tutte
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {ultimeOperazioni.map((op) => (
+                      <div key={op.id} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "16px 0", borderBottom: op.id !== 5 ? `1px solid ${t.border}` : "none"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          <div style={{
+                            width: 44, height: 44, borderRadius: "50%", background: t.surfaceHover,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            color: op.importo.includes("-") ? t.text : t.accent
+                          }}>
+                            {op.importo.includes("-") ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>{op.cliente}</p>
+                            <p style={{ margin: "2px 0 0", fontSize: 13, color: t.textMuted }}>{op.data}</p>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                          {/* Status Pill Nova Style */}
+                          <span style={{
+                            fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 99,
+                            background: t.status[op.stato].bg, color: t.status[op.stato].color,
+                            border: t.status[op.stato].border || "none",
+                            opacity: op.stato === "Completata" ? 0.7 : 1
+                          }}>
+                        {op.stato}
+                      </span>
+                          <span style={{ fontSize: 16, fontWeight: 700 }}>{op.importo}</span>
+                        </div>
+                      </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* AI Insight Box (Nova Style) */}
+              <div style={{ ...cardStyle, background: dark ? "rgba(255,255,255,0.02)" : "#F9FAFB", padding: 24 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                  <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700 }}>Ottimizza i profitti con l'AI</h4>
+                  <span style={{ color: t.accent }}>✦</span>
+                </div>
+                <p style={{ margin: "0 0 12px", fontSize: 13, color: t.textMuted, lineHeight: 1.5 }}>
+                  Ottieni raccomandazioni personalizzate per migliorare i margini delle tue ricariche.
+                </p>
+                <a href="#" style={{ color: t.text, fontSize: 13, fontWeight: 700, textDecoration: "underline" }}>Esplora suggerimenti</a>
+              </div>
+
+              {/* Quick Send Money / Ricarica Rapida */}
+              <div style={{ ...cardStyle }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Invia Ricarica</h3>
+                  <div style={{ display: "flex", gap: 8, background: t.surfaceHover, padding: 4, borderRadius: 99 }}>
+                    <span style={{ padding: "4px 12px", background: t.surface, borderRadius: 99, fontSize: 12, fontWeight: 600, boxShadow: "0 2px 5px rgba(0,0,0,0.05)" }}>Recenti</span>
+                    <span style={{ padding: "4px 12px", fontSize: 12, fontWeight: 600, color: t.textMuted }}>Preferiti</span>
+                  </div>
+                </div>
+
+                {/* Avatars */}
+                <div style={{ display: "flex", gap: 16, marginBottom: 24, overflowX: "auto" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 48, height: 48, borderRadius: "50%", background: t.surfaceHover, border: `1px dashed ${t.textMuted}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                      <Plus size={20} color={t.textMuted} />
+                    </div>
+                  </div>
+                  {contattiRapidi.map((c) => (
+                      <div key={c.id} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                        <img src={c.img} alt={c.nome} style={{ width: 48, height: 48, borderRadius: "50%", objectFit: "cover" }} />
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>{c.nome}</span>
+                      </div>
+                  ))}
+                </div>
+
+                {/* Amount Input */}
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <input
+                      type="text"
+                      defaultValue="€50.00"
+                      style={{
+                        flex: 1, border: "none", background: "transparent",
+                        fontSize: 32, fontWeight: 800, color: t.text, outline: "none",
+                        width: "100%"
+                      }}
+                  />
+                  <button style={{
+                    background: t.text, color: t.bg, border: "none", padding: "14px 24px",
+                    borderRadius: 99, fontWeight: 700, fontSize: 14, cursor: "pointer",
+                    flexShrink: 0
+                  }}>
+                    Invia
+                  </button>
+                </div>
+              </div>
+
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }
