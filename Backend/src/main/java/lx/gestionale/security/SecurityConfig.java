@@ -7,6 +7,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -29,9 +30,12 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
+                .cors(Customizer.withDefaults())                  // ← FIX 1: attiva CorsConfig
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ← FIX 2: preflight libero
+
                         // Accesso pubblico
                         .requestMatchers("/api/v2/auth/**").permitAll()
 
@@ -45,13 +49,16 @@ public class SecurityConfig {
                         // Altri accessi per entrambi.
                         .requestMatchers("/api/v2/boutique/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
 
+                        // Dati Aziendali e logo
+                        .requestMatchers(HttpMethod.GET, "/api/v2/azienda/**").hasAnyRole("ADMIN", "DIPENDENTE")
+                        .requestMatchers(HttpMethod.PUT, "/api/v2/azienda/**").hasRole("ADMIN")
+
                         // Altre rotte esistenti
                         .requestMatchers("/api/v2/export/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         .requestMatchers("/api/v2/dashboard/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         .requestMatchers("/api/v2/tariffe/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/v2/ricariche/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         .requestMatchers("/api/v2/fatture/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
-                        .requestMatchers("/api/v2/azienda/**").hasRole("ADMIN")
 
                         // Chiusura
                         .anyRequest().authenticated()

@@ -23,4 +23,6 @@ public class CreaBoutiqueRequest {
     @NotBlank
     @Size(min = 8)
     private String passwordAccount;
+
+    private boolean fattureAbilitate=false; // default false
 }

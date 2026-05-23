@@ -22,7 +22,9 @@ public class DashboardController {
      * DIPENDENTE  → riepilogo della propria boutique (boutiqueId dal token)
      * ADMIN       → riepilogo aggregato di tutte le sue boutique
      * SUPER_ADMIN → aggrega tutte le boutique del sistema
+     * Si intende per oggi
      */
+
     @GetMapping("/riepilogo")
     public ResponseEntity<?> getRiepilogo(@AuthenticationPrincipal UserPrincipal principal) {
         if ("DIPENDENTE".equals(principal.getRuolo())) {

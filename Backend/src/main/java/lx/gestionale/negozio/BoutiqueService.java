@@ -33,6 +33,7 @@ public class BoutiqueService {
         boutique.setNome(request.getNome());
         boutique.setCittà(request.getCittà());
         boutique.setAdmin(admin);
+        boutique.setFattureAbilitate(request.isFattureAbilitate());
         boutiqueRepository.save(boutique);
 
         utenteRepository.save(buildAccount(request, boutique));
