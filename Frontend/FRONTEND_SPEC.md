@@ -2,7 +2,7 @@
 
 - **Framework:** React 19 + Vite 8
 - **Routing:** React Router v7
-- **Styling:** Tailwind CSS v3 + shadcn/ui (preset Nova, libreria Radix)
+- **Styling:** Tailwind CSS v4 + shadcn/ui (preset Nova, libreria Radix)
 - **Animazioni:** Framer Motion
 - **Form:** React Hook Form + Zod
 - **Grafici:** Recharts
