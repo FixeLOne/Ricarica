@@ -18,9 +18,8 @@ const RUOLO_BADGE = {
 };
 
 export default function Topbar({ onMenuClick }) {
-  const { utente, logout } = useAuth();
+  const { utente, logout, boutiqueName } = useAuth();
   const navigate = useNavigate();
-
   const iniziali = utente?.username?.slice(0, 2).toUpperCase() ?? "??";
   const badge = RUOLO_BADGE[utente?.ruolo] ?? { label: utente?.ruolo, className: "" };
 
@@ -35,7 +34,7 @@ export default function Topbar({ onMenuClick }) {
       {/* Sinistra: hamburger solo mobile */}
       <button
         onClick={onMenuClick}
-        className="flex md:hidden items-center justify-center rounded-md p-1.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 transition-colors"
+        className="flex md:hidden items-center justify-center rounded-md p-1.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 transition-colors cursor-pointer"
         aria-label="Apri menu"
       >
         <Menu size={20} />
@@ -44,13 +43,18 @@ export default function Topbar({ onMenuClick }) {
       {/* Spacer — su md+ la sinistra è vuota */}
       <div className="hidden md:block" />
 
-      {/* Destra: toggle tema + avatar dropdown */}
+      {/* Destra: toggle tema + badge boutique + avatar dropdown */}
       <div className="flex items-center gap-3">
+        {boutiqueName && (
+          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-stone-100 dark:bg-stone-700 px-2.5 py-1 text-xs font-medium text-stone-600 dark:text-stone-300 select-none">
+            🏪 {boutiqueName}
+          </span>
+        )}
         <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors group">
+            <button className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors group cursor-pointer">
               {/* Avatar cerchio */}
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-xs font-semibold text-white ring-2 ring-transparent group-hover:ring-amber-400/30 transition-shadow">
                 {iniziali}

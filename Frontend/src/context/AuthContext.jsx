@@ -18,6 +18,7 @@ function leggiUtenteSalvato() {
 
 export function AuthProvider({ children }) {
   const [utente, setUtente] = useState(leggiUtenteSalvato);
+  const [boutiqueName, setBoutiqueName] = useState(() => localStorage.getItem("boutique-nome") ?? null);
 
   const login = async (username, password) => {
     const { data } = await apiLogin(username, password);
@@ -36,7 +37,15 @@ export function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("utente");
+    localStorage.removeItem("boutique-nome");
     setUtente(null);
+    setBoutiqueName(null);
+  };
+
+  const setAuthBoutiqueName = (nome) => {
+    setBoutiqueName(nome);
+    if (nome) localStorage.setItem("boutique-nome", nome);
+    else localStorage.removeItem("boutique-nome");
   };
 
   // isAdmin controlla il ruolo solo per mostrare/nascondere UI,
@@ -44,7 +53,7 @@ export function AuthProvider({ children }) {
   const isAdmin = utente?.ruolo === "ADMIN";
 
   return (
-    <AuthContext.Provider value={{ utente, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ utente, login, logout, isAdmin, boutiqueName, setBoutiqueName: setAuthBoutiqueName }}>
       {children}
     </AuthContext.Provider>
   );

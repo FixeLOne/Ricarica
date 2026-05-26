@@ -13,7 +13,7 @@ import axiosClient from "./axiosClient";
  *                     costoEffettivo, costoCliente, profitto, note,
  *                     boutiqueId, boutiqueNome }
  */
-export const getRicariche = (page = 0, size = 20) =>
+export const getRicariche = (page = 0, size = 7) =>
     axiosClient.get("/ricariche", {
         params: { page, size, sort: "dataOra,desc" },
     });
@@ -26,3 +26,6 @@ export const modificaRicarica = (id, data) =>
 
 export const eliminaRicarica = (id) =>
     axiosClient.delete(`/ricariche/${id}`);
+
+export const countOggi = () =>
+    axiosClient.get("/ricariche/count-oggi");
