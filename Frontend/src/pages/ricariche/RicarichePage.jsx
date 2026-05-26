@@ -71,7 +71,7 @@ export default function RicarichePage() {
       )}
 
       {/* ── Layout split: form sx + tabella dx ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-start">
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: "calc(100vh - 10rem)" }}>
 
         {/* Colonna sinistra — form inserimento */}
         <div className={`w-full lg:w-[400px] shrink-0 ${cardCn}`}>
