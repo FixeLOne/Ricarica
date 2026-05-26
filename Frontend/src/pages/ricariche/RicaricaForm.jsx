@@ -80,8 +80,8 @@ function GigaTile({ giga, shortcutIdx, selected, onClick, hasError }) {
       onClick={onClick}
       aria-pressed={selected}
       className={[
-        "relative flex flex-col items-center justify-center rounded-xl border-2 transition-all duration-150 select-none cursor-pointer shrink-0",
-        "w-[60px] h-14",
+        "relative flex flex-col items-center justify-center rounded-xl border-2 transition-all duration-150 select-none cursor-pointer",
+        "flex-1 min-w-[52px] max-w-[72px] h-14",
         selected
           ? "border-amber-500 dark:border-amber-400 bg-amber-500/10 dark:bg-amber-400/10"
           : hasError
@@ -260,7 +260,7 @@ export default function RicaricaForm({
           )}
         </div>
 
-        <div className="flex flex-wrap items-end gap-2">
+        <div className="flex flex-wrap items-end gap-2 gap-y-2">
           {tariffe.length === 0 ? (
             <p className="text-xs text-stone-400 py-3">Caricamento piani…</p>
           ) : (

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { COLORI_OPERATORE, formatOra, formatDataOra } from "@/lib/operatori";
 
 const DOT_COLORS = {
@@ -49,12 +49,9 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
         onClick={() => setEspansa(v => !v)}
         className={rowCn}
       >
-        {/* Ora — con chevron inline */}
-        <td className="py-3 px-3 whitespace-nowrap">
-          <span className="inline-flex items-center gap-1.5 text-xs text-stone-400 dark:text-stone-500 tabular-nums">
-            <span className="text-stone-300 dark:text-stone-600">
-              {espansa ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-            </span>
+        {/* Ora */}
+        <td className="py-3 px-2 whitespace-nowrap">
+          <span className="text-xs text-stone-400 dark:text-stone-500 tabular-nums">
             {formatOra(riga.dataOra)}
           </span>
         </td>

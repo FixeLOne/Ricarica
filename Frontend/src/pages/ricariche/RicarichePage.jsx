@@ -74,7 +74,7 @@ export default function RicarichePage() {
       <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: "calc(100vh - 10rem)" }}>
 
         {/* Colonna sinistra — form inserimento */}
-        <div className={`w-full lg:w-[400px] shrink-0 ${cardCn}`}>
+        <div className={`w-full lg:w-[460px] shrink-0 ${cardCn}`}>
           <div className={cardHeaderCn}>
             <p className={cardHeaderTextCn}>Nuova ricarica</p>
           </div>
