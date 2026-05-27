@@ -19,6 +19,10 @@ import axiosClient from "./axiosClient";
  *
  * PATCH /api/v2/boutique/{id}/fatture?abilitato=true|false
  *   Abilita o disabilita le fatture per una boutique esistente (solo ADMIN).
+ *
+ * PUT /api/v2/boutique/{id}
+ *   Modifica dati base boutique.
+ *   ModificaBoutiqueRequest: { nome, città, fattureAbilitate }
  */
 export const getBoutique = () =>
     axiosClient.get("/boutique");
@@ -31,6 +35,9 @@ export const getBoutiqueById = (id) =>
 
 export const creaBoutique = (data) =>
     axiosClient.post("/boutique", data);
+
+export const modificaBoutique = (id, data) =>
+    axiosClient.put(`/boutique/${id}`, data);
 
 export const impostaFattureAbilitate = (id, abilitato) =>
     axiosClient.patch(`/boutique/${id}/fatture`, null, {

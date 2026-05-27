@@ -110,6 +110,7 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 - `POST /api/v2/boutique` — crea una boutique **e** contestualmente crea l'account `DIPENDENTE` associato (username/password configurabili nella request). Transazionale: o tutto va a buon fine o niente.
 - `GET /api/v2/boutique` — lista delle boutique dell'admin loggato
 - `GET /api/v2/boutique/tutte` — tutte le boutique del sistema (solo SUPER_ADMIN)
+- `PUT /api/v2/boutique/{id}` — modifica `nome`, `città`, `fattureAbilitate` con controllo ownership condiviso
 
 **Vincoli:**
 - Un Admin non può avere due boutique con lo stesso nome
@@ -259,7 +260,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 
 | Priorità | Area | Problema | Stato |
 |---|---|---|---|
-| CRITICA | Security | RicaricaService — IDOR su `filterBoutiqueId`: un ADMIN può leggere lista/statistiche/count di boutique non sue | da fare |
+| CRITICA | Security | RicaricaService — IDOR su `filterBoutiqueId`: un ADMIN può leggere lista/statistiche/count di boutique non sue | ✅ risolto |
 | CRITICA | Infra | DataInitializer attivo in produzione (password note in chiaro) | ✅ risolto |
 | CRITICA | Security | UtenteController.creaAdmin senza doppia protezione (solo SecurityConfig) | ✅ risolto |
 | CRITICA | Logica | DashboardController — NPE per ADMIN su /riepilogo (boutiqueId null) | ✅ risolto |
@@ -267,7 +268,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | CRITICA | Validation | GlobalExceptionHandler — MethodArgumentNotValidException non gestita → 500 (tutti i @Valid silenziosi) | ✅ risolto |
 | CRITICA | Logica | CreaFatturaRequest.tipo senza @NotNull → NPE in ContatoreFatturaService.generaNumero | ✅ risolto |
 | ALTA | Business | TariffaService — Margine negativo (acquisto > vendita) non bloccato | ✅ risolto |
-| ALTA | Logica | Boutique / Ricariche — Errore 500 su IDOR o parametri mancanti | parzialmente risolto; resta IDOR ricariche |
+| ALTA | Logica | Boutique / Ricariche — Errore 500 su IDOR o parametri mancanti | ✅ risolto per ownership boutique condivisa |
 | ALTA | Logica | RicaricaService — ADMIN non può modificare/eliminare proprie ricariche (NPE/false su equals(null)) | ✅ risolto |
 | ALTA | Logica | FatturaService — SUPER_ADMIN bloccato su tutte le operazioni (ownership check rigido) | ✅ risolto |
 | ALTA | Logica | FatturaService — getFatture restituisce lista vuota per SUPER_ADMIN | ✅ risolto |
@@ -403,8 +404,8 @@ nota: con allowCredentials true il wildcard è invalido per spec CORS
 [x] Bug Margine Negativo: il sistema bloccava male le tariffe dove `costoAcquisto > prezzoVendita`.
 Risolto con validazione cross-field nel DTO (`@AssertTrue` su `CreaTariffaRequest.isMargineValido()`).
 
-[ ] Critico — Ricariche IDOR su filtro boutique: `RicaricaService.getRicariche`, `getStatsOggi` e `countOggi` accettano `filterBoutiqueId` per ADMIN senza verificare che la boutique appartenga all'admin loggato.
-Soluzione: risolvere la boutique dal repository e validare `boutique.getAdmin().getId().equals(utenteId)` prima di usare il filtro, oppure usare query scoped per admin+boutique.
+[x] Critico — Ricariche IDOR su filtro boutique: `RicaricaService.getRicariche`, `getStatsOggi` e `countOggi` validano `filterBoutiqueId` tramite `BoutiqueAccessService` prima di eseguire le query.
+Soluzione: `BoutiqueAccessService.risolviFiltroBoutiqueId(...)` carica la boutique e applica la stessa regola di ownership usata dagli endpoint boutique.
 
 [ ] Bug Gestione Eccezioni/IDOR: le risposte di ownership dovrebbero restare coerenti tra 400/403/404. Per ora gli errori business usano `IllegalArgumentException` → 400.
 
@@ -524,7 +525,7 @@ soluzione: SUPER_ADMIN passa adminId esplicito nel body
 
 [ ] Frontend TariffePage/useTariffe — non espone ancora una selezione Admin e non passa `adminId` a GET/POST/PUT quando l'utente è SUPER_ADMIN.
 
-[ ] RicaricaController.creaRicarica — non passa il ruolo al service; in creazione il SUPER_ADMIN viene trattato come ADMIN normale. Non urgente finché il SUPER_ADMIN non inserisce ricariche operative.
+[x] RicaricaController.creaRicarica — passa il ruolo al service; la risoluzione boutique usa `BoutiqueAccessService`.
 
 [ ] TariffaService — quando riceve `adminId` da SUPER_ADMIN deve validare che l'utente target abbia ruolo `ADMIN`, non solo che esista.
 

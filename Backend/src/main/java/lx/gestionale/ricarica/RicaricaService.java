@@ -6,21 +6,18 @@ import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
 import lx.gestionale.negozio.Boutique;
-import lx.gestionale.negozio.BoutiqueRepository;
+import lx.gestionale.negozio.BoutiqueAccessService;
 import lx.gestionale.ricarica.dto.RicaricaResponse;
+import lx.gestionale.ricarica.dto.StatsOggiResponse;
 import lx.gestionale.tariffa.Tariffa;
 import lx.gestionale.tariffa.TariffaService;
 import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 
-import lx.gestionale.ricarica.dto.StatsOggiResponse;
-import lx.gestionale.ricarica.dto.StatsOggiResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -32,7 +29,7 @@ public class RicaricaService {
 
     private final TariffaService tariffaService;
 
-    private final BoutiqueRepository boutiqueRepository;
+    private final BoutiqueAccessService boutiqueAccessService;
 
     private Operatore assegnaOperatore(String numero) {
 
@@ -63,24 +60,18 @@ public class RicaricaService {
     }
 
     @Transactional
-    public RicaricaResponse salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId) {
-        Boutique boutique;
+    public RicaricaResponse salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        Boutique boutique = switch (ruolo) {
+            case "DIPENDENTE" -> boutiqueAccessService.richiediBoutiqueAccessibile(boutiqueId, utenteId, boutiqueId, ruolo);
+            case "ADMIN", "SUPER_ADMIN" -> {
+                if (request.getBoutiqueId() == null) {
+                    throw new IllegalArgumentException("Specifica la boutique per la ricarica");
+                }
+                yield boutiqueAccessService.richiediBoutiqueAccessibile(request.getBoutiqueId(), utenteId, boutiqueId, ruolo);
+            }
+            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
+        };
 
-        if (boutiqueId != null) {
-            // DIPENDENTE — usa boutiqueId dal token
-            boutique = boutiqueRepository.findById(boutiqueId)
-                    .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
-        } else {
-            // ADMIN — boutiqueId obbligatorio nel body
-            if (request.getBoutiqueId() == null) {
-                throw new IllegalArgumentException("Specifica la boutique per la ricarica");
-            }
-            boutique = boutiqueRepository.findById(request.getBoutiqueId())
-                    .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
-            if (!boutique.getAdmin().getId().equals(utenteId)) {
-                throw new IllegalArgumentException("Non hai i permessi su questa boutique");
-            }
-        }
         Ricarica r = new Ricarica();
         r.setBoutique(boutique);
         r.setDataOra(LocalDateTime.now());
@@ -227,12 +218,14 @@ public class RicaricaService {
 
     @Transactional(readOnly = true)
     public Page<RicaricaResponse> getRicariche(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable, Long filterBoutiqueId) {
+        Long filtroBoutiqueValidato = boutiqueAccessService.risolviFiltroBoutiqueId(filterBoutiqueId, utenteId, boutiqueId, ruolo);
+
         Page<Ricarica> ricariche = switch (ruolo) {
-            case "SUPER_ADMIN" -> filterBoutiqueId != null
-                    ? ricaricaRepository.findByBoutiqueId(filterBoutiqueId, pageable)
+            case "SUPER_ADMIN" -> filtroBoutiqueValidato != null
+                    ? ricaricaRepository.findByBoutiqueId(filtroBoutiqueValidato, pageable)
                     : ricaricaRepository.findAll(pageable);
-            case "ADMIN" -> filterBoutiqueId != null
-                    ? ricaricaRepository.findByBoutiqueId(filterBoutiqueId, pageable)
+            case "ADMIN" -> filtroBoutiqueValidato != null
+                    ? ricaricaRepository.findByBoutiqueId(filtroBoutiqueValidato, pageable)
                     : ricaricaRepository.findByBoutiqueAdminId(utenteId, pageable);
             case "DIPENDENTE" -> ricaricaRepository.findByBoutiqueId(boutiqueId, pageable);
             default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
@@ -244,10 +237,11 @@ public class RicaricaService {
     public StatsOggiResponse getStatsOggi(Long utenteId, Long boutiqueId, String ruolo, Long filterBoutiqueId) {
         LocalDate oggi  = LocalDate.now();
         LocalDate ieri  = oggi.minusDays(1);
+        Long filtroBoutiqueValidato = boutiqueAccessService.risolviFiltroBoutiqueId(filterBoutiqueId, utenteId, boutiqueId, ruolo);
 
         // Risolve su quale "asse" filtrare
-        boolean perBoutique = "DIPENDENTE".equals(ruolo) || filterBoutiqueId != null;
-        Long bid = "DIPENDENTE".equals(ruolo) ? boutiqueId : filterBoutiqueId;
+        boolean perBoutique = "DIPENDENTE".equals(ruolo) || filtroBoutiqueValidato != null;
+        Long bid = "DIPENDENTE".equals(ruolo) ? boutiqueId : filtroBoutiqueValidato;
 
         long  countOggi  = perBoutique ? ricaricaRepository.countByBoutiqueIdAndDataSolo(bid, oggi)     : ("ADMIN".equals(ruolo) ? ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, oggi)  : ricaricaRepository.countByDataSolo(oggi));
         long  countIeri  = perBoutique ? ricaricaRepository.countByBoutiqueIdAndDataSolo(bid, ieri)     : ("ADMIN".equals(ruolo) ? ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, ieri)  : ricaricaRepository.countByDataSolo(ieri));
@@ -264,15 +258,17 @@ public class RicaricaService {
 
     public long countOggi(Long utenteId, Long boutiqueId, String ruolo, Long filterBoutiqueId) {
         LocalDate oggi = LocalDate.now();
+        Long filtroBoutiqueValidato = boutiqueAccessService.risolviFiltroBoutiqueId(filterBoutiqueId, utenteId, boutiqueId, ruolo);
+
         if ("DIPENDENTE".equals(ruolo)) {
             return ricaricaRepository.countByBoutiqueIdAndDataSolo(boutiqueId, oggi);
         } else if ("ADMIN".equals(ruolo)) {
-            return filterBoutiqueId != null
-                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filterBoutiqueId, oggi)
+            return filtroBoutiqueValidato != null
+                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filtroBoutiqueValidato, oggi)
                     : ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, oggi);
         } else {
-            return filterBoutiqueId != null
-                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filterBoutiqueId, oggi)
+            return filtroBoutiqueValidato != null
+                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filtroBoutiqueValidato, oggi)
                     : ricaricaRepository.countByDataSolo(oggi);
         }
     }

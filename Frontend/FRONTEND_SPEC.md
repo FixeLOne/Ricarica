@@ -158,6 +158,7 @@ Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono c
 | GET | `/boutique/tutte` | SUPER_ADMIN | Tutte le boutique |
 | GET | `/boutique/{id}` | ADMIN, SUPER_ADMIN | Singola boutique |
 | POST | `/boutique` | ADMIN | Crea boutique + account dipendente |
+| PUT | `/boutique/{id}` | ADMIN, SUPER_ADMIN | Modifica `nome`, `città`, `fattureAbilitate` |
 | PATCH | `/boutique/{id}/fatture?abilitato=true\|false` | ADMIN | Abilita/disabilita fatture |
 
 ### Tariffe
@@ -323,6 +324,15 @@ Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono c
         usernameAccount: string,       // @NotBlank, 3–50 char
         passwordAccount: string,       // @NotBlank, min 8 char
         fattureAbilitate?: boolean     // default false — se omesso il backend usa false
+}
+```
+
+### ModificaBoutiqueRequest
+```js
+{
+  nome: string,                  // @NotBlank, max 100
+  città: string,                 // @NotBlank, max 100
+  fattureAbilitate: boolean
 }
 ```
 
@@ -517,6 +527,7 @@ Errore:            #F87171   (red-400)
 - SUPER_ADMIN: selezione `adminId` e chiamate `getTariffe(adminId)`/save con `adminId` sono backlog non urgente.
 
 ### BoutiquePage (`/boutique`) — ADMIN / `/boutique/tutte` — SUPER_ADMIN
+- Modifica inline/modal con `PUT /boutique/{id}` per `nome`, `città`, `fattureAbilitate`
 - Lista boutique con `nome`, `città`, `fattureAbilitate`
 - Toggle inline per `fattureAbilitate` → chiama `PATCH /boutique/{id}/fatture?abilitato=`
 - Pulsante "Nuova Boutique" → form con: `nome`, `città`, `nomeAccount`, `usernameAccount`, `passwordAccount`
@@ -541,8 +552,8 @@ Errore:            #F87171   (red-400)
 
 ## Problemi Noti
 
-- Critico backend: `RicaricaService` deve validare ownership quando un ADMIN passa `boutiqueId` come filtro su lista/stats/count.
-- Non urgente SUPER_ADMIN: tariffe frontend non passano ancora `adminId`; creazione ricarica backend non passa il ruolo al service.
+- Risolto backend: `RicaricaService` valida ownership quando un ADMIN passa `boutiqueId` come filtro su lista/stats/count tramite controllo boutique condiviso.
+- Non urgente SUPER_ADMIN: tariffe frontend non passano ancora `adminId`.
 - Coerenza tariffe: decidere se costi/prezzi a zero sono validi. O backend passa a `@PositiveOrZero`, o frontend blocca `0`.
 - Qualità frontend: `npm run lint` fallisce con errori Fast Refresh, import inutilizzati, `idx` inutilizzato e `__dirname` non definito nella config ESLint.
 - Pagine incomplete: dashboard, fatture, boutique, azienda, export e gestione admin sono ancora placeholder o parziali.

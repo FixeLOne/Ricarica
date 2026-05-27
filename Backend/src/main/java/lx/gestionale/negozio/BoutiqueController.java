@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.negozio.dto.BoutiqueResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
+import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,5 +52,18 @@ public class BoutiqueController {
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(boutiqueService.getBoutiqueById(id, principal.getUtenteId(), principal.getRuolo()));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<BoutiqueResponse> modificaBoutique(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificaBoutiqueRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueService.modificaBoutique(
+                id,
+                request,
+                principal.getUtenteId(),
+                principal.getRuolo()
+        ));
     }
 }

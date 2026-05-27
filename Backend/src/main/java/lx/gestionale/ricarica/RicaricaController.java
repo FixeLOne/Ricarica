@@ -13,7 +13,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import lx.gestionale.ricarica.dto.StatsOggiResponse;
-import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -26,7 +25,12 @@ public class RicaricaController {
     public ResponseEntity<RicaricaResponse> creaRicarica(
             @Valid @RequestBody CreaRicaricaRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        RicaricaResponse ricaricaSalvata = ricaricaService.salvaRicarica(request, principal.getUtenteId(), principal.getBoutiqueId());
+        RicaricaResponse ricaricaSalvata = ricaricaService.salvaRicarica(
+                request,
+                principal.getUtenteId(),
+                principal.getBoutiqueId(),
+                principal.getRuolo()
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(ricaricaSalvata);
     }
 

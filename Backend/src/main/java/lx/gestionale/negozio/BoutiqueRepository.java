@@ -12,4 +12,6 @@ public interface BoutiqueRepository extends JpaRepository<Boutique, Long> {
     List<Boutique> findByAdminId(Long adminId);
 
     boolean existsByNomeAndAdmin(String nome, Utente admin);
+
+    boolean existsByNomeAndAdminIdAndIdNot(String nome, Long adminId, Long id);
 }
