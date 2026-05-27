@@ -3,8 +3,8 @@ import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   LayoutDashboard, Zap, FileText, Tag,
-  Store, Download, Building2, Users, LogOut, X,
-  ChevronLeft, ChevronRight,
+  Store, Download, Building2, Users, LogOut,
+  PanelLeft, PanelLeftClose,
 } from "lucide-react";
 import {
   Tooltip,
@@ -30,6 +30,8 @@ const NAV_ITEMS = [
 ];
 
 // ── NavItem ────────────────────────────────────────────────────────────────
+// Icona sempre a pl-3 — non si muove mai durante il collasso.
+// Il label fa solo opacity fade (niente x-shift) per non disturbare l'icona.
 
 function NavItem({ item, collapsed, onClick }) {
   const { pathname } = useLocation();
@@ -37,38 +39,42 @@ function NavItem({ item, collapsed, onClick }) {
 
   return (
     <motion.div whileTap={{ scale: 0.95 }} transition={{ duration: 0.1, ease: "easeOut" }}>
-    <Tooltip delayDuration={400}>
-      <TooltipTrigger asChild>
-        <NavLink
-          to={item.path}
-          onClick={onClick}
-          className={cn(
-            "flex flex-row items-center w-full rounded-lg py-2.5 text-sm font-medium transition-colors",
-            collapsed ? "justify-center px-0" : "gap-3 px-3",
-            isActive
-              ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
-              : "text-stone-400 hover:text-stone-100 hover:bg-stone-800",
-          )}
-        >
-          <item.icon className="w-5 h-5 shrink-0" />
-          {!collapsed && (
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <NavLink
+            to={item.path}
+            onClick={onClick}
+            className={cn(
+              "flex flex-row items-center w-full rounded-lg py-2.5 pl-3 gap-3",
+              "text-sm font-medium transition-colors overflow-hidden",
+              isActive
+                ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
+                : "text-stone-400 hover:text-stone-100 hover:bg-stone-800",
+            )}
+          >
+            <item.icon className="w-5 h-5 shrink-0" />
             <AnimatePresence initial={false}>
-              <motion.span
-                key="label"
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -6 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="whitespace-nowrap overflow-hidden"
-              >
-                {item.label}
-              </motion.span>
+              {!collapsed && (
+                <motion.span
+                  key="label"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                  className="whitespace-nowrap overflow-hidden"
+                >
+                  {item.label}
+                </motion.span>
+              )}
             </AnimatePresence>
-          )}
-        </NavLink>
-      </TooltipTrigger>
-      {collapsed && <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">{item.label}</TooltipContent>}
-    </Tooltip>
+          </NavLink>
+        </TooltipTrigger>
+        {collapsed && (
+          <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">
+            {item.label}
+          </TooltipContent>
+        )}
+      </Tooltip>
     </motion.div>
   );
 }
@@ -78,58 +84,48 @@ function NavItem({ item, collapsed, onClick }) {
 function LogoutItem({ collapsed, onClick }) {
   return (
     <motion.div whileTap={{ scale: 0.95 }} transition={{ duration: 0.1, ease: "easeOut" }}>
-    <Tooltip delayDuration={400}>
-      <TooltipTrigger asChild>
-        <button
-          onClick={onClick}
-          className={cn(
-            "flex flex-row items-center w-full rounded-lg py-2.5 text-sm font-medium transition-colors",
-            collapsed ? "justify-center px-0" : "gap-3 px-3",
-            "text-stone-400 hover:text-red-400 hover:bg-red-500/10",
-          )}
-        >
-          <LogOut className="w-5 h-5 shrink-0" />
-          {!collapsed && (
+      <Tooltip delayDuration={400}>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            className={cn(
+              "flex flex-row items-center w-full rounded-lg py-2.5 pl-3 gap-3",
+              "text-sm font-medium transition-colors cursor-pointer overflow-hidden",
+              "text-stone-400 hover:text-red-400 hover:bg-red-500/10",
+            )}
+          >
+            <LogOut className="w-5 h-5 shrink-0" />
             <AnimatePresence initial={false}>
-              <motion.span
-                key="label"
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -6 }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-                className="whitespace-nowrap overflow-hidden"
-              >
-                Esci
-              </motion.span>
+              {!collapsed && (
+                <motion.span
+                  key="label"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.12, ease: "easeOut" }}
+                  className="whitespace-nowrap overflow-hidden"
+                >
+                  Esci
+                </motion.span>
+              )}
             </AnimatePresence>
-          )}
-        </button>
-      </TooltipTrigger>
-      {collapsed && <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">Esci</TooltipContent>}
-    </Tooltip>
+          </button>
+        </TooltipTrigger>
+        {collapsed && (
+          <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">
+            Esci
+          </TooltipContent>
+        )}
+      </Tooltip>
     </motion.div>
   );
 }
 
-// ── ToggleTab ──────────────────────────────────────────────────────────────
-
-function ToggleTab({ collapsed, onToggle }) {
-  return (
-    <button
-      onClick={onToggle}
-      aria-label={collapsed ? "Espandi sidebar" : "Comprimi sidebar"}
-      className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full z-10
-        bg-stone-800 hover:bg-stone-700 rounded-r-md py-3 px-1
-        text-stone-400 hover:text-stone-200 transition-colors"
-    >
-      {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-    </button>
-  );
-}
-
 // ── SidebarContent ─────────────────────────────────────────────────────────
+// onToggle: presente solo su desktop — su mobile undefined → bottone nascosto
+// onNavClick: chiude il drawer mobile su nav click e click logo
 
-function SidebarContent({ collapsed = false, onNavClick }) {
+function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
   const { utente, logout } = useAuth();
   const navigate = useNavigate();
   const voci = NAV_ITEMS.filter((item) => item.ruoli.includes(utente?.ruolo));
@@ -142,30 +138,48 @@ function SidebarContent({ collapsed = false, onNavClick }) {
   return (
     <div className="flex flex-col h-full bg-stone-900 dark:bg-stone-950 overflow-hidden">
 
-      {/* Logo / brand */}
-      <NavLink
-        to="/dashboard"
-        className={cn(
-          "flex flex-row items-center gap-2 h-14 border-b border-stone-800 px-4 shrink-0",
-          collapsed && "justify-center px-2",
-        )}
-      >
-        <img src={logo} alt="RechargeNet" className="h-5 w-5 shrink-0" />
-        <AnimatePresence initial={false}>
-          {!collapsed && (
-            <motion.span
-              key="brand"
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              className="text-base font-semibold text-stone-100 whitespace-nowrap overflow-hidden"
+      {/* Header: logo + toggle — sempre flex items-center justify-between */}
+      <div className="flex flex-row items-center justify-between h-14 border-b border-stone-800 shrink-0 px-3">
+        {collapsed ? (
+          /* Collassata: PanelLeft centrato */
+          <button
+            onClick={onToggle}
+            aria-label="Espandi sidebar"
+            className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-100 transition-colors cursor-pointer mx-auto"
+          >
+            <PanelLeft className="w-5 h-5" />
+          </button>
+        ) : (
+          /* Espansa: logo a sinistra, PanelLeftClose a destra */
+          <>
+            <NavLink
+              to="/dashboard"
+              onClick={onNavClick}
+              className="flex flex-row items-center gap-2 min-w-0"
             >
-              RechargeNet
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </NavLink>
+              <img src={logo} alt="RechargeNet" className="h-5 w-5 shrink-0" />
+              <motion.span
+                key="brand"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="text-base font-semibold text-stone-100 whitespace-nowrap overflow-hidden"
+              >
+                RechargeNet
+              </motion.span>
+            </NavLink>
+            {onToggle && (
+              <button
+                onClick={onToggle}
+                aria-label="Comprimi sidebar"
+                className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-100 transition-colors shrink-0 cursor-pointer"
+              >
+                <PanelLeftClose className="w-5 h-5" />
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Navigazione */}
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
@@ -210,23 +224,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
   return (
     <>
-      {/* ── Desktop lg: larghezza animata 220 ↔ 64 ── */}
+      {/* ── Desktop md+lg: larghezza animata 220 ↔ 64 ── */}
       <motion.aside
-        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 relative"
+        className="hidden md:flex flex-col h-screen sticky top-0 shrink-0 overflow-hidden"
         animate={{ width: desktopCollapsed ? 64 : 220 }}
         transition={{ duration: 0.2, ease: "easeInOut" }}
       >
-        <SidebarContent collapsed={desktopCollapsed} />
-        <ToggleTab collapsed={desktopCollapsed} onToggle={toggleDesktop} />
-      </motion.aside>
-
-      {/* ── Desktop md: sempre collassata a 64px ── */}
-      <motion.aside
-        className="hidden md:flex lg:hidden flex-col h-screen sticky top-0 shrink-0 overflow-hidden"
-        animate={{ width: 64 }}
-        transition={{ duration: 0.2, ease: "easeInOut" }}
-      >
-        <SidebarContent collapsed />
+        <SidebarContent collapsed={desktopCollapsed} onToggle={toggleDesktop} />
       </motion.aside>
 
       {/* ── Mobile: Sheet drawer ── */}
@@ -250,13 +254,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
               exit={{ x: "-100%" }}
               transition={{ duration: 0.25, ease: "easeOut" }}
             >
-              <button
-                onClick={onMobileClose}
-                className="absolute right-3 top-3.5 z-10 rounded-md p-1 text-stone-400 hover:text-stone-100 transition-colors"
-                aria-label="Chiudi menu"
-              >
-                <X size={18} />
-              </button>
+              {/* collapsed=false sempre, onToggle=undefined → bottone nascosto */}
               <SidebarContent onNavClick={onMobileClose} />
             </motion.aside>
           </>

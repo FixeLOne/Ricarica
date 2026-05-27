@@ -24,6 +24,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState(null);
+  const [sessioneScaduta] = useState(() => {
+    const val = !!sessionStorage.getItem("sessione-scaduta");
+    if (val) sessionStorage.removeItem("sessione-scaduta");
+    return val;
+  });
 
   const {
     register,
@@ -64,6 +69,15 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent className="pb-8">
+            {sessioneScaduta && (
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mb-4 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2"
+              >
+                La sessione è scaduta. Accedi di nuovo per continuare.
+              </motion.p>
+            )}
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
 
               {/* Username */}

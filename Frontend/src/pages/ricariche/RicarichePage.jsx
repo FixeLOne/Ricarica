@@ -64,20 +64,19 @@ export default function RicarichePage() {
         )}
       </div>
 
-      {apiError && (
-        <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-          {apiError}
-        </p>
-      )}
-
       {/* ── Layout split: form sx + tabella dx ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: "calc(100vh - 10rem)" }}>
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: "calc(100vh - 12rem)" }}>
 
         {/* Colonna sinistra — form inserimento */}
         <div className={`w-full lg:w-[460px] shrink-0 ${cardCn}`}>
           <div className={cardHeaderCn}>
             <p className={cardHeaderTextCn}>Nuova ricarica</p>
           </div>
+          {apiError && (
+            <p className="mx-5 mt-4 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+              {apiError}
+            </p>
+          )}
           <div className="p-5">
             <RicaricaForm
               key={formKey}

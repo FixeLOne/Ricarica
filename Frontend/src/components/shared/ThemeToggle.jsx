@@ -19,7 +19,7 @@ export default function ThemeToggle({ className = "" }) {
         "text-stone-500 dark:text-stone-400",
         "hover:text-amber-600 dark:hover:text-amber-400",
         "hover:border-amber-300 dark:hover:border-amber-500/50",
-        "transition-colors duration-150",
+        "transition-colors duration-150 cursor-pointer",
         className
       )}
     >

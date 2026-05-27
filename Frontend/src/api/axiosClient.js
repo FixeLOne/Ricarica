@@ -6,6 +6,9 @@ const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api/v2",
 });
 
+// Guard: evita redirect multipli quando più richieste falliscono con 401 simultaneamente
+let redirectingToLogin = false;
+
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -19,9 +22,13 @@ axiosClient.interceptors.response.use(
     (error) => {
         // Se è 401 MA la chiamata NON era verso /auth/login, allora scollega l'utente
         if (error.response?.status === 401 && !error.config.url.includes('/auth/login')) {
-            localStorage.removeItem("token");
-            localStorage.removeItem("utente");
-            window.location.href = "/login";
+            if (!redirectingToLogin) {
+                redirectingToLogin = true;
+                localStorage.removeItem("token");
+                localStorage.removeItem("utente");
+                sessionStorage.setItem("sessione-scaduta", "1");
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }

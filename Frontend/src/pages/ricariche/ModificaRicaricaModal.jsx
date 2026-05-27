@@ -35,9 +35,8 @@ export default function ModificaRicaricaModal({
     numero:         riga.numero,
     // se non era manuale, mostra il valore giga come stringa (es. "25")
     // se era manuale, mostra MANUALE_VALUE per riaprire i campi prezzo
-    gigaValore:     eraManuale
-      ? MANUALE_VALUE
-      : String(parseFloat(riga.giga)),
+    gigaValore:     eraManuale ? MANUALE_VALUE : String(parseFloat(riga.giga)),
+    gigaManuale:    eraManuale ? String(parseFloat(riga.giga)) : "",
     costoEffettivo: eraManuale ? parseFloat(riga.costoEffettivo).toFixed(3) : "",
     costoCliente:   eraManuale ? parseFloat(riga.costoCliente).toFixed(3)   : "",
     note:           riga.note ?? "",

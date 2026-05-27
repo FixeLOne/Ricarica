@@ -14,7 +14,7 @@ export function buildBody(data, tariffe, ruolo, boutiqueIdJwt) {
   const isManuale = data.gigaValore === MANUALE_VALUE;
   const body = {
     numero:  data.numero,
-    giga:    isManuale ? 0 : parseFloat(data.gigaValore),
+    giga:    isManuale ? parseFloat(data.gigaManuale) : parseFloat(data.gigaValore),
     manuale: isManuale,
     note:    data.note?.trim() || undefined,
   };
@@ -100,7 +100,7 @@ export default function useRicariche() {
     try {
       const body = buildBody(formData, tariffe, ruolo, utente?.boutiqueId);
       const { data } = await creaRicarica(body);
-      setRicariche(prev => [data, ...prev.slice(0, 19)]);
+      setRicariche(prev => [data, ...prev.slice(0, 11)]);
       setFlashId(data.id);
       setCountN(n => (n ?? 0) + 1);
       setFormKey(k => k + 1);
