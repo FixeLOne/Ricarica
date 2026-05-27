@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   getRicariche, creaRicarica, modificaRicarica,
-  eliminaRicarica, countOggi,
+  eliminaRicarica, getStatsOggi,
 } from "@/api/ricaricheApi";
 import { getTariffe }                      from "@/api/tariffaApi";
 import { getBoutique, getTutteLeBoutique } from "@/api/boutiqueApi";
@@ -37,6 +37,7 @@ export default function useRicariche() {
   const [totalPages,   setTotalPages]   = useState(0);
   const [page,         setPage]         = useState(0);
   const [countN,       setCountN]       = useState(null);
+  const [stats,        setStats]        = useState(null);
   const [tariffe,      setTariffe]      = useState([]);
   const [boutiques,    setBoutiques]    = useState([]);
   const [boutiqueName, setBoutiqueName] = useState(null);
@@ -44,7 +45,6 @@ export default function useRicariche() {
   const [apiError,     setApiError]     = useState(null);
   const [flashId,      setFlashId]      = useState(null);
   const [editedIds,    setEditedIds]    = useState(new Set());
-  const [deletedIds,   setDeletedIds]   = useState(new Set());
   const [submitting,   setSubmitting]   = useState(false);
   const [submitMod,    setSubmitMod]    = useState(false);
   const [formKey,      setFormKey]      = useState(0);
@@ -56,25 +56,30 @@ export default function useRicariche() {
   }, [apiError]);
 
   const caricaRicariche = useCallback(async (p = 0) => {
+    const bid = isAdmin
+      ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null)
+      : null;
     try {
-      const { data } = await getRicariche(p);
+      const { data } = await getRicariche(p, 11, bid);
       setRicariche(data.content);
-      // Spring Boot 4 annida i metadati sotto data.page, Boot 3 li mette in radice
       setTotalPages(data.page?.totalPages ?? data.totalPages ?? 0);
       setPage(data.page?.number ?? data.number ?? p);
     } catch {
       setApiError("Errore nel caricamento delle ricariche.");
     }
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
-        const [tarP, rigP, cntP, bouP] = await Promise.allSettled([
+        const bid = isAdmin
+          ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null)
+          : null;
+        const [tarP, rigP, stP, bouP] = await Promise.allSettled([
           getTariffe(),
-          getRicariche(0),
-          countOggi(),
+          getRicariche(0, 11, bid),
+          getStatsOggi(bid),
           isAdmin
             ? (ruolo === "SUPER_ADMIN" ? getTutteLeBoutique() : getBoutique())
             : Promise.resolve(null),
@@ -84,7 +89,10 @@ export default function useRicariche() {
           setRicariche(rigP.value.data.content);
           setTotalPages(rigP.value.data.page?.totalPages ?? rigP.value.data.totalPages ?? 0);
         }
-        if (cntP.status === "fulfilled") setCountN(cntP.value.data);
+        if (stP.status === "fulfilled") {
+          setStats(stP.value.data);
+          setCountN(stP.value.data.countOggi);
+        }
         if (bouP.status === "fulfilled" && bouP.value?.data) {
           const lista = Array.isArray(bouP.value.data) ? bouP.value.data : [];
           setBoutiques(lista);
@@ -100,6 +108,27 @@ export default function useRicariche() {
     init();
   }, [isAdmin, ruolo]);
 
+  const handleBoutiqueChange = useCallback(async (boutiqueId) => {
+    const bid = boutiqueId ? Number(boutiqueId) : null;
+    try {
+      const [rigP, stP] = await Promise.allSettled([
+        getRicariche(0, 11, bid),
+        getStatsOggi(bid),
+      ]);
+      if (rigP.status === "fulfilled") {
+        setRicariche(rigP.value.data.content);
+        setTotalPages(rigP.value.data.page?.totalPages ?? rigP.value.data.totalPages ?? 0);
+        setPage(0);
+      }
+      if (stP.status === "fulfilled") {
+        setStats(stP.value.data);
+        setCountN(stP.value.data.countOggi);
+      }
+    } catch {
+      setApiError("Errore nel caricamento.");
+    }
+  }, []);
+
   const handleCrea = async (formData) => {
     setSubmitting(true);
     setApiError(null);
@@ -107,9 +136,10 @@ export default function useRicariche() {
       const body = buildBody(formData, tariffe, ruolo, utente?.boutiqueId);
       const { data } = await creaRicarica(body);
       setFlashId(data.id);
-      setCountN(n => (n ?? 0) + 1);
       setFormKey(k => k + 1);
-      await caricaRicariche(0);
+      const bid = isAdmin ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null) : null;
+      const [, stRes] = await Promise.allSettled([caricaRicariche(0), getStatsOggi(bid)]);
+      if (stRes.status === "fulfilled") { setStats(stRes.value.data); setCountN(stRes.value.data.countOggi); }
       setTimeout(() => setFlashId(null), 1500);
     } catch (err) {
       setApiError(err?.response?.data?.errore ?? "Errore nel salvataggio.");
@@ -118,6 +148,12 @@ export default function useRicariche() {
     }
   };
 
+  const refreshStats = useCallback(async () => {
+    const bid = isAdmin ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null) : null;
+    const res = await getStatsOggi(bid).catch(() => null);
+    if (res) { setStats(res.data); setCountN(res.data.countOggi); }
+  }, [isAdmin]);
+
   const handleModifica = async (formData, rigaId) => {
     setSubmitMod(true);
     try {
@@ -125,6 +161,7 @@ export default function useRicariche() {
       const { data } = await modificaRicarica(rigaId, body);
       setRicariche(prev => prev.map(r => r.id === data.id ? data : r));
       setEditedIds(prev => new Set([...prev, data.id]));
+      await refreshStats();
       return true;
     } catch (err) {
       setApiError(err?.response?.data?.errore ?? "Errore nella modifica.");
@@ -137,8 +174,7 @@ export default function useRicariche() {
   const handleElimina = async (rigaId) => {
     try {
       await eliminaRicarica(rigaId);
-      setDeletedIds(prev => new Set([...prev, rigaId]));
-      setCountN(n => Math.max(0, (n ?? 1) - 1));
+      await Promise.allSettled([caricaRicariche(page), refreshStats()]);
     } catch (err) {
       setApiError(err?.response?.data?.errore ?? "Errore nell'eliminazione.");
     }
@@ -147,10 +183,10 @@ export default function useRicariche() {
   return {
     ruolo, isAdmin, utente,
     ricariche, totalPages, page,
-    countN, tariffe, boutiques, boutiqueName,
+    countN, stats, tariffe, boutiques, boutiqueName,
     loading, apiError, setApiError,
-    flashId, editedIds, deletedIds,
+    flashId, editedIds,
     submitting, submitMod, formKey,
-    caricaRicariche, handleCrea, handleModifica, handleElimina,
+    caricaRicariche, handleCrea, handleModifica, handleElimina, handleBoutiqueChange,
   };
 }

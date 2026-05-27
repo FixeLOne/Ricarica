@@ -13,20 +13,44 @@ import java.util.Optional;
 
 public interface RicaricaRepository extends JpaRepository<Ricarica, Long> {
 
-    List<Ricarica> findByBoutiqueIdAndDataSoloBetween(Long boutiqueId, LocalDate dal, LocalDate al);
+    @Query("SELECT r FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo BETWEEN :dal AND :al AND r.eliminato = false")
+    List<Ricarica> findByBoutiqueIdAndDataSoloBetween(@Param("boutiqueId") Long boutiqueId, @Param("dal") LocalDate dal, @Param("al") LocalDate al);
 
-    @Query("SELECT COALESCE(SUM(r.profitto), 0) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data")
+    @Query("SELECT COALESCE(SUM(r.profitto), 0) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data AND r.eliminato = false")
     BigDecimal sumProfittoByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
 
-    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data")
+    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data AND r.eliminato = false")
     long countRicaricheByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
 
     Page<Ricarica> findByBoutiqueAdminId(Long adminId, Pageable pageable);
     Page<Ricarica> findByBoutiqueId(Long boutiqueId, Pageable pageable);
 
+    //CONTATORE OGGI — esclude eliminate
+    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data AND r.eliminato = false")
+    long countByBoutiqueIdAndDataSolo(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
 
-    //CONTATORE OGGI
-    long countByBoutiqueIdAndDataSolo(Long boutiqueId, LocalDate dataSolo);
-//    long countByAdminIdAndDataSolo(Long adminId, LocalDate dataSolo); // o tramite boutique
-    long countByDataSolo(LocalDate dataSolo);
+    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.boutique.admin.id = :adminId AND r.dataSolo = :data AND r.eliminato = false")
+    long countByBoutiqueAdminIdAndDataSolo(@Param("adminId") Long adminId, @Param("data") LocalDate data);
+
+    @Query("SELECT COUNT(r) FROM Ricarica r WHERE r.dataSolo = :data AND r.eliminato = false")
+    long countByDataSolo(@Param("data") LocalDate data);
+
+    // STATS OGGI — esclude eliminate
+    @Query("SELECT COALESCE(SUM(r.giga), 0) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data AND r.eliminato = false")
+    double sumGigaByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
+
+    @Query("SELECT r.operatore, COUNT(r) FROM Ricarica r WHERE r.boutique.id = :boutiqueId AND r.dataSolo = :data AND r.eliminato = false GROUP BY r.operatore")
+    List<Object[]> countPerOperatoreByBoutiqueAndData(@Param("boutiqueId") Long boutiqueId, @Param("data") LocalDate data);
+
+    @Query("SELECT COALESCE(SUM(r.giga), 0) FROM Ricarica r WHERE r.boutique.admin.id = :adminId AND r.dataSolo = :data AND r.eliminato = false")
+    double sumGigaByAdminAndData(@Param("adminId") Long adminId, @Param("data") LocalDate data);
+
+    @Query("SELECT r.operatore, COUNT(r) FROM Ricarica r WHERE r.boutique.admin.id = :adminId AND r.dataSolo = :data AND r.eliminato = false GROUP BY r.operatore")
+    List<Object[]> countPerOperatoreByAdminAndData(@Param("adminId") Long adminId, @Param("data") LocalDate data);
+
+    @Query("SELECT COALESCE(SUM(r.giga), 0) FROM Ricarica r WHERE r.dataSolo = :data AND r.eliminato = false")
+    double sumGigaByData(@Param("data") LocalDate data);
+
+    @Query("SELECT r.operatore, COUNT(r) FROM Ricarica r WHERE r.dataSolo = :data AND r.eliminato = false GROUP BY r.operatore")
+    List<Object[]> countPerOperatoreByData(@Param("data") LocalDate data);
 }

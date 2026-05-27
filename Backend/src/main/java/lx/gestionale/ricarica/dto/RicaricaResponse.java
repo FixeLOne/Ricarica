@@ -23,6 +23,8 @@ public class RicaricaResponse {
     private BigDecimal costoCliente;
     private BigDecimal profitto;
     private String note;
+    private boolean manuale;
+    private boolean eliminato;
     private Long boutiqueId;
     private String boutiqueNome;
 }

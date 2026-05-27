@@ -92,6 +92,13 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
           }
         </td>
 
+        {/* Prezzo — sempre visibile */}
+        {!isAdmin && (
+          <td className="py-3 px-3 text-sm text-stone-600 dark:text-stone-300 tabular-nums">
+            {parseFloat(riga.costoCliente).toFixed(3)} DT
+          </td>
+        )}
+
         {/* Colonne admin */}
         {isAdmin && (
           <>

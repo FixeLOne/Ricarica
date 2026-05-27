@@ -35,6 +35,10 @@ public class Ricarica {
     @Column(nullable = false)
     private BigDecimal giga;
 
+    private boolean manuale;
+
+    private boolean eliminato = false;
+
     // ----------------------Dati Finanziari (Contabilità)----------------------
 
     private BigDecimal costoEffettivo;

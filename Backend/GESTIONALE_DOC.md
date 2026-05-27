@@ -96,7 +96,8 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 | `GET /api/v2/export/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `* /api/v2/ricariche/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `* /api/v2/fatture/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
-| `* /api/v2/azienda/**` | ADMIN |
+| `GET /api/v2/azienda/**` | ADMIN, DIPENDENTE |
+| `PUT /api/v2/azienda/**` | ADMIN |
 
 ---
 
@@ -140,7 +141,7 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 ---
 
 ### 3. Ricariche
-**Entity:** `Ricarica` — ha `numero`, `operatore`, `giga`, `costoEffettivo`, `costoCliente`, `profitto`, `dataOra`, `dataSolo`, riferimento alla `boutique`.
+**Entity:** `Ricarica` — ha `numero`, `operatore`, `giga`, `manuale`, `costoEffettivo`, `costoCliente`, `profitto`, `dataOra`, `dataSolo`, riferimento alla `boutique`.
 
 **`dataSolo`** è un campo ridondante (LocalDate) ottimizzato per le query della dashboard senza conversioni datetime.
 
@@ -150,8 +151,9 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 3. Rileva l'operatore automaticamente dal primo digit
 4. Se `manuale = false`: recupera i prezzi dal listino dell'Admin del negozio
 5. Se `manuale = true`: usa i prezzi passati nella request
-6. Calcola `profitto = costoCliente - costoEffettivo` (nel service, non nell'entity)
-7. Salva
+6. Persiste `manuale` per distinguere ricariche automatiche da inserimenti liberi anche quando entrambe hanno `costoEffettivo`
+7. Calcola `profitto = costoCliente - costoEffettivo` (nel service, non nell'entity)
+8. Salva
 
 **Sicurezza ownership:** modifica ed eliminazione verificano che la ricarica appartenga alla boutique del dipendente loggato.
 
@@ -190,6 +192,7 @@ Riga finale con totali aggregati. Stili colore per operatore (rosso Ooredoo, ara
 **Entity:** `Fattura` — ha `numero`, `tipo` (TipoDocumento), `stato` (StatoFattura), `dataEmissione`, `nomeCliente`, `timbreFiscal`, `remiseGlobale`, `totaleHT`, `totaleTVA`, `totaleNet`, riferimento all'`admin` e alla `boutique` (opzionale).
 **Entity:** `RigaFattura` — ha `descrizione`, `quantita`, `prezzoUnitarioHT`, `aliquotaTVA`, `montanteHT`, riferimento alla `fattura`.
 **Entity:** `DatiAzienda` — OneToOne con `Utente` Admin, ha `ragioneSociale`, `indirizzo`, `matriculeFiscale`, `logo` (base64 nel DB).
+Questi dati sono considerati pubblici per la produzione dei documenti fiscali/commerciali: il `GET /api/v2/azienda` è quindi intenzionalmente leggibile anche dai dipendenti quando devono generare fatture per la boutique.
 
 **Tipi documento:** `FATTURA`, `BON_DE_LIVRAISON`, `DEVIS`, `AVOIR`
 **Stati fattura:** `BOZZA`, `EMESSA`, `ANNULLATA`
@@ -256,14 +259,15 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 
 | Priorità | Area | Problema | Stato |
 |---|---|---|---|
+| CRITICA | Security | RicaricaService — IDOR su `filterBoutiqueId`: un ADMIN può leggere lista/statistiche/count di boutique non sue | da fare |
 | CRITICA | Infra | DataInitializer attivo in produzione (password note in chiaro) | ✅ risolto |
 | CRITICA | Security | UtenteController.creaAdmin senza doppia protezione (solo SecurityConfig) | ✅ risolto |
 | CRITICA | Logica | DashboardController — NPE per ADMIN su /riepilogo (boutiqueId null) | ✅ risolto |
 | CRITICA | Security | JwtFilter — token invalido (firma errata o malformato) trattato come anonimo invece di 401 | ✅ risolto |
 | CRITICA | Validation | GlobalExceptionHandler — MethodArgumentNotValidException non gestita → 500 (tutti i @Valid silenziosi) | ✅ risolto |
 | CRITICA | Logica | CreaFatturaRequest.tipo senza @NotNull → NPE in ContatoreFatturaService.generaNumero | ✅ risolto |
-| ALTA | Business | TariffaService — Margine negativo (acquisto > vendita) non bloccato | da fare |
-| ALTA | Logica | Boutique / Ricariche — Errore 500 su IDOR o parametri mancanti | da fare |
+| ALTA | Business | TariffaService — Margine negativo (acquisto > vendita) non bloccato | ✅ risolto |
+| ALTA | Logica | Boutique / Ricariche — Errore 500 su IDOR o parametri mancanti | parzialmente risolto; resta IDOR ricariche |
 | ALTA | Logica | RicaricaService — ADMIN non può modificare/eliminare proprie ricariche (NPE/false su equals(null)) | ✅ risolto |
 | ALTA | Logica | FatturaService — SUPER_ADMIN bloccato su tutte le operazioni (ownership check rigido) | ✅ risolto |
 | ALTA | Logica | FatturaService — getFatture restituisce lista vuota per SUPER_ADMIN | ✅ risolto |
@@ -273,9 +277,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | ALTA | Coerenza | FatturaController — modificaFattura/emettiFattura/eliminaFattura non passano ruolo al service | ✅ risolto |
 | ALTA | Coerenza | SecurityConfig fatture — SUPER_ADMIN escluso da POST/PUT/DELETE/PATCH | ✅ risolto (tutti gli endpoint /fatture/** aperti a SUPER_ADMIN, ADMIN, DIPENDENTE) |
 | MEDIA | Security | SecurityConfig — Ritorna 403 invece di 401 su token scaduti/invalidi | da fare |
-| MEDIA | Logica | TariffaService.salvaOAggiorna / getListinoCompleto non gestiscono SUPER_ADMIN | da fare |
-| MEDIA | Logica | DashboardService.getRiepilogoAdmin restituisce vuoto per SUPER_ADMIN | da fare |
-| MEDIA | Logica | ExportService.generaReport produce file vuoto per SUPER_ADMIN | da fare |
+| BASSA | Backlog | SUPER_ADMIN — contratto FE/BE non completo su tariffe e creazione ricariche | non urgente |
 | MEDIA | Logica | DashboardService — entita Utente detached in getRiepilogoAdmin | ✅ risolto |
 | MEDIA | Logica | ExportService — entita Utente detached in generaReport | ✅ risolto |
 | MEDIA | Logica | FatturaService — AVOIR creato in stato BOZZA invece di EMESSA | ✅ risolto |
@@ -286,6 +288,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | MEDIA | Coerenza | SecurityConfig dashboard — endpoint disallineati dopo unificazione | ✅ risolto |
 | MEDIA | Security | CorsConfig — PATCH mancante in allowedMethods | ✅ risolto |
 | MEDIA | Security | CorsConfig.allowedOrigins(*) in produzione | da fare |
+| MEDIA | Coerenza | Tariffe — frontend accetta `0`, backend usa `@Positive`; decidere se zero è lecito e allineare | da fare |
 | MEDIA | Config | application.properties — jwt.expiration 86400000 (24h) invece di 28800000 (8h) | ✅ risolto |
 | BASSA | Security | JwtService senza meccanismo invalidazione token (no blacklist) | da fare |
 | BASSA | Logica | Ricarica.note presente ma mai valorizzato | ✅ risolto |
@@ -397,11 +400,21 @@ nota: con allowCredentials true il wildcard è invalido per spec CORS
 
 ### Bug Noti & Debito Tecnico
 
-[ ] Bug Margine Negativo: Il sistema permette il salvataggio di tariffe dove costoAcquisto > prezzoVendita. È necessaria una validazione cross-field nel DTO o un controllo logico nel TariffaService prima del salvataggio.
+[x] Bug Margine Negativo: il sistema bloccava male le tariffe dove `costoAcquisto > prezzoVendita`.
+Risolto con validazione cross-field nel DTO (`@AssertTrue` su `CreaTariffaRequest.isMargineValido()`).
 
-[ ] Bug Gestione Eccezioni (500): Chiamate a endpoint come GET /api/v2/boutique/{id} (IDOR) o GET /api/v2/ricariche (senza parametri) restituiscono un errore 500 invece di un 403/404 o 400. Probabile NullPointerException o gestione mancante di parametri obbligatori.
+[ ] Critico — Ricariche IDOR su filtro boutique: `RicaricaService.getRicariche`, `getStatsOggi` e `countOggi` accettano `filterBoutiqueId` per ADMIN senza verificare che la boutique appartenga all'admin loggato.
+Soluzione: risolvere la boutique dal repository e validare `boutique.getAdmin().getId().equals(utenteId)` prima di usare il filtro, oppure usare query scoped per admin+boutique.
+
+[ ] Bug Gestione Eccezioni/IDOR: le risposte di ownership dovrebbero restare coerenti tra 400/403/404. Per ora gli errori business usano `IllegalArgumentException` → 400.
 
 [ ] Incoerenza Status Code Auth: I test su token scaduti o firme manipolate restituiscono 403 Forbidden invece del più corretto 401 Unauthorized. È necessario configurare un AuthenticationEntryPoint personalizzato in SecurityConfig.
+
+[ ] DatiAzienda — GET per DIPENDENTE è voluto, non è un problema di sicurezza: i dati sono pubblici e servono alla generazione fatture. Se il dipendente chiama l'endpoint, il service deve restituire i dati dell'Admin proprietario della sua boutique.
+
+[ ] Tariffe — validazione zero incoerente: backend usa `@Positive` per `costoAcquisto` e `prezzoVendita`, mentre il frontend accetta `0`. Decidere se usare `@PositiveOrZero` o bloccare zero anche lato UI.
+
+[ ] Build/Test — `mvnw.cmd` su Windows non avvia Maven perché indicizza `.Target[0]` quando `Target` è null. Correggere wrapper o rigenerarlo.
 
 [x] @Data su tutte le entity JPA
 sostituito con @Getter @Setter @EqualsAndHashCode(onlyExplicitlyIncluded = true) + @EqualsAndHashCode.Include su id
@@ -489,14 +502,16 @@ soluzione: includere request URI / IP nel log, usare MDC per tracciabilità
 effetto: dopo cambio password o logout il vecchio token resta valido fino a scadenza
 soluzione: blacklist in Redis o riduzione durata + refresh token
 
-[ ] DataInitializer — attivo anche in produzione (vedi sezione Sicurezza & Qualità)
+[x] DataInitializer — non attivo in produzione: protetto da `@Profile("dev")`
 
 
 ---
 
-### SUPER_ADMIN — Funzionalità da Completare
+### SUPER_ADMIN — Backlog non urgente
 
-[x] Logica Listino SuperAdmin: Il POST /tariffe effettuato da un SUPER_ADMIN viene accettato (200 OK), ma il sistema non dovrebbe permettere a questo ruolo di possedere un listino proprio. Va implementato un blocco o una gestione per cui il SuperAdmin possa operare solo sui listini degli Admin.
+La gestione SUPER_ADMIN non è prioritaria nel flusso operativo attuale. I problemi sotto vanno mantenuti tracciati ma non bloccano la correzione delle ricariche ADMIN/DIPENDENTE.
+
+[x] Logica Listino SuperAdmin: il SUPER_ADMIN non deve possedere un listino proprio; il backend richiede `adminId` esplicito per operare sui listini degli Admin.
 
 [x] RicaricaService — bypass ownership implementato (ruolo passato dal token)
 
@@ -506,6 +521,12 @@ soluzione: bypass ruolo identico a RicaricaService
 
 [x] TariffaService — salvaOAggiorna e getListinoCompleto usano adminId del SUPER_ADMIN
 soluzione: SUPER_ADMIN passa adminId esplicito nel body
+
+[ ] Frontend TariffePage/useTariffe — non espone ancora una selezione Admin e non passa `adminId` a GET/POST/PUT quando l'utente è SUPER_ADMIN.
+
+[ ] RicaricaController.creaRicarica — non passa il ruolo al service; in creazione il SUPER_ADMIN viene trattato come ADMIN normale. Non urgente finché il SUPER_ADMIN non inserisce ricariche operative.
+
+[ ] TariffaService — quando riceve `adminId` da SUPER_ADMIN deve validare che l'utente target abbia ruolo `ADMIN`, non solo che esista.
 
 [x] FatturaService — verificaOwnership rifiutava il SUPER_ADMIN
 verificaOwnership() fa return immediato se ruolo == "SUPER_ADMIN"
@@ -525,8 +546,8 @@ soluzione: per SUPER_ADMIN aggregare tutte le ricariche del sistema
 [-] BoutiqueService — nessun percorso SUPER_ADMIN su getBoutiqueByAdmin
 nota: SUPER_ADMIN ha già /tutte; valutare se serve filtrare per adminId specifico
 
-[-] DatiAziendaService — nessun intervento necessario
-SecurityConfig limita /api/v2/azienda/ solo ad ADMIN, corretto by design
+[-] DatiAziendaService — nessun intervento SUPER_ADMIN necessario
+Il SUPER_ADMIN non gestisce i dati azienda degli admin nel flusso attuale.
 
 
 ---

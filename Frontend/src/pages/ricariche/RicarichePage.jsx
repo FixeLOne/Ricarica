@@ -4,6 +4,7 @@ import { X } from "lucide-react";
 import useRicariche from "@/hooks/useRicariche";
 import RicaricaForm from "./RicaricaForm";
 import RicaricaTable from "./RicaricaTable";
+import StatsPanel from "./StatsPanel";
 import ModificaRicaricaModal, { ConfirmDialog } from "./ModificaRicaricaModal";
 
 function Orologio() {
@@ -23,11 +24,11 @@ export default function RicarichePage() {
   const {
     ruolo, isAdmin,
     ricariche, totalPages, page,
-    countN, tariffe, boutiques, boutiqueName,
+    countN, stats, tariffe, boutiques, boutiqueName,
     loading, apiError, setApiError,
-    flashId, editedIds, deletedIds,
+    flashId, editedIds,
     submitting, submitMod, formKey,
-    caricaRicariche, handleCrea, handleModifica, handleElimina,
+    caricaRicariche, handleCrea, handleModifica, handleElimina, handleBoutiqueChange,
   } = useRicariche();
 
   const [modificaRiga, setModificaRiga] = useState(null);
@@ -77,7 +78,7 @@ export default function RicarichePage() {
           </h1>
           <Orologio />
         </div>
-        {countN !== null && (
+        {isAdmin && countN !== null && (
           <div className="flex items-center gap-1.5 bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 dark:border-amber-400/20 rounded-full px-3 py-1">
             <span className="text-lg font-bold text-amber-500 dark:text-amber-400 tabular-nums leading-none">{countN}</span>
             <span className="text-[10px] text-amber-500/70 dark:text-amber-400/70 uppercase tracking-wide font-medium">oggi</span>
@@ -97,6 +98,7 @@ export default function RicarichePage() {
             <RicaricaForm
               key={formKey}
               onSubmit={handleCrea}
+              onBoutiqueChange={handleBoutiqueChange}
               tariffe={tariffe}
               boutiques={boutiques}
               ruolo={ruolo}
@@ -106,15 +108,18 @@ export default function RicarichePage() {
           </div>
         </div>
 
-        {/* Colonna destra — tabella ricariche */}
+        {/* Colonna centrale — tabella ricariche */}
         <div className="flex-1 min-w-0">
           <RicaricaTable
             ricariche={ricariche} loading={loading} isAdmin={isAdmin}
-            flashId={flashId} editedIds={editedIds} deletedIds={deletedIds}
+            flashId={flashId} editedIds={editedIds}
             onModifica={setModificaRiga} onElimina={setConfirmRiga}
             page={page} totalPages={totalPages} onPageChange={caricaRicariche}
           />
         </div>
+
+        {/* Colonna destra — stats (solo dipendente) */}
+        {!isAdmin && <StatsPanel stats={stats} />}
       </div>
 
       <ModificaRicaricaModal

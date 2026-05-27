@@ -130,7 +130,7 @@ function GigaTile({ giga, selected, onClick, onRapid, rapidOn, hasError }) {
 
 export default function RicaricaForm({
   onSubmit, defaultValues, tariffe, boutiques,
-  ruolo, isSubmitting, submitLabel = "Salva",
+  ruolo, isSubmitting, submitLabel = "Salva", onBoutiqueChange,
 }) {
   const isModifica = !!defaultValues;
 
@@ -257,7 +257,7 @@ export default function RicaricaForm({
             <Controller name="boutiqueId" control={control} render={({ field }) => (
               <Select
                 value={field.value}
-                onValueChange={(v) => { field.onChange(v); localStorage.setItem(BOUTIQUE_KEY, v); }}
+                onValueChange={(v) => { field.onChange(v); localStorage.setItem(BOUTIQUE_KEY, v); onBoutiqueChange?.(v); }}
               >
                 <SelectTrigger className={`${inputCn} w-full`}>
                   <SelectValue placeholder="Seleziona…" />

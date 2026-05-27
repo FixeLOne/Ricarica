@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import lx.gestionale.ricarica.dto.StatsOggiResponse;
 import java.util.List;
 
 @RestController
@@ -48,19 +49,31 @@ public class RicaricaController {
     @GetMapping
     public ResponseEntity<Page<RicaricaResponse>> getRicariche(
             Pageable pageable,
+            @RequestParam(required = false) Long boutiqueId,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(ricaricaService.getRicariche(
-                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable));
+                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable, boutiqueId));
     }
 
     @GetMapping("/count-oggi")
-    public ResponseEntity<Long> countOggi(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<Long> countOggi(
+            @RequestParam(required = false) Long boutiqueId,
+            @AuthenticationPrincipal UserPrincipal principal) {
         long count = ricaricaService.countOggi(
                 principal.getUtenteId(),
                 principal.getBoutiqueId(),
-                principal.getRuolo()
+                principal.getRuolo(),
+                boutiqueId
         );
         return ResponseEntity.ok(count);
+    }
+
+    @GetMapping("/stats-oggi")
+    public ResponseEntity<StatsOggiResponse> getStatsOggi(
+            @RequestParam(required = false) Long boutiqueId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(ricaricaService.getStatsOggi(
+                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), boutiqueId));
     }
 
 }

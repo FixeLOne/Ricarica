@@ -75,6 +75,17 @@ src/
 
 ---
 
+## Stato Implementazione Attuale
+
+Aggiornato al 27/05/2026.
+
+- Implementato: login, layout principale, sidebar/topbar, tema, pagina ricariche, pagina tariffe base.
+- Placeholder/work in progress: dashboard dipendente/admin/superadmin, fatture, editor fattura, boutique, tutte le boutique, azienda, export, gestione admin.
+- `SUPER_ADMIN` è tracciato nel contratto ma non è prioritario: i problemi specifici di selezione `adminId` e creazione ricariche sono backlog non urgente.
+- La pagina `/azienda` resta solo ADMIN; il `GET /azienda` via API è invece intenzionalmente accessibile anche ai DIPENDENTI per generare fatture con i dati pubblici dell'azienda.
+
+---
+
 ## Autenticazione e AuthContext
 
 Al login il backend restituisce:
@@ -104,6 +115,8 @@ Al login il backend restituisce:
 | `/azienda` | ❌ | ✅ | ❌ |
 | `/admin-list` | ❌ | ❌ | ✅ |
 | `/boutique/tutte` | ❌ | ❌ | ✅ |
+
+Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono chiamare `GET /azienda` dal flusso fatture quando serve mostrare intestazione/logo aziendale sui documenti.
 
 ---
 
@@ -163,7 +176,7 @@ Al login il backend restituisce:
 ### Azienda
 | Metodo | Endpoint | Ruoli | Note |
 |---|---|---|---|
-| GET | `/azienda` | ADMIN, DIPENDENTE | Dati azienda |
+| GET | `/azienda` | ADMIN, DIPENDENTE | Dati azienda pubblici per intestazione fatture; per DIPENDENTE devono essere quelli dell'admin proprietario della boutique |
 | PUT | `/azienda` | ADMIN             | Upsert       |
 
 ### Utenti
@@ -215,6 +228,7 @@ Al login il backend restituisce:
           costoCliente: string,
           profitto: string,
           note: string | null,
+          manuale: boolean,       // true solo per inserimenti liberi/manuali
           boutiqueId: number,
           boutiqueNome: string     // nome del negozio — mostrare solo per ADMIN e SUPER_ADMIN
 }
@@ -344,6 +358,7 @@ Al login il backend restituisce:
   logo: string | null            // base64
 }
 ```
+I dati azienda sono considerati pubblici ai fini dei documenti emessi. Non trattarli come dato sensibile nella UI; resta sensibile solo la modifica, riservata ad ADMIN.
 
 ### DatiAziendaRequest
 ```js
@@ -477,6 +492,10 @@ Errore:            #F87171   (red-400)
 - Form modifica: stesso drawer del form creazione, precompilato con i dati
    della riga selezionata (nessuna chiamata extra al backend —
    usare i dati già in memoria dalla tabella)
+- Campo `manuale`: usare sempre il boolean ricevuto dal backend. Non dedurre mai la modalità da `costoEffettivo`, perché anche le ricariche automatiche hanno costo effettivo.
+- UX backlog: per ADMIN separare "Vista boutique" (filtro lista/stats) da "Boutique della ricarica" (valore del form), perché oggi il selector ha doppio significato operativo.
+- UX backlog: Rapid dovrebbe salvare solo quando il numero ha 8 cifre valide, o mostrare uno stato "pronto" molto evidente.
+- UX backlog: su mobile/tablet la tabella desktop può clipparsi; prevedere lista/card o overflow esplicito.
 
 ### FatturePage (`/fatture`)
 - Tabella: `numero`, `tipo` (badge), `stato` (badge colorato), `dataEmissione`, `nomeCliente`, `totaleNet`, `nomeBoutique`
@@ -493,7 +512,9 @@ Errore:            #F87171   (red-400)
 ### TariffePage (`/tariffe`) — ADMIN, SUPER_ADMIN
 - Tabella: `operatore` (null → "Standard"), `giga`, `costoAcquisto`, `prezzoVendita`, margine calcolato client-side
 - Validazione client: `prezzoVendita >= costoAcquisto`
-- SUPER_ADMIN può filtrare per `adminId`
+- Backlog UI: aggiungere colonna margine e margine %, evidenza per margini bassi/zero, ricerca per GB, ordinamento e indicazione più chiara del fallback "Default".
+- Backlog coerenza: il frontend oggi accetta `0` per costi/prezzi, il backend usa `@Positive`; decidere se zero è ammesso e allineare schema Zod/DTO.
+- SUPER_ADMIN: selezione `adminId` e chiamate `getTariffe(adminId)`/save con `adminId` sono backlog non urgente.
 
 ### BoutiquePage (`/boutique`) — ADMIN / `/boutique/tutte` — SUPER_ADMIN
 - Lista boutique con `nome`, `città`, `fattureAbilitate`
@@ -515,6 +536,16 @@ Errore:            #F87171   (red-400)
 - Form crea admin: `username`, `password`
 - POST `/utenti/admin`
 - ⚠️ Endpoint GET lista admin non disponibile — solo creazione
+
+---
+
+## Problemi Noti
+
+- Critico backend: `RicaricaService` deve validare ownership quando un ADMIN passa `boutiqueId` come filtro su lista/stats/count.
+- Non urgente SUPER_ADMIN: tariffe frontend non passano ancora `adminId`; creazione ricarica backend non passa il ruolo al service.
+- Coerenza tariffe: decidere se costi/prezzi a zero sono validi. O backend passa a `@PositiveOrZero`, o frontend blocca `0`.
+- Qualità frontend: `npm run lint` fallisce con errori Fast Refresh, import inutilizzati, `idx` inutilizzato e `__dirname` non definito nella config ESLint.
+- Pagine incomplete: dashboard, fatture, boutique, azienda, export e gestione admin sono ancora placeholder o parziali.
 
 ---
 

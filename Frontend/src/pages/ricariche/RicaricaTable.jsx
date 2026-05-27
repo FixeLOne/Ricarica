@@ -65,17 +65,37 @@ function Paginazione({ page, totalPages, onPageChange }) {
 
 export default function RicaricaTable({
   ricariche, loading, isAdmin,
-  flashId, editedIds, deletedIds,
+  flashId, editedIds,
   onModifica, onElimina,
   page, totalPages, onPageChange,
 }) {
-  const colSpan = isAdmin ? 9 : 6;
+  const colSpan = isAdmin ? 9 : 7;
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm overflow-hidden">
 
       <div className="flex-1 overflow-hidden">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-16" />       {/* Ora */}
+            <col className="w-32" />       {/* Numero */}
+            <col className="w-24" />       {/* Operatore */}
+            <col className="w-16" />       {/* Giga */}
+            {isAdmin ? (
+              <>
+                <col className="w-36" />   {/* Note */}
+                <col className="w-24" />   {/* Prezzo */}
+                <col className="w-24" />   {/* Profitto */}
+                <col className="w-28" />   {/* Boutique */}
+              </>
+            ) : (
+              <>
+                <col className="w-40" />   {/* Note */}
+                <col className="w-24" />   {/* Prezzo */}
+              </>
+            )}
+            <col className="w-20" />       {/* Azioni */}
+          </colgroup>
           <thead>
             <tr className="border-b border-stone-100 dark:border-stone-700/60 bg-stone-50/60 dark:bg-stone-900/30">
               <TH>Ora</TH>
@@ -83,12 +103,14 @@ export default function RicaricaTable({
               <TH>Operatore</TH>
               <TH>Giga</TH>
               <TH>Note</TH>
-              {isAdmin && (
+              {isAdmin ? (
                 <>
                   <TH>Prezzo</TH>
                   <TH>Profitto</TH>
                   <TH>Boutique</TH>
                 </>
+              ) : (
+                <TH>Prezzo</TH>
               )}
               <TH className="text-right">Azioni</TH>
             </tr>
@@ -111,7 +133,7 @@ export default function RicaricaTable({
                 key={r.id} riga={r} isAdmin={isAdmin}
                 flash={flashId === r.id}
                 edited={editedIds.has(r.id)}
-                deleted={deletedIds.has(r.id)}
+                deleted={r.eliminato}
                 onModifica={onModifica}
                 onElimina={onElimina}
               />

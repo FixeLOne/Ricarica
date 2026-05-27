@@ -13,9 +13,9 @@ import axiosClient from "./axiosClient";
  *                     costoEffettivo, costoCliente, profitto, note,
  *                     boutiqueId, boutiqueNome }
  */
-export const getRicariche = (page = 0, size = 11) =>
+export const getRicariche = (page = 0, size = 11, boutiqueId = null) =>
     axiosClient.get("/ricariche", {
-        params: { page, size, sort: "dataOra,desc" },
+        params: { page, size, sort: "dataOra,desc", ...(boutiqueId ? { boutiqueId } : {}) },
     });
 
 export const creaRicarica = (data) =>
@@ -27,5 +27,12 @@ export const modificaRicarica = (id, data) =>
 export const eliminaRicarica = (id) =>
     axiosClient.delete(`/ricariche/${id}`);
 
-export const countOggi = () =>
-    axiosClient.get("/ricariche/count-oggi");
+export const countOggi = (boutiqueId = null) =>
+    axiosClient.get("/ricariche/count-oggi", {
+        params: boutiqueId ? { boutiqueId } : {},
+    });
+
+export const getStatsOggi = (boutiqueId = null) =>
+    axiosClient.get("/ricariche/stats-oggi", {
+        params: boutiqueId ? { boutiqueId } : {},
+    });

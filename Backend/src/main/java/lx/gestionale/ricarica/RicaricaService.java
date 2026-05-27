@@ -13,10 +13,16 @@ import lx.gestionale.tariffa.TariffaService;
 import lx.gestionale.utente.Utente;
 import org.springframework.stereotype.Service;
 
+import lx.gestionale.ricarica.dto.StatsOggiResponse;
+import lx.gestionale.ricarica.dto.StatsOggiResponse;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -133,6 +139,7 @@ public class RicaricaService {
         r.setNumero(numPulito);
         r.setOperatore(operatore);
         r.setGiga(request.getGiga());
+        r.setManuale(request.isManuale());
         r.setNote(request.getNote());
 
         impostaPrezzi(r, request, operatore, admin);
@@ -155,6 +162,8 @@ public class RicaricaService {
                 r.getCostoCliente(),
                 r.getProfitto(),
                 r.getNote(),
+                r.isManuale(),
+                r.isEliminato(),
                 r.getBoutique().getId(),
                 r.getBoutique().getNome()
         );
@@ -169,7 +178,7 @@ public class RicaricaService {
         if (!r.getBoutique().getId().equals(boutiqueId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
         }
-        ricaricaRepository.delete(r);
+        r.setEliminato(true);
     }
 
     void eliminaRicaricaAdmin(Long id, Long utenteId) {
@@ -178,13 +187,13 @@ public class RicaricaService {
         if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
             throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
         }
-        ricaricaRepository.delete(r);
+        r.setEliminato(true);
     }
 
     void eliminaRicaricaSuperAdmin(Long id) {
         Ricarica r = ricaricaRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        ricaricaRepository.delete(r);
+        r.setEliminato(true);
     }
 
     // MODIFICA
@@ -217,26 +226,54 @@ public class RicaricaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<RicaricaResponse> getRicariche(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable) {
+    public Page<RicaricaResponse> getRicariche(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable, Long filterBoutiqueId) {
         Page<Ricarica> ricariche = switch (ruolo) {
-            case "SUPER_ADMIN" -> ricaricaRepository.findAll(pageable);
-            case "ADMIN"       -> ricaricaRepository.findByBoutiqueAdminId(utenteId, pageable);
-            case "DIPENDENTE"  -> ricaricaRepository.findByBoutiqueId(boutiqueId, pageable);
-            default            -> throw new IllegalArgumentException("Ruolo non riconosciuto");
+            case "SUPER_ADMIN" -> filterBoutiqueId != null
+                    ? ricaricaRepository.findByBoutiqueId(filterBoutiqueId, pageable)
+                    : ricaricaRepository.findAll(pageable);
+            case "ADMIN" -> filterBoutiqueId != null
+                    ? ricaricaRepository.findByBoutiqueId(filterBoutiqueId, pageable)
+                    : ricaricaRepository.findByBoutiqueAdminId(utenteId, pageable);
+            case "DIPENDENTE" -> ricaricaRepository.findByBoutiqueId(boutiqueId, pageable);
+            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
         };
         return ricariche.map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
+    public StatsOggiResponse getStatsOggi(Long utenteId, Long boutiqueId, String ruolo, Long filterBoutiqueId) {
+        LocalDate oggi  = LocalDate.now();
+        LocalDate ieri  = oggi.minusDays(1);
+
+        // Risolve su quale "asse" filtrare
+        boolean perBoutique = "DIPENDENTE".equals(ruolo) || filterBoutiqueId != null;
+        Long bid = "DIPENDENTE".equals(ruolo) ? boutiqueId : filterBoutiqueId;
+
+        long  countOggi  = perBoutique ? ricaricaRepository.countByBoutiqueIdAndDataSolo(bid, oggi)     : ("ADMIN".equals(ruolo) ? ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, oggi)  : ricaricaRepository.countByDataSolo(oggi));
+        long  countIeri  = perBoutique ? ricaricaRepository.countByBoutiqueIdAndDataSolo(bid, ieri)     : ("ADMIN".equals(ruolo) ? ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, ieri)  : ricaricaRepository.countByDataSolo(ieri));
+        double gbTotali  = perBoutique ? ricaricaRepository.sumGigaByBoutiqueAndData(bid, oggi)          : ("ADMIN".equals(ruolo) ? ricaricaRepository.sumGigaByAdminAndData(utenteId, oggi)              : ricaricaRepository.sumGigaByData(oggi));
+        List<Object[]> raw = perBoutique ? ricaricaRepository.countPerOperatoreByBoutiqueAndData(bid, oggi) : ("ADMIN".equals(ruolo) ? ricaricaRepository.countPerOperatoreByAdminAndData(utenteId, oggi) : ricaricaRepository.countPerOperatoreByData(oggi));
+
+        Map<String, Long> perOperatore = raw.stream()
+                .collect(Collectors.toMap(r -> ((Operatore) r[0]).name(), r -> (Long) r[1]));
+
+        return new StatsOggiResponse(countOggi, countIeri, gbTotali, perOperatore);
+    }
+
     //CONTATORE RICARICHE GIORNALIERO
 
-    public long countOggi(Long utenteId, Long boutiqueId, String ruolo) {
+    public long countOggi(Long utenteId, Long boutiqueId, String ruolo, Long filterBoutiqueId) {
         LocalDate oggi = LocalDate.now();
         if ("DIPENDENTE".equals(ruolo)) {
             return ricaricaRepository.countByBoutiqueIdAndDataSolo(boutiqueId, oggi);
         } else if ("ADMIN".equals(ruolo)) {
-            return ricaricaRepository.countByBoutiqueIdAndDataSolo(boutiqueId, oggi);
+            return filterBoutiqueId != null
+                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filterBoutiqueId, oggi)
+                    : ricaricaRepository.countByBoutiqueAdminIdAndDataSolo(utenteId, oggi);
         } else {
-            return ricaricaRepository.countByDataSolo(oggi);
+            return filterBoutiqueId != null
+                    ? ricaricaRepository.countByBoutiqueIdAndDataSolo(filterBoutiqueId, oggi)
+                    : ricaricaRepository.countByDataSolo(oggi);
         }
     }
 }
