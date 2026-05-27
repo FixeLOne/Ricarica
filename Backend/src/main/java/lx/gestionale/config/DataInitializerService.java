@@ -102,6 +102,12 @@ class DataInitializerService {
 
         // — Fallback (operatore null, usato quando non esiste corrispondenza esatta) —
         salvaTariffa(adminA, null, 15.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 13.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 12.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 11.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 17.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 122.0, "6.000", "9.000");
+        salvaTariffa(adminA, null, 1500.0, "6.000", "9.000");
 
         // ═══════════════════════════════════════════════════════════════
         // 5. TARIFFE ADMIN B — listino ridotto (test isolamento tariffe)

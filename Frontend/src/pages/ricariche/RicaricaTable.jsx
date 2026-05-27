@@ -74,7 +74,7 @@ export default function RicaricaTable({
   return (
     <div className="flex flex-col h-full bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm overflow-hidden">
 
-      <div className="flex-1 overflow-x-auto">
+      <div className="flex-1 overflow-hidden">
         <table className="w-full">
           <thead>
             <tr className="border-b border-stone-100 dark:border-stone-700/60 bg-stone-50/60 dark:bg-stone-900/30">

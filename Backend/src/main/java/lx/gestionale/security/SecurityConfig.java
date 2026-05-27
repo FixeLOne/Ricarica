@@ -53,10 +53,13 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/azienda/**").hasAnyRole("ADMIN", "DIPENDENTE")
                         .requestMatchers(HttpMethod.PUT, "/api/v2/azienda/**").hasRole("ADMIN")
 
+                        // Tariffe
+                        .requestMatchers(HttpMethod.GET, "/api/v2/tariffe/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
+                        .requestMatchers("/api/v2/tariffe/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
+
                         // Altre rotte esistenti
                         .requestMatchers("/api/v2/export/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         .requestMatchers("/api/v2/dashboard/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
-                        .requestMatchers("/api/v2/tariffe/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers("/api/v2/ricariche/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         .requestMatchers("/api/v2/fatture/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
 

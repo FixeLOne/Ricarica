@@ -53,4 +53,14 @@ public class RicaricaController {
                 principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable));
     }
 
+    @GetMapping("/count-oggi")
+    public ResponseEntity<Long> countOggi(@AuthenticationPrincipal UserPrincipal principal) {
+        long count = ricaricaService.countOggi(
+                principal.getUtenteId(),
+                principal.getBoutiqueId(),
+                principal.getRuolo()
+        );
+        return ResponseEntity.ok(count);
+    }
+
 }

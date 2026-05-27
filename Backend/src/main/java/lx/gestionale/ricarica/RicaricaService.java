@@ -226,4 +226,17 @@ public class RicaricaService {
         };
         return ricariche.map(this::toResponse);
     }
+
+    //CONTATORE RICARICHE GIORNALIERO
+
+    public long countOggi(Long utenteId, Long boutiqueId, String ruolo) {
+        LocalDate oggi = LocalDate.now();
+        if ("DIPENDENTE".equals(ruolo)) {
+            return ricaricaRepository.countByBoutiqueIdAndDataSolo(boutiqueId, oggi);
+        } else if ("ADMIN".equals(ruolo)) {
+            return ricaricaRepository.countByBoutiqueIdAndDataSolo(boutiqueId, oggi);
+        } else {
+            return ricaricaRepository.countByDataSolo(oggi);
+        }
+    }
 }

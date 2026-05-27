@@ -31,7 +31,7 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
   const colSpan = isAdmin ? 9 : 6;
 
   const rowCn = [
-    "border-b border-stone-100 dark:border-stone-800 cursor-pointer transition-colors",
+    "border-b border-stone-100 dark:border-stone-800 last:border-b-0 cursor-pointer transition-colors",
     deleted
       ? "bg-red-50 dark:bg-red-900/10 hover:bg-red-100/60 dark:hover:bg-red-900/20"
       : edited
@@ -42,7 +42,6 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
   return (
     <>
       <motion.tr
-        layout
         initial={flash ? { backgroundColor: "rgba(34,197,94,0.25)" } : false}
         animate={{ backgroundColor: "rgba(0,0,0,0)" }}
         transition={{ duration: 1.2, ease: "easeOut" }}

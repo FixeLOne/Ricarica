@@ -134,7 +134,7 @@ export default function RicaricaForm({
 }) {
   const isModifica = !!defaultValues;
 
-  const [rapidMode, setRapidMode]   = useState(false);
+  const [rapidMode, setRapidMode]   = useState(() => localStorage.getItem("ricarica_rapid") === "1");
   const [noteAperte, setNoteAperte] = useState(isModifica && !!defaultValues?.note);
 
   // Legge boutique salvata dal localStorage per inizializzare il form già popolato
@@ -285,7 +285,7 @@ export default function RicaricaForm({
           {!isModifica && (
             <button
               type="button"
-              onClick={() => setRapidMode(v => !v)}
+              onClick={() => setRapidMode(v => { const next = !v; localStorage.setItem("ricarica_rapid", next ? "1" : "0"); return next; })}
               className={[
                 "ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all duration-150 cursor-pointer select-none",
                 rapidOn
@@ -423,7 +423,7 @@ export default function RicaricaForm({
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white h-10 min-w-[120px] rounded-lg font-semibold"
+          className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white h-10 min-w-[120px] rounded-lg font-semibold cursor-pointer"
         >
           {isSubmitting ? "Salvataggio…" : submitLabel}
         </Button>

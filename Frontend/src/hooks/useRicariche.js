@@ -49,6 +49,12 @@ export default function useRicariche() {
   const [submitMod,    setSubmitMod]    = useState(false);
   const [formKey,      setFormKey]      = useState(0);
 
+  useEffect(() => {
+    if (!apiError) return;
+    const t = setTimeout(() => setApiError(null), 4000);
+    return () => clearTimeout(t);
+  }, [apiError]);
+
   const caricaRicariche = useCallback(async (p = 0) => {
     try {
       const { data } = await getRicariche(p);
@@ -100,10 +106,10 @@ export default function useRicariche() {
     try {
       const body = buildBody(formData, tariffe, ruolo, utente?.boutiqueId);
       const { data } = await creaRicarica(body);
-      setRicariche(prev => [data, ...prev.slice(0, 11)]);
       setFlashId(data.id);
       setCountN(n => (n ?? 0) + 1);
       setFormKey(k => k + 1);
+      await caricaRicariche(0);
       setTimeout(() => setFlashId(null), 1500);
     } catch (err) {
       setApiError(err?.response?.data?.errore ?? "Errore nel salvataggio.");

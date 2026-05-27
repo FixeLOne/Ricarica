@@ -33,7 +33,7 @@ const OPERATORI_OPTIONS = [
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
-export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting }) {
+export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting, serverError }) {
   const isModifica = !!tariffa;
 
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm({
@@ -137,6 +137,13 @@ export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting })
               {errors.prezzoVendita && <p className="mt-1 text-[11px] text-red-500">{errors.prezzoVendita.message}</p>}
             </div>
           </div>
+
+          {/* Errore server */}
+          {serverError && (
+            <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+              {serverError}
+            </p>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-2 pt-1">

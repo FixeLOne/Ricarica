@@ -23,4 +23,10 @@ public interface RicaricaRepository extends JpaRepository<Ricarica, Long> {
 
     Page<Ricarica> findByBoutiqueAdminId(Long adminId, Pageable pageable);
     Page<Ricarica> findByBoutiqueId(Long boutiqueId, Pageable pageable);
+
+
+    //CONTATORE OGGI
+    long countByBoutiqueIdAndDataSolo(Long boutiqueId, LocalDate dataSolo);
+//    long countByAdminIdAndDataSolo(Long adminId, LocalDate dataSolo); // o tramite boutique
+    long countByDataSolo(LocalDate dataSolo);
 }

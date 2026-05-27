@@ -54,16 +54,21 @@ public class TariffaService {
     }
 
     @Transactional(readOnly = true)
-    public List<TariffaResponse> getListinoCompleto(Long adminIdParam, Long utenteId, String ruolo) {
+    public List<TariffaResponse> getListinoCompleto(Long IdParam, Long utenteId, String ruolo) {
         Long adminId;
 
         if ("SUPER_ADMIN".equals(ruolo)) {
-            if (adminIdParam == null) {
+            if (IdParam == null) {
                 throw new IllegalArgumentException("Il SUPER_ADMIN deve specificare il parametro adminId nella query string.");
             }
-            adminId = adminIdParam;
+            adminId = IdParam;
+
+        } else if ("DIPENDENTE".equals(ruolo)) {
+            Utente dip = utenteRepository.findById(utenteId)
+                    .orElseThrow(() -> new IllegalArgumentException("Utente non trovato"));
+            adminId = dip.getBoutique().getAdmin().getId();
         } else {
-            adminId = utenteId;
+            adminId = utenteId; // ADMIN
         }
 
         Utente admin = utenteRepository.findById(adminId)

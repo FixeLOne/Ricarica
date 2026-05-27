@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { X } from "lucide-react";
 import useRicariche from "@/hooks/useRicariche";
 import RicaricaForm from "./RicaricaForm";
 import RicaricaTable from "./RicaricaTable";
@@ -22,7 +24,7 @@ export default function RicarichePage() {
     ruolo, isAdmin,
     ricariche, totalPages, page,
     countN, tariffe, boutiques, boutiqueName,
-    loading, apiError,
+    loading, apiError, setApiError,
     flashId, editedIds, deletedIds,
     submitting, submitMod, formKey,
     caricaRicariche, handleCrea, handleModifica, handleElimina,
@@ -46,7 +48,26 @@ export default function RicarichePage() {
   const cardHeaderTextCn = "text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest";
 
   return (
-    <div className="space-y-4">
+    <>
+    {/* Toast errore — floating, non sposta il layout */}
+    <AnimatePresence>
+      {apiError && (
+        <motion.div
+          key="api-error-toast"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16 }}
+          transition={{ duration: 0.2 }}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg bg-red-600 text-white text-sm font-medium max-w-sm w-max"
+        >
+          <span>{apiError}</span>
+          <button type="button" onClick={() => setApiError(null)} className="shrink-0 cursor-pointer opacity-80 hover:opacity-100">
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    <div className="space-y-4 pb-6">
 
       {/* ── Header pagina ── */}
       <div className="flex items-center justify-between">
@@ -65,19 +86,14 @@ export default function RicarichePage() {
       </div>
 
       {/* ── Layout split: form sx + tabella dx ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ minHeight: "calc(100vh - 12rem)" }}>
+      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ height: "calc(100vh - 11rem)" }}>
 
         {/* Colonna sinistra — form inserimento */}
-        <div className={`w-full lg:w-[460px] shrink-0 ${cardCn}`}>
+        <div className={`w-full lg:w-[460px] shrink-0 self-start ${cardCn}`}>
           <div className={cardHeaderCn}>
             <p className={cardHeaderTextCn}>Nuova ricarica</p>
           </div>
-          {apiError && (
-            <p className="mx-5 mt-4 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
-              {apiError}
-            </p>
-          )}
-          <div className="p-5">
+            <div className="p-5">
             <RicaricaForm
               key={formKey}
               onSubmit={handleCrea}
@@ -112,5 +128,6 @@ export default function RicarichePage() {
         onConfirm={onEliminaConfirm} onCancel={() => setConfirmRiga(null)}
       />
     </div>
+    </>
   );
 }
