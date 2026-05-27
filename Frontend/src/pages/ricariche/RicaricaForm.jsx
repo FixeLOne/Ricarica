@@ -345,8 +345,8 @@ export default function RicaricaForm({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
-            <div className="rounded-xl border border-stone-200/70 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-950/30">
-              <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
+            <div className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-soft)] p-3">
+              <p className="text-xs text-[var(--brand-text)] mb-3">
                 Inserimento libero — specifica giga e prezzi manualmente.
               </p>
               <div className="flex flex-wrap gap-3">

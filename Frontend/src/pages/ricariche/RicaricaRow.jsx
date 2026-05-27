@@ -36,7 +36,7 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
       ? "bg-red-50/80 hover:bg-red-100/70 dark:bg-red-900/10 dark:hover:bg-red-900/20"
       : edited
         ? "border-l-2 border-l-sky-400 bg-sky-50/30 hover:bg-sky-50/60 dark:bg-sky-400/5 dark:hover:bg-sky-400/10"
-        : "hover:bg-stone-50/90 dark:hover:bg-stone-800/60",
+        : "hover:bg-[var(--brand-soft)]",
   ].join(" ");
 
   return (
@@ -149,7 +149,7 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
           >
             <td
               colSpan={colSpan}
-              className="border-b border-stone-100 bg-stone-50/80 px-8 py-3 dark:border-stone-800 dark:bg-stone-950/40"
+              className="border-b border-[var(--brand-border)] bg-[var(--brand-soft)] px-8 py-3"
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs">
                 <div>

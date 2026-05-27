@@ -1,7 +1,7 @@
 import RicaricaRow from "./RicaricaRow";
 
 const TH = ({ children, className = "" }) => (
-  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400 ${className}`}>
+  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-text)] ${className}`}>
     {children}
   </th>
 );
@@ -33,7 +33,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
           disabled={page === 0}
           onClick={() => onPageChange(page - 1)}
           aria-label="Pagina precedente"
-          className={`${btn} ${page === 0 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 cursor-pointer"}`}
+          className={`${btn} ${page === 0 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:text-stone-400 dark:hover:bg-[var(--brand-soft)] cursor-pointer"}`}
         >←</button>
 
         {totalPages > 1 && items.map((item, i) =>
@@ -44,7 +44,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
                 key={item}
                 onClick={() => item !== page && onPageChange(item)}
                 disabled={item === page}
-                className={`${btn} ${item === page ? "brand-primary cursor-default" : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"}`}
+                className={`${btn} ${item === page ? "brand-primary cursor-default" : "text-stone-500 hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:text-stone-400 dark:hover:bg-[var(--brand-soft)] cursor-pointer"}`}
               >
                 {item + 1}
               </button>
@@ -55,7 +55,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
           disabled={page >= totalPages - 1}
           onClick={() => onPageChange(page + 1)}
           aria-label="Pagina successiva"
-          className={`${btn} ${page >= totalPages - 1 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 cursor-pointer"}`}
+          className={`${btn} ${page >= totalPages - 1 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:text-stone-400 dark:hover:bg-[var(--brand-soft)] cursor-pointer"}`}
         >→</button>
 
       </div>
@@ -72,7 +72,7 @@ export default function RicaricaTable({
   const colSpan = isAdmin ? 9 : 7;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-[0_18px_45px_-38px_var(--brand-shadow)] dark:border-stone-800 dark:bg-stone-900">
 
       <div className="relative flex-1 overflow-auto">
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white to-transparent lg:hidden dark:from-stone-900" />
@@ -98,7 +98,7 @@ export default function RicaricaTable({
             <col className="w-20" />       {/* Azioni */}
           </colgroup>
           <thead>
-            <tr className="border-b border-stone-200/70 bg-stone-50/80 dark:border-stone-800 dark:bg-stone-950/40">
+            <tr className="border-b border-[var(--brand-border)] bg-[var(--brand-soft)]">
               <TH>Ora</TH>
               <TH>Numero</TH>
               <TH>Operatore</TH>

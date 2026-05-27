@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Menu, LogOut, ChevronDown } from "lucide-react";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/shared/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
 
 const RUOLO_BADGE = {
   DIPENDENTE:  { label: "Dipendente",  className: "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/20" },
@@ -19,6 +20,7 @@ const RUOLO_BADGE = {
 
 export default function Topbar({ onMenuClick }) {
   const { utente, logout, boutiqueName } = useAuth();
+  const { brandName, setBrandName, brandPalettes } = useTheme();
   const navigate = useNavigate();
   const iniziali = utente?.username?.slice(0, 2).toUpperCase() ?? "??";
   const badge = RUOLO_BADGE[utente?.ruolo] ?? { label: utente?.ruolo, className: "" };
@@ -73,6 +75,43 @@ export default function Topbar({ onMenuClick }) {
                 {badge.label}
               </span>
             </DropdownMenuLabel>
+
+            <DropdownMenuSeparator />
+
+            <div className="px-2 py-3">
+              <div className="space-y-2.5">
+                <p className="text-[10px] font-semibold uppercase tracking-widest text-stone-400 dark:text-stone-500">
+                  Palette
+                </p>
+                <div className="flex items-center justify-center gap-3">
+                  {brandPalettes.map((palette) => {
+                    const active = palette.id === brandName;
+                    return (
+                      <button
+                        key={palette.id}
+                        type="button"
+                        onClick={() => setBrandName(palette.id)}
+                        title={palette.label}
+                        aria-label={`Usa palette ${palette.label}`}
+                        aria-pressed={active}
+                        className={[
+                          "relative flex h-9 w-9 items-center justify-center rounded-full border transition-all cursor-pointer",
+                          active
+                            ? "border-[var(--brand-primary)] bg-[var(--brand-soft)] ring-2 ring-[var(--brand-ring)] shadow-[0_10px_22px_-18px_var(--brand-shadow)]"
+                            : "border-stone-200 bg-white hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] dark:border-stone-800 dark:bg-stone-900 dark:hover:border-[var(--brand-border)] dark:hover:bg-[var(--brand-soft)]",
+                        ].join(" ")}
+                      >
+                        <span
+                          className="h-[18px] w-[18px] rounded-full ring-1 ring-black/10 dark:ring-white/15"
+                          style={{ backgroundColor: palette.swatch }}
+                        />
+                        <span className="sr-only">{palette.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
 
             <DropdownMenuSeparator />
 

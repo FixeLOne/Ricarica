@@ -27,7 +27,7 @@ function OperatoreBadge({ operatore }) {
 }
 
 const TH = ({ children, className = "" }) => (
-  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400 ${className}`}>
+  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-text)] ${className}`}>
     {children}
   </th>
 );
@@ -122,7 +122,10 @@ export default function TariffePage() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">Tariffe</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
+          <span className="h-2 w-2 rounded-full bg-[var(--brand-primary)] shadow-[0_0_0_4px_var(--brand-soft)]" />
+          Tariffe
+        </h1>
         <Button
           onClick={apriCrea}
           className="brand-primary h-9 rounded-xl font-semibold gap-1.5"
@@ -158,12 +161,12 @@ export default function TariffePage() {
       )}
 
       {/* ── Tabella ── */}
-      <div className="overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+      <div className="overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-[0_18px_45px_-38px_var(--brand-shadow)] dark:border-stone-800 dark:bg-stone-900">
         <div className="relative overflow-x-auto">
           <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white to-transparent lg:hidden dark:from-stone-900" />
           <table className="w-full min-w-[920px]">
             <thead>
-              <tr className="border-b border-stone-200/70 bg-stone-50/80 dark:border-stone-800 dark:bg-stone-950/40">
+              <tr className="border-b border-[var(--brand-border)] bg-[var(--brand-soft)]">
                 <TH>Operatore</TH>
                 <TH>Giga</TH>
                 <TH>Costo acquisto</TH>
@@ -201,7 +204,7 @@ export default function TariffePage() {
                         <span className="text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest whitespace-nowrap">
                           {item.label}
                         </span>
-                        <span className="flex-1 h-px bg-stone-100 dark:bg-stone-700/60" />
+                        <span className="flex-1 h-px bg-[var(--brand-border)]" />
                       </button>
                     </td>
                   </tr>
@@ -209,7 +212,7 @@ export default function TariffePage() {
                   // ── Riga tariffa ──
                   <tr
                     key={item.id}
-                    className="border-b border-stone-100 transition-colors hover:bg-stone-50/90 dark:border-stone-800/70 dark:hover:bg-stone-800/60"
+                    className="border-b border-stone-100 transition-colors hover:bg-[var(--brand-soft)] dark:border-stone-800/70"
                   >
                     <td className="py-3 px-4">
                       <OperatoreBadge operatore={item.operatore} />

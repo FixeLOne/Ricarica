@@ -13,9 +13,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
+import BrandMark from "@/components/shared/BrandMark";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
-import logo from "@/logo.png";
 
 const NAV_ITEMS = [
   { label: "Dashboard",         path: "/dashboard",      icon: LayoutDashboard, ruoli: ["DIPENDENTE", "ADMIN", "SUPER_ADMIN"] },
@@ -157,7 +157,7 @@ function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
               onClick={onNavClick}
               className="flex flex-row items-center gap-2 min-w-0"
             >
-              <img src={logo} alt="RechargeNet" className="h-5 w-5 shrink-0" />
+              <BrandMark size="md" />
               <motion.span
                 key="brand"
                 initial={{ opacity: 0 }}

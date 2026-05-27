@@ -50,9 +50,9 @@ export default function RicarichePage() {
     setConfirmRiga(null);
   };
 
-  const cardCn = "overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900";
-  const cardHeaderCn = "border-b border-stone-200/70 bg-stone-50/80 px-5 py-3 dark:border-stone-800 dark:bg-stone-950/40";
-  const cardHeaderTextCn = "text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400";
+  const cardCn = "overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-[0_18px_45px_-38px_var(--brand-shadow)] dark:border-stone-800 dark:bg-stone-900";
+  const cardHeaderCn = "border-b border-[var(--brand-border)] bg-[var(--brand-soft)] px-5 py-3";
+  const cardHeaderTextCn = "text-[10px] font-semibold uppercase tracking-widest text-[var(--brand-text)]";
 
   return (
     <>
@@ -74,12 +74,13 @@ export default function RicarichePage() {
         </motion.div>
       )}
     </AnimatePresence>
-    <div className="space-y-5 pb-6">
+    <div className="flex h-full min-h-0 flex-col gap-5">
 
       {/* ── Header pagina ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-baseline gap-2.5">
-          <h1 className="text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
+          <h1 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
+            <span className="h-2 w-2 rounded-full bg-[var(--brand-primary)] shadow-[0_0_0_4px_var(--brand-soft)]" />
             Ricariche{boutiqueName ? ` — ${boutiqueName}` : ""}
           </h1>
           <Orologio />
@@ -116,7 +117,7 @@ export default function RicarichePage() {
       </div>
 
       {/* ── Layout split: form sx + tabella dx ── */}
-      <div className="flex flex-col items-stretch gap-5 lg:flex-row" style={{ minHeight: "calc(100vh - 11rem)" }}>
+      <div className="flex min-h-0 flex-1 flex-col items-stretch gap-5 lg:flex-row">
 
         {/* Colonna sinistra — form inserimento */}
         <div className={`w-full lg:w-[460px] shrink-0 self-start ${cardCn}`}>
@@ -137,7 +138,7 @@ export default function RicarichePage() {
         </div>
 
         {/* Colonna centrale — tabella ricariche */}
-        <div className="flex-1 min-w-0">
+        <div className="min-h-0 flex-1 min-w-0">
           <RicaricaTable
             ricariche={ricariche} loading={loading} isAdmin={isAdmin}
             flashId={flashId} editedIds={editedIds}

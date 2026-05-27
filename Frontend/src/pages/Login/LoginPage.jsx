@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import ThemeToggle from "@/components/shared/ThemeToggle";
-import logo from "@/logo.png";
+import BrandMark from "@/components/shared/BrandMark";
 
 const schema = z.object({
   username: z.string().min(1, "Username obbligatorio"),
@@ -59,7 +59,7 @@ export default function LoginPage() {
       >
         <Card className="bg-white dark:bg-stone-800 border border-[var(--brand-border)] dark:border-stone-700 shadow-lg">
           <CardHeader className="flex flex-col items-center gap-3 pt-8 pb-4">
-            <img src={logo} alt="RechargeNet" className="h-12 w-auto" />
+            <BrandMark size="lg" />
             <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50 tracking-tight">
               RechargeNet
             </h1>
