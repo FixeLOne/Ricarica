@@ -27,12 +27,36 @@ function OperatoreBadge({ operatore }) {
 }
 
 const TH = ({ children, className = "" }) => (
-  <th className={`py-3 px-4 text-left text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest ${className}`}>
+  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400 ${className}`}>
     {children}
   </th>
 );
 
 // ─── Pagina ───────────────────────────────────────────────────────────────────
+
+function calcolaMargine(tariffa) {
+  return Number(tariffa.prezzoVendita ?? 0) - Number(tariffa.costoAcquisto ?? 0);
+}
+
+function MargineCell({ tariffa }) {
+  const margine = calcolaMargine(tariffa);
+  const prezzo = Number(tariffa.prezzoVendita ?? 0);
+  const pct = prezzo > 0 ? (margine / prezzo) * 100 : 0;
+  const basso = margine <= 0 || pct < 8;
+
+  return (
+    <td className="px-4 py-3">
+      <div className="flex flex-col items-start gap-0.5">
+        <span className={`text-sm font-semibold tabular-nums ${basso ? "text-red-600 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
+          {margine.toFixed(3)} DT
+        </span>
+        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums ${basso ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-300" : "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"}`}>
+          {pct.toFixed(1)}%
+        </span>
+      </div>
+    </td>
+  );
+}
 
 export default function TariffePage() {
   const { tariffe, loading, apiError, handleCrea, handleModifica, handleElimina } = useTariffe();
@@ -94,14 +118,14 @@ export default function TariffePage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">Tariffe</h1>
+        <h1 className="text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">Tariffe</h1>
         <Button
           onClick={apriCrea}
-          className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white h-9 rounded-lg font-semibold gap-1.5"
+          className="brand-primary h-9 rounded-xl font-semibold gap-1.5"
         >
           <Plus className="w-4 h-4" />
           Aggiungi tariffa
@@ -116,10 +140,10 @@ export default function TariffePage() {
             type="button"
             onClick={() => setFiltro(f)}
             className={[
-              "px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer select-none",
+              "rounded-full px-3 py-1 text-xs font-medium transition-all duration-150 cursor-pointer select-none",
               filtro === f
-                ? "bg-amber-500 text-white shadow-sm"
-                : "bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-stone-500 dark:text-stone-400 hover:border-amber-400/60 hover:text-stone-700 dark:hover:text-stone-200",
+                ? "brand-primary"
+                : "border border-stone-200 bg-white text-stone-500 hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] hover:text-stone-800 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-400 dark:hover:border-[var(--brand-border)] dark:hover:bg-[var(--brand-soft)] dark:hover:text-stone-200",
             ].join(" ")}
           >
             {f}
@@ -134,36 +158,38 @@ export default function TariffePage() {
       )}
 
       {/* ── Tabella ── */}
-      <div className="bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
+      <div className="overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
+        <div className="relative overflow-x-auto">
+          <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white to-transparent lg:hidden dark:from-stone-900" />
+          <table className="w-full min-w-[920px]">
             <thead>
-              <tr className="border-b border-stone-100 dark:border-stone-700/60 bg-stone-50/60 dark:bg-stone-900/30">
+              <tr className="border-b border-stone-200/70 bg-stone-50/80 dark:border-stone-800 dark:bg-stone-950/40">
                 <TH>Operatore</TH>
                 <TH>Giga</TH>
                 <TH>Costo acquisto</TH>
                 <TH>Prezzo cliente</TH>
+                <TH>Margine</TH>
                 <TH className="text-right">Azioni</TH>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                  <td colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                     Caricamento…
                   </td>
                 </tr>
               ) : righeTabella.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
+                  <td colSpan={6} className="py-16 text-center text-sm text-stone-400 dark:text-stone-500">
                     Nessuna tariffa{filtro !== "Tutti" ? ` per "${filtro}"` : ""}.
                   </td>
                 </tr>
-              ) : righeTabella.map((item, idx) =>
+              ) : righeTabella.map((item) =>
                 item.__separatore ? (
                   // ── Separatore gruppo collassabile ──
                   <tr key={`sep-${item.label}`}>
-                    <td colSpan={5} className="px-4 pt-5 pb-1.5">
+                    <td colSpan={6} className="px-4 pt-5 pb-1.5">
                       <button
                         type="button"
                         onClick={() => toggleGruppo(item.label)}
@@ -183,7 +209,7 @@ export default function TariffePage() {
                   // ── Riga tariffa ──
                   <tr
                     key={item.id}
-                    className="border-b border-stone-50 dark:border-stone-700/40 hover:bg-stone-50/80 dark:hover:bg-stone-700/30 transition-colors"
+                    className="border-b border-stone-100 transition-colors hover:bg-stone-50/90 dark:border-stone-800/70 dark:hover:bg-stone-800/60"
                   >
                     <td className="py-3 px-4">
                       <OperatoreBadge operatore={item.operatore} />
@@ -197,18 +223,19 @@ export default function TariffePage() {
                     <td className="py-3 px-4 text-sm font-medium text-stone-700 dark:text-stone-200 tabular-nums">
                       {parseFloat(item.prezzoVendita).toFixed(3)} DT
                     </td>
+                    <MargineCell tariffa={item} />
                     <td className="py-3 px-4 text-right whitespace-nowrap">
                       <div className="inline-flex items-center gap-0.5">
                         <button
                           onClick={() => apriModifica(item)}
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors cursor-pointer"
+                          className="rounded-lg p-1.5 text-stone-400 transition-colors cursor-pointer hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:hover:bg-[var(--brand-soft)]"
                           aria-label="Modifica"
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => setConfirmId(item.id)}
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+                          className="rounded-lg p-1.5 text-stone-400 transition-colors cursor-pointer hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-300"
                           aria-label="Elimina"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -237,11 +264,11 @@ export default function TariffePage() {
       {/* ── Confirm elimina ── */}
       {confirmId && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 backdrop-blur-[2px]"
           onClick={() => setConfirmId(null)}
         >
           <div
-            className="w-full max-w-sm bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-xl p-5 space-y-4"
+            className="w-full max-w-sm space-y-4 rounded-xl border border-stone-200 bg-white p-5 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.55)] dark:border-stone-800 dark:bg-stone-900"
             onClick={e => e.stopPropagation()}
           >
             <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-50">Elimina tariffa</h2>
@@ -252,13 +279,13 @@ export default function TariffePage() {
               <Button
                 variant="outline"
                 onClick={() => setConfirmId(null)}
-                className="border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 h-9 rounded-lg"
+                className="h-9 rounded-xl border-stone-200 text-stone-700 dark:border-stone-800 dark:text-stone-300"
               >
                 Annulla
               </Button>
               <Button
                 onClick={onEliminaConfirm}
-                className="bg-red-500 hover:bg-red-600 text-white h-9 rounded-lg font-semibold"
+                className="h-9 rounded-xl bg-red-500 font-semibold text-white hover:bg-red-600"
               >
                 Elimina
               </Button>

@@ -12,9 +12,9 @@ import ThemeToggle from "@/components/shared/ThemeToggle";
 import { useAuth } from "@/context/AuthContext";
 
 const RUOLO_BADGE = {
-  DIPENDENTE:  { label: "Dipendente",  className: "bg-blue-500/15 text-blue-400" },
-  ADMIN:       { label: "Admin",       className: "bg-amber-500/15 text-amber-500" },
-  SUPER_ADMIN: { label: "Super Admin", className: "bg-purple-500/15 text-purple-400" },
+  DIPENDENTE:  { label: "Dipendente",  className: "bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-400/10 dark:text-sky-300 dark:ring-sky-400/20" },
+  ADMIN:       { label: "Admin",       className: "brand-soft ring-1 ring-[var(--brand-border)]" },
+  SUPER_ADMIN: { label: "Super Admin", className: "bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-400/10 dark:text-violet-300 dark:ring-violet-400/20" },
 };
 
 export default function Topbar({ onMenuClick }) {
@@ -29,12 +29,12 @@ export default function Topbar({ onMenuClick }) {
   };
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-amber-200/60 dark:border-stone-700 bg-white dark:bg-stone-800 px-4 shadow-sm">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-stone-200/80 bg-white/85 px-4 shadow-sm backdrop-blur-xl dark:border-stone-800 dark:bg-stone-950/80">
 
       {/* Sinistra: hamburger solo mobile */}
       <button
         onClick={onMenuClick}
-        className="flex md:hidden items-center justify-center rounded-md p-1.5 text-stone-500 hover:text-stone-900 dark:text-stone-400 dark:hover:text-stone-100 transition-colors cursor-pointer"
+        className="flex md:hidden items-center justify-center rounded-lg p-1.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-900 dark:hover:text-stone-100 transition-colors cursor-pointer"
         aria-label="Apri menu"
       >
         <Menu size={20} />
@@ -46,24 +46,25 @@ export default function Topbar({ onMenuClick }) {
       {/* Destra: toggle tema + badge boutique + avatar dropdown */}
       <div className="flex items-center gap-3">
         {boutiqueName && (
-          <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-stone-100 dark:bg-stone-700 px-2.5 py-1 text-xs font-medium text-stone-600 dark:text-stone-300 select-none">
-            🏪 {boutiqueName}
+          <span className="hidden sm:inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1 text-xs font-medium text-stone-600 shadow-sm select-none dark:border-stone-800 dark:bg-stone-900 dark:text-stone-300">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            {boutiqueName}
           </span>
         )}
         <ThemeToggle />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 rounded-full pl-1 pr-2 py-1 hover:bg-stone-100 dark:hover:bg-stone-700 transition-colors group cursor-pointer">
+            <button className="flex items-center gap-2 rounded-full border border-transparent py-1 pl-1 pr-2 transition-colors group cursor-pointer hover:border-stone-200 hover:bg-stone-50 dark:hover:border-stone-800 dark:hover:bg-stone-900">
               {/* Avatar cerchio */}
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-xs font-semibold text-white ring-2 ring-transparent group-hover:ring-amber-400/30 transition-shadow">
+              <span className="brand-primary flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold ring-2 ring-transparent transition-shadow group-hover:ring-[var(--brand-ring)]">
                 {iniziali}
               </span>
               <ChevronDown size={14} className="text-stone-400 dark:text-stone-500" />
             </button>
           </DropdownMenuTrigger>
 
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-56 rounded-xl border-stone-200 bg-white p-2 shadow-md dark:border-stone-800 dark:bg-stone-900">
             <DropdownMenuLabel className="flex flex-col gap-1 pb-2">
               <span className="text-sm font-medium text-stone-900 dark:text-stone-50">
                 {utente?.username}
@@ -77,7 +78,7 @@ export default function Topbar({ onMenuClick }) {
 
             <DropdownMenuItem
               onClick={handleLogout}
-              className="flex items-center gap-2 text-red-500 dark:text-red-400 focus:text-red-600 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer"
+              className="flex items-center gap-2 rounded-lg text-red-500 dark:text-red-400 focus:text-red-600 dark:focus:text-red-300 focus:bg-red-50 dark:focus:bg-red-900/20 cursor-pointer"
             >
               <LogOut size={14} />
               Esci

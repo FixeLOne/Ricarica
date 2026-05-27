@@ -6,6 +6,12 @@ import RicaricaForm from "./RicaricaForm";
 import RicaricaTable from "./RicaricaTable";
 import StatsPanel from "./StatsPanel";
 import ModificaRicaricaModal, { ConfirmDialog } from "./ModificaRicaricaModal";
+import { Label } from "@/components/ui/label";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+
+const ALL_BOUTIQUES_VALUE = "__ALL__";
 
 function Orologio() {
   const [ora, setOra] = useState(new Date());
@@ -24,11 +30,11 @@ export default function RicarichePage() {
   const {
     ruolo, isAdmin,
     ricariche, totalPages, page,
-    countN, stats, tariffe, boutiques, boutiqueName,
+    countN, stats, tariffe, boutiques, boutiqueName, vistaBoutiqueId,
     loading, apiError, setApiError,
     flashId, editedIds,
     submitting, submitMod, formKey,
-    caricaRicariche, handleCrea, handleModifica, handleElimina, handleBoutiqueChange,
+    caricaRicariche, handleCrea, handleModifica, handleElimina, handleVistaBoutiqueChange,
   } = useRicariche();
 
   const [modificaRiga, setModificaRiga] = useState(null);
@@ -44,9 +50,9 @@ export default function RicarichePage() {
     setConfirmRiga(null);
   };
 
-  const cardCn = "bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm overflow-hidden";
-  const cardHeaderCn = "px-5 py-3 border-b border-stone-100 dark:border-stone-700/60 bg-stone-50/60 dark:bg-stone-900/30";
-  const cardHeaderTextCn = "text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest";
+  const cardCn = "overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900";
+  const cardHeaderCn = "border-b border-stone-200/70 bg-stone-50/80 px-5 py-3 dark:border-stone-800 dark:bg-stone-950/40";
+  const cardHeaderTextCn = "text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400";
 
   return (
     <>
@@ -68,26 +74,49 @@ export default function RicarichePage() {
         </motion.div>
       )}
     </AnimatePresence>
-    <div className="space-y-4 pb-6">
+    <div className="space-y-5 pb-6">
 
       {/* ── Header pagina ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-baseline gap-2.5">
-          <h1 className="text-lg font-semibold text-stone-900 dark:text-stone-50">
+          <h1 className="text-xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
             Ricariche{boutiqueName ? ` — ${boutiqueName}` : ""}
           </h1>
           <Orologio />
         </div>
-        {isAdmin && countN !== null && (
-          <div className="flex items-center gap-1.5 bg-amber-500/10 dark:bg-amber-400/10 border border-amber-500/20 dark:border-amber-400/20 rounded-full px-3 py-1">
-            <span className="text-lg font-bold text-amber-500 dark:text-amber-400 tabular-nums leading-none">{countN}</span>
-            <span className="text-[10px] text-amber-500/70 dark:text-amber-400/70 uppercase tracking-wide font-medium">oggi</span>
-          </div>
-        )}
+        <div className="flex flex-wrap items-center gap-3">
+          {isAdmin && boutiques.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Label className="text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400">
+                Vista boutique
+              </Label>
+              <Select
+                value={vistaBoutiqueId || ALL_BOUTIQUES_VALUE}
+                onValueChange={(value) => handleVistaBoutiqueChange(value === ALL_BOUTIQUES_VALUE ? "" : value)}
+              >
+                <SelectTrigger className="h-9 w-[180px] rounded-xl border-stone-200 bg-white text-stone-800 shadow-sm dark:border-stone-800 dark:bg-stone-900 dark:text-stone-100 sm:w-[220px]">
+                  <SelectValue placeholder="Tutte" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL_BOUTIQUES_VALUE}>Tutte</SelectItem>
+                  {boutiques.map(b => (
+                    <SelectItem key={b.id} value={String(b.id)}>{b.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {isAdmin && countN !== null && (
+            <div className="brand-soft flex items-center gap-1.5 rounded-full border px-3 py-1 shadow-sm">
+              <span className="text-lg font-bold tabular-nums leading-none">{countN}</span>
+              <span className="text-[10px] font-medium uppercase tracking-wide opacity-75">oggi</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Layout split: form sx + tabella dx ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch" style={{ height: "calc(100vh - 11rem)" }}>
+      <div className="flex flex-col items-stretch gap-5 lg:flex-row" style={{ minHeight: "calc(100vh - 11rem)" }}>
 
         {/* Colonna sinistra — form inserimento */}
         <div className={`w-full lg:w-[460px] shrink-0 self-start ${cardCn}`}>
@@ -98,7 +127,6 @@ export default function RicarichePage() {
             <RicaricaForm
               key={formKey}
               onSubmit={handleCrea}
-              onBoutiqueChange={handleBoutiqueChange}
               tariffe={tariffe}
               boutiques={boutiques}
               ruolo={ruolo}

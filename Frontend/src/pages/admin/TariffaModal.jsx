@@ -16,8 +16,8 @@ import {
 const schema = z.object({
   operatore:     z.string().min(1, "Seleziona un operatore"),
   giga:          z.string().refine(v => parseFloat(v) > 0, "Deve essere > 0"),
-  costoAcquisto: z.string().refine(v => parseFloat(v) >= 0, "Valore non valido"),
-  prezzoVendita: z.string().refine(v => parseFloat(v) >= 0, "Valore non valido"),
+  costoAcquisto: z.string().refine(v => parseFloat(v) > 0, "Deve essere > 0"),
+  prezzoVendita: z.string().refine(v => parseFloat(v) > 0, "Deve essere > 0"),
 }).refine(d => parseFloat(d.prezzoVendita) >= parseFloat(d.costoAcquisto), {
   path: ["prezzoVendita"],
   message: "Non può essere inferiore al costo acquisto",
@@ -56,21 +56,21 @@ export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting, s
     });
   }, [tariffa, reset]);
 
-  const inputCn  = "bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-50 h-10 rounded-lg [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
-  const labelCn  = "text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider";
+  const inputCn  = "h-10 rounded-xl border-stone-200 bg-white text-stone-900 shadow-inner shadow-stone-200/40 focus-visible:border-[var(--brand-border)] focus-visible:ring-2 focus-visible:ring-[var(--brand-ring)] dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-50 dark:shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  const labelCn  = "text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider";
 
   return (
     /* Overlay */
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/35 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-md bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-xl overflow-hidden"
+        className="w-full max-w-md overflow-hidden rounded-xl border border-stone-200 bg-white shadow-md dark:border-stone-800 dark:bg-stone-900"
         onClick={e => e.stopPropagation()}
       >
         {/* Header modal */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 dark:border-stone-700/60">
+        <div className="flex items-center justify-between border-b border-stone-200/70 bg-stone-50/80 px-5 py-4 dark:border-stone-800 dark:bg-stone-950/40">
           <h2 className="text-sm font-semibold text-stone-900 dark:text-stone-50">
             {isModifica ? "Modifica tariffa" : "Aggiungi tariffa"}
           </h2>
@@ -151,14 +151,14 @@ export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting, s
               type="button"
               variant="outline"
               onClick={onClose}
-              className="border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300 h-9 rounded-lg"
+              className="h-9 rounded-xl border-stone-200 text-stone-700 dark:border-stone-800 dark:text-stone-300"
             >
               Annulla
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white h-9 min-w-[100px] rounded-lg font-semibold"
+              className="brand-primary h-9 min-w-[100px] rounded-xl font-semibold"
             >
               {isSubmitting ? "Salvataggio…" : isModifica ? "Salva" : "Aggiungi"}
             </Button>

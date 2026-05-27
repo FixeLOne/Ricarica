@@ -58,7 +58,7 @@ function BadgeOperatore({ numero }) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.15 }}
-          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-stone-100 dark:bg-stone-700/80 text-[11px] font-medium"
+          className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-2 py-0.5 text-[11px] font-medium shadow-sm dark:border-stone-800 dark:bg-stone-900"
         >
           <span
             className="w-1.5 h-1.5 rounded-full shrink-0"
@@ -93,32 +93,32 @@ function GigaTile({ giga, selected, onClick, onRapid, rapidOn, hasError }) {
       onClick={handleClick}
       aria-pressed={selected}
       className={[
-        "relative flex flex-col items-center justify-center rounded-xl border-2 transition-all duration-150 select-none cursor-pointer h-14",
+        "relative flex h-14 select-none flex-col items-center justify-center rounded-xl border bg-white transition-all duration-150 cursor-pointer dark:bg-stone-950/40",
         selected
-          ? "border-amber-500 dark:border-amber-400 bg-amber-500/10 dark:bg-amber-400/10"
+          ? "brand-soft-strong shadow-sm"
           : hasError
-            ? "border-red-400/60 hover:border-amber-400/60 hover:scale-[1.03]"
-            : "border-stone-200 dark:border-stone-700 hover:border-amber-400/60 hover:scale-[1.03]",
+            ? "border-red-300 bg-red-50/40 hover:border-[var(--brand-border)] dark:border-red-400/40 dark:bg-red-500/10"
+            : "border-stone-200 hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] hover:shadow-sm dark:border-stone-800 dark:hover:border-[var(--brand-border)] dark:hover:bg-[var(--brand-soft)]",
       ].join(" ")}
     >
       {isManuale ? (
         <>
-          <PenLine className={`w-4 h-4 ${selected ? "text-amber-500 dark:text-amber-400" : "text-stone-400 dark:text-stone-500"}`} />
-          <span className={`text-[10px] font-medium mt-0.5 ${selected ? "text-amber-500 dark:text-amber-400" : "text-stone-400 dark:text-stone-500"}`}>
+          <PenLine className={`w-4 h-4 ${selected ? "text-[var(--brand-text)]" : "text-stone-400 dark:text-stone-500"}`} />
+          <span className={`text-[10px] font-medium mt-0.5 ${selected ? "text-[var(--brand-text)]" : "text-stone-400 dark:text-stone-500"}`}>
             Libero
           </span>
         </>
       ) : (
         <>
-          <span className={`text-sm font-bold leading-none tabular-nums ${selected ? "text-amber-500 dark:text-amber-400" : "text-stone-700 dark:text-stone-200"}`}>
+          <span className={`text-sm font-bold leading-none tabular-nums ${selected ? "text-[var(--brand-text)]" : "text-stone-700 dark:text-stone-200"}`}>
             {giga}
           </span>
-          <span className={`text-[10px] font-medium leading-none mt-1 ${selected ? "text-amber-500/70 dark:text-amber-400/70" : "text-stone-400 dark:text-stone-500"}`}>
+          <span className={`text-[10px] font-medium leading-none mt-1 ${selected ? "text-[var(--brand-text)] opacity-70" : "text-stone-400 dark:text-stone-500"}`}>
             GB
           </span>
           {/* Pallino indicatore rapid attivo */}
           {rapidOn && (
-            <span className="absolute bottom-1 right-1.5 w-1 h-1 rounded-full bg-amber-400/80" />
+            <span className="absolute bottom-1 right-1.5 w-1 h-1 rounded-full bg-[var(--brand-primary)]" />
           )}
         </>
       )}
@@ -130,7 +130,7 @@ function GigaTile({ giga, selected, onClick, onRapid, rapidOn, hasError }) {
 
 export default function RicaricaForm({
   onSubmit, defaultValues, tariffe, boutiques,
-  ruolo, isSubmitting, submitLabel = "Salva", onBoutiqueChange,
+  ruolo, isSubmitting, submitLabel = "Salva",
 }) {
   const isModifica = !!defaultValues;
 
@@ -158,7 +158,9 @@ export default function RicaricaForm({
   const isManuale  = gigaValore === MANUALE_VALUE;
 
   // Rapid attivo: toggle ON (non dipende dalla lunghezza del numero — valida handleSubmit)
-  const rapidOn = rapidMode && !isModifica;
+  const numeroPronto = /^\d{8}$/.test(numero ?? "");
+  const rapidInAttesa = rapidMode && !isModifica && !numeroPronto;
+  const rapidOn = rapidMode && !isModifica && numeroPronto;
 
   const gigaUnici = useMemo(() =>
     [...new Set(tariffe.map(t => parseFloat(t.giga)))].sort((a, b) => a - b),
@@ -220,9 +222,9 @@ export default function RicaricaForm({
   const wrappedSubmit = handleSubmit(internalSubmit);
   useEffect(() => { submitRef.current = wrappedSubmit; });
 
-  const inputCn    = "bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700 text-stone-900 dark:text-stone-50 h-10 rounded-lg";
+  const inputCn    = "h-10 rounded-xl border-stone-200 bg-white text-stone-900 shadow-inner shadow-stone-200/40 focus-visible:border-[var(--brand-border)] focus-visible:ring-2 focus-visible:ring-[var(--brand-ring)] dark:border-stone-800 dark:bg-stone-950/60 dark:text-stone-50 dark:shadow-none";
   const numInputCn = `${inputCn} [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none`;
-  const labelCn    = "text-[11px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-wider";
+  const labelCn    = "text-[11px] font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider";
 
   return (
     <form onSubmit={handleSubmit(internalSubmit)} noValidate className="space-y-4">
@@ -253,11 +255,11 @@ export default function RicaricaForm({
         {/* Boutique — solo admin */}
         {ruolo !== "DIPENDENTE" && boutiques.length > 0 && (
           <div className="w-44">
-            <Label className={`${labelCn} mb-1.5 block`}>Boutique</Label>
+            <Label className={`${labelCn} mb-1.5 block`}>Boutique ricarica</Label>
             <Controller name="boutiqueId" control={control} render={({ field }) => (
               <Select
                 value={field.value}
-                onValueChange={(v) => { field.onChange(v); localStorage.setItem(BOUTIQUE_KEY, v); onBoutiqueChange?.(v); }}
+                onValueChange={(v) => { field.onChange(v); localStorage.setItem(BOUTIQUE_KEY, v); }}
               >
                 <SelectTrigger className={`${inputCn} w-full`}>
                   <SelectValue placeholder="Seleziona…" />
@@ -287,13 +289,15 @@ export default function RicaricaForm({
               type="button"
               onClick={() => setRapidMode(v => { const next = !v; localStorage.setItem("ricarica_rapid", next ? "1" : "0"); return next; })}
               className={[
-                "ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-all duration-150 cursor-pointer select-none",
+                "ml-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold transition-all duration-150 cursor-pointer select-none",
                 rapidOn
-                  ? "bg-amber-500 text-white shadow-sm shadow-amber-200 dark:shadow-amber-900/40"
-                  : "bg-stone-100 dark:bg-stone-700 text-stone-400 dark:text-stone-500 hover:bg-stone-200 dark:hover:bg-stone-600",
+                  ? "brand-primary"
+                  : rapidInAttesa
+                    ? "brand-soft ring-1 ring-[var(--brand-border)]"
+                    : "bg-stone-100 text-stone-500 hover:bg-stone-200 dark:bg-stone-800 dark:text-stone-400 dark:hover:bg-stone-700",
               ].join(" ")}
-              aria-pressed={rapidOn}
-              title="Rapid: clicca un piano per salvare subito"
+              aria-pressed={rapidMode}
+              title={rapidInAttesa ? "Rapid attivo: inserisci 8 cifre" : "Rapid: clicca un piano per salvare subito"}
             >
               <Zap className="w-2.5 h-2.5" />
               Rapid
@@ -341,8 +345,8 @@ export default function RicaricaForm({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
-            <div className="pt-3 border-t border-stone-100 dark:border-stone-700/60">
-              <p className="text-xs text-stone-400 dark:text-stone-500 mb-3">
+            <div className="rounded-xl border border-stone-200/70 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-950/30">
+              <p className="text-xs text-stone-500 dark:text-stone-400 mb-3">
                 Inserimento libero — specifica giga e prezzi manualmente.
               </p>
               <div className="flex flex-wrap gap-3">
@@ -385,7 +389,7 @@ export default function RicaricaForm({
         <button
           type="button"
           onClick={() => setNoteAperte(v => !v)}
-          className="flex items-center gap-1.5 text-[11px] text-stone-400 dark:text-stone-500 hover:text-stone-600 dark:hover:text-stone-300 transition-colors cursor-pointer"
+          className="flex items-center gap-1.5 text-[11px] font-medium text-stone-500 transition-colors cursor-pointer hover:text-stone-800 dark:text-stone-400 dark:hover:text-stone-200"
         >
           <MessageSquarePlus className="w-3.5 h-3.5" />
           {noteAperte ? "Rimuovi nota" : "Aggiungi nota"}
@@ -404,10 +408,10 @@ export default function RicaricaForm({
                 rows={3}
                 placeholder="Note aggiuntive sulla ricarica…"
                 className={[
-                  "mt-2 w-full resize-none rounded-lg border px-3 py-2 text-sm",
-                  "bg-stone-50 dark:bg-stone-900 border-stone-200 dark:border-stone-700",
+                  "mt-2 w-full resize-none rounded-xl border px-3 py-2 text-sm",
+                  "bg-white dark:bg-stone-950/60 border-stone-200 dark:border-stone-800",
                   "text-stone-900 dark:text-stone-50 placeholder:text-stone-400",
-                  "focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/60",
+                  "shadow-inner shadow-stone-200/40 dark:shadow-none focus:outline-none focus:ring-2 focus:ring-[var(--brand-ring)] focus:border-[var(--brand-border)]",
                   errors.note ? "border-red-400" : "",
                 ].join(" ")}
                 {...register("note")}
@@ -423,7 +427,7 @@ export default function RicaricaForm({
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white h-10 min-w-[120px] rounded-lg font-semibold cursor-pointer"
+          className="brand-primary h-10 min-w-[120px] rounded-xl font-semibold cursor-pointer"
         >
           {isSubmitting ? "Salvataggio…" : submitLabel}
         </Button>

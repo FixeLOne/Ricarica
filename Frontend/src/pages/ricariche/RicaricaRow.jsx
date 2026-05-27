@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Trash2 } from "lucide-react";
-import { COLORI_OPERATORE, formatOra, formatDataOra } from "@/lib/operatori";
+import { formatOra, formatDataOra } from "@/lib/operatori";
 
 const DOT_COLORS = {
   OOREDOO: "#E30613",
@@ -28,15 +28,15 @@ function OperatoreCell({ operatore }) {
 
 export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flash, edited, deleted }) {
   const [espansa, setEspansa] = useState(false);
-  const colSpan = isAdmin ? 9 : 6;
+  const colSpan = isAdmin ? 9 : 7;
 
   const rowCn = [
-    "border-b border-stone-100 dark:border-stone-800 last:border-b-0 cursor-pointer transition-colors",
+    "border-b border-stone-100 last:border-b-0 cursor-pointer transition-colors dark:border-stone-800",
     deleted
-      ? "bg-red-50 dark:bg-red-900/10 hover:bg-red-100/60 dark:hover:bg-red-900/20"
+      ? "bg-red-50/80 hover:bg-red-100/70 dark:bg-red-900/10 dark:hover:bg-red-900/20"
       : edited
-        ? "border-l-2 border-l-blue-400 hover:bg-stone-50 dark:hover:bg-stone-800/50"
-        : "hover:bg-stone-50/80 dark:hover:bg-stone-700/30",
+        ? "border-l-2 border-l-sky-400 bg-sky-50/30 hover:bg-sky-50/60 dark:bg-sky-400/5 dark:hover:bg-sky-400/10"
+        : "hover:bg-stone-50/90 dark:hover:bg-stone-800/60",
   ].join(" ");
 
   return (
@@ -61,12 +61,12 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
             {riga.numero}
           </span>
           {deleted && (
-            <span className="ml-1.5 inline-flex items-center rounded bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 text-[10px] px-1.5 py-0.5 font-semibold tracking-wide">
+            <span className="ml-1.5 inline-flex items-center rounded-md bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-red-600 dark:bg-red-900/40 dark:text-red-400">
               ELIM.
             </span>
           )}
           {edited && !deleted && (
-            <span className="ml-1.5 inline-flex items-center rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] px-1.5 py-0.5 font-semibold tracking-wide">
+            <span className="ml-1.5 inline-flex items-center rounded-md bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">
               MOD
             </span>
           )}
@@ -120,14 +120,14 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
             <div className="inline-flex items-center gap-0.5">
               <button
                 onClick={() => onModifica(riga)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors cursor-pointer"
+                className="rounded-lg p-1.5 text-stone-400 transition-colors cursor-pointer hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:hover:bg-[var(--brand-soft)]"
                 aria-label="Modifica"
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>
               <button
                 onClick={() => onElimina(riga)}
-                className="p-1.5 rounded-lg text-stone-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors cursor-pointer"
+                className="rounded-lg p-1.5 text-stone-400 transition-colors cursor-pointer hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-300"
                 aria-label="Elimina"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -149,7 +149,7 @@ export default function RicaricaRow({ riga, isAdmin, onModifica, onElimina, flas
           >
             <td
               colSpan={colSpan}
-              className="px-8 py-3 bg-stone-50 dark:bg-stone-900/30 border-b border-stone-100 dark:border-stone-800"
+              className="border-b border-stone-100 bg-stone-50/80 px-8 py-3 dark:border-stone-800 dark:bg-stone-950/40"
             >
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-2 text-xs">
                 <div>

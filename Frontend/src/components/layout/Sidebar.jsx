@@ -45,11 +45,11 @@ function NavItem({ item, collapsed, onClick }) {
             to={item.path}
             onClick={onClick}
             className={cn(
-              "flex flex-row items-center w-full rounded-lg py-2.5 pl-3 gap-3",
-              "text-sm font-medium transition-colors overflow-hidden",
+              "flex flex-row items-center w-full rounded-xl py-2.5 pl-3 gap-3",
+              "text-sm font-medium transition-all duration-150 overflow-hidden",
               isActive
-                ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 hover:text-amber-300"
-                : "text-stone-400 hover:text-stone-100 hover:bg-stone-800",
+                ? "brand-soft font-semibold border-l-2 border-[var(--brand-primary)] pl-[10px]"
+                : "text-stone-600 hover:bg-stone-100 hover:text-stone-950 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-stone-100",
             )}
           >
             <item.icon className="w-5 h-5 shrink-0" />
@@ -70,7 +70,7 @@ function NavItem({ item, collapsed, onClick }) {
           </NavLink>
         </TooltipTrigger>
         {collapsed && (
-          <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">
+          <TooltipContent side="right" className="rounded-md border border-stone-200 bg-white px-2 py-1 text-xs text-stone-800 shadow-lg dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100">
             {item.label}
           </TooltipContent>
         )}
@@ -89,9 +89,9 @@ function LogoutItem({ collapsed, onClick }) {
           <button
             onClick={onClick}
             className={cn(
-              "flex flex-row items-center w-full rounded-lg py-2.5 pl-3 gap-3",
-              "text-sm font-medium transition-colors cursor-pointer overflow-hidden",
-              "text-stone-400 hover:text-red-400 hover:bg-red-500/10",
+              "flex flex-row items-center w-full rounded-xl py-2.5 pl-3 gap-3",
+              "text-sm font-medium transition-all duration-150 cursor-pointer overflow-hidden",
+              "text-stone-500 hover:bg-red-50 hover:text-red-600 dark:text-stone-400 dark:hover:bg-red-500/10 dark:hover:text-red-300",
             )}
           >
             <LogOut className="w-5 h-5 shrink-0" />
@@ -112,7 +112,7 @@ function LogoutItem({ collapsed, onClick }) {
           </button>
         </TooltipTrigger>
         {collapsed && (
-          <TooltipContent side="right" className="bg-stone-800 text-stone-100 border-0 shadow-none text-xs px-2 py-1 rounded-md">
+          <TooltipContent side="right" className="rounded-md border border-stone-200 bg-white px-2 py-1 text-xs text-stone-800 shadow-lg dark:border-stone-700 dark:bg-stone-800 dark:text-stone-100">
             Esci
           </TooltipContent>
         )}
@@ -136,16 +136,16 @@ function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-stone-900 dark:bg-stone-950 overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden border-r border-stone-200/80 bg-white/95 text-stone-950 shadow-[10px_0_30px_-28px_rgba(15,23,42,0.45)] dark:border-stone-800 dark:bg-stone-950 dark:text-stone-50">
 
       {/* Header: logo + toggle — sempre flex items-center justify-between */}
-      <div className="flex flex-row items-center justify-between h-14 border-b border-stone-800 shrink-0 px-3">
+      <div className="flex flex-row items-center justify-between h-14 border-b border-stone-200/70 shrink-0 px-3 dark:border-stone-800">
         {collapsed ? (
           /* Collassata: PanelLeft centrato */
           <button
             onClick={onToggle}
             aria-label="Espandi sidebar"
-            className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-100 transition-colors cursor-pointer mx-auto"
+            className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-900 transition-colors cursor-pointer mx-auto dark:text-stone-500 dark:hover:text-stone-100"
           >
             <PanelLeft className="w-5 h-5" />
           </button>
@@ -163,7 +163,7 @@ function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="text-base font-semibold text-stone-100 whitespace-nowrap overflow-hidden"
+                className="text-base font-semibold text-stone-950 whitespace-nowrap overflow-hidden dark:text-stone-100"
               >
                 RechargeNet
               </motion.span>
@@ -172,7 +172,7 @@ function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
               <button
                 onClick={onToggle}
                 aria-label="Comprimi sidebar"
-                className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-100 transition-colors shrink-0 cursor-pointer"
+                className="flex items-center justify-center w-5 h-5 text-stone-400 hover:text-stone-900 transition-colors shrink-0 cursor-pointer dark:text-stone-500 dark:hover:text-stone-100"
               >
                 <PanelLeftClose className="w-5 h-5" />
               </button>
@@ -197,7 +197,7 @@ function SidebarContent({ collapsed = false, onToggle, onNavClick }) {
 
       {/* Footer: separatore + esci */}
       <div className="px-2 pb-3 shrink-0 space-y-1">
-        <Separator className="bg-stone-800" />
+        <Separator className="bg-stone-200/80 dark:bg-stone-800" />
         <TooltipProvider>
           <LogoutItem collapsed={collapsed} onClick={handleLogout} />
         </TooltipProvider>
@@ -239,7 +239,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           <>
             <motion.div
               key="overlay"
-              className="fixed inset-0 z-40 bg-black/50 md:hidden"
+              className="fixed inset-0 z-40 bg-stone-950/45 md:hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

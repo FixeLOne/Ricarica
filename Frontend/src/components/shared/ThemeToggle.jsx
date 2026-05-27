@@ -13,12 +13,12 @@ export default function ThemeToggle({ className = "" }) {
       aria-label={isDark ? "Passa al tema chiaro" : "Passa al tema scuro"}
       className={cn(
         "flex h-9 w-9 items-center justify-center rounded-full",
-        "bg-white/80 dark:bg-stone-800/80",
-        "border border-amber-200/60 dark:border-stone-700/60",
-        "shadow-sm backdrop-blur-sm",
+        "bg-white dark:bg-stone-900",
+        "border border-stone-200/80 dark:border-stone-800",
+        "shadow-[0_10px_25px_-20px_rgba(15,23,42,0.55)] backdrop-blur-sm",
         "text-stone-500 dark:text-stone-400",
-        "hover:text-amber-600 dark:hover:text-amber-400",
-        "hover:border-amber-300 dark:hover:border-amber-500/50",
+        "hover:text-[var(--brand-text)]",
+        "hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] dark:hover:border-[var(--brand-border)] dark:hover:bg-[var(--brand-soft)]",
         "transition-colors duration-150 cursor-pointer",
         className
       )}

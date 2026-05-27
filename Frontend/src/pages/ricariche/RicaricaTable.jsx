@@ -1,7 +1,7 @@
 import RicaricaRow from "./RicaricaRow";
 
 const TH = ({ children, className = "" }) => (
-  <th className={`py-3 px-4 text-left text-[10px] font-semibold text-stone-400 dark:text-stone-500 uppercase tracking-widest ${className}`}>
+  <th className={`px-4 py-3 text-left text-[10px] font-semibold uppercase tracking-widest text-stone-500 dark:text-stone-400 ${className}`}>
     {children}
   </th>
 );
@@ -23,7 +23,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-stone-100 dark:border-stone-700/60">
+    <div className="flex items-center justify-between border-t border-stone-200/70 bg-white px-4 py-3 dark:border-stone-800 dark:bg-stone-900">
       <span className="text-xs text-stone-400 dark:text-stone-500 tabular-nums">
         Pagina {page + 1} di {Math.max(1, totalPages)}
       </span>
@@ -33,7 +33,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
           disabled={page === 0}
           onClick={() => onPageChange(page - 1)}
           aria-label="Pagina precedente"
-          className={`${btn} ${page === 0 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer"}`}
+          className={`${btn} ${page === 0 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 cursor-pointer"}`}
         >←</button>
 
         {totalPages > 1 && items.map((item, i) =>
@@ -44,7 +44,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
                 key={item}
                 onClick={() => item !== page && onPageChange(item)}
                 disabled={item === page}
-                className={`${btn} ${item === page ? "bg-amber-500 text-white cursor-default" : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer"}`}
+                className={`${btn} ${item === page ? "brand-primary cursor-default" : "text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 cursor-pointer"}`}
               >
                 {item + 1}
               </button>
@@ -55,7 +55,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
           disabled={page >= totalPages - 1}
           onClick={() => onPageChange(page + 1)}
           aria-label="Pagina successiva"
-          className={`${btn} ${page >= totalPages - 1 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-700 cursor-pointer"}`}
+          className={`${btn} ${page >= totalPages - 1 ? "text-stone-300 dark:text-stone-600 cursor-not-allowed" : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800 cursor-pointer"}`}
         >→</button>
 
       </div>
@@ -72,10 +72,11 @@ export default function RicaricaTable({
   const colSpan = isAdmin ? 9 : 7;
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-stone-800 rounded-2xl border border-stone-200 dark:border-stone-700 shadow-sm overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-stone-200/80 bg-white shadow-sm dark:border-stone-800 dark:bg-stone-900">
 
-      <div className="flex-1 overflow-hidden">
-        <table className="w-full table-fixed">
+      <div className="relative flex-1 overflow-auto">
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white to-transparent lg:hidden dark:from-stone-900" />
+        <table className="w-full min-w-[860px] table-fixed">
           <colgroup>
             <col className="w-16" />       {/* Ora */}
             <col className="w-32" />       {/* Numero */}
@@ -97,7 +98,7 @@ export default function RicaricaTable({
             <col className="w-20" />       {/* Azioni */}
           </colgroup>
           <thead>
-            <tr className="border-b border-stone-100 dark:border-stone-700/60 bg-stone-50/60 dark:bg-stone-900/30">
+            <tr className="border-b border-stone-200/70 bg-stone-50/80 dark:border-stone-800 dark:bg-stone-950/40">
               <TH>Ora</TH>
               <TH>Numero</TH>
               <TH>Operatore</TH>

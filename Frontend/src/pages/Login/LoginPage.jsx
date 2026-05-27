@@ -49,7 +49,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-amber-50 dark:bg-stone-900 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[var(--brand-soft)] dark:bg-stone-900 px-4">
       <ThemeToggle className="fixed top-4 right-4 z-10" />
       <motion.div
         initial={{ opacity: 0, y: 8 }}
@@ -57,7 +57,7 @@ export default function LoginPage() {
         transition={{ duration: 0.25, ease: "easeOut" }}
         className="w-full max-w-sm"
       >
-        <Card className="bg-white dark:bg-stone-800 border border-amber-200 dark:border-stone-700 shadow-lg">
+        <Card className="bg-white dark:bg-stone-800 border border-[var(--brand-border)] dark:border-stone-700 shadow-lg">
           <CardHeader className="flex flex-col items-center gap-3 pt-8 pb-4">
             <img src={logo} alt="RechargeNet" className="h-12 w-auto" />
             <h1 className="text-xl font-semibold text-stone-900 dark:text-stone-50 tracking-tight">
@@ -73,7 +73,7 @@ export default function LoginPage() {
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="mb-4 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2"
+                className="brand-soft mb-4 rounded-md border px-3 py-2 text-sm"
               >
                 La sessione è scaduta. Accedi di nuovo per continuare.
               </motion.p>
@@ -99,7 +99,7 @@ export default function LoginPage() {
                     border-stone-200 dark:border-stone-700
                     text-stone-900 dark:text-stone-50
                     placeholder:text-stone-400 dark:placeholder:text-stone-600
-                    focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400
+                    focus-visible:ring-[var(--brand-ring)]
                     ${errors.username ? "border-red-500 dark:border-red-400" : ""}
                   `}
                   {...register("username")}
@@ -130,7 +130,7 @@ export default function LoginPage() {
                       border-stone-200 dark:border-stone-700
                       text-stone-900 dark:text-stone-50
                       placeholder:text-stone-400 dark:placeholder:text-stone-600
-                      focus-visible:ring-amber-500 dark:focus-visible:ring-amber-400
+                      focus-visible:ring-[var(--brand-ring)]
                       pr-10
                       ${errors.password ? "border-red-500 dark:border-red-400" : ""}
                     `}
@@ -168,7 +168,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full bg-amber-500 hover:bg-amber-600 dark:bg-amber-400 dark:hover:bg-amber-500 dark:text-stone-900 text-white font-medium"
+                className="brand-primary w-full font-medium"
               >
                 {isSubmitting ? "Accesso in corso…" : "Accedi"}
               </Button>

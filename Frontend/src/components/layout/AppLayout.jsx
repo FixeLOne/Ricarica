@@ -26,7 +26,7 @@ export default function AppLayout() {
   const location = useLocation();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-amber-50 dark:bg-stone-900">
+    <div className="flex h-screen overflow-hidden bg-stone-50 text-stone-950 dark:bg-stone-950 dark:text-stone-50">
       <Sidebar
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
@@ -35,7 +35,7 @@ export default function AppLayout() {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar onMenuClick={() => setMobileOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-5 md:p-6">
           <PageTransition locationKey={location.pathname}>
             <Outlet />
           </PageTransition>

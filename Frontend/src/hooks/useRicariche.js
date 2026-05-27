@@ -9,6 +9,7 @@ import { getBoutique, getTutteLeBoutique } from "@/api/boutiqueApi";
 
 export const MANUALE_VALUE = "MANUALE";
 export const BOUTIQUE_KEY  = "ricariche-boutique-id";
+export const VISTA_BOUTIQUE_KEY = "ricariche-vista-boutique-id";
 
 export function buildBody(data, tariffe, ruolo, boutiqueIdJwt) {
   const isManuale = data.gigaValore === MANUALE_VALUE;
@@ -48,6 +49,9 @@ export default function useRicariche() {
   const [submitting,   setSubmitting]   = useState(false);
   const [submitMod,    setSubmitMod]    = useState(false);
   const [formKey,      setFormKey]      = useState(0);
+  const [vistaBoutiqueId, setVistaBoutiqueId] = useState(
+    () => localStorage.getItem(VISTA_BOUTIQUE_KEY) ?? localStorage.getItem(BOUTIQUE_KEY) ?? ""
+  );
 
   useEffect(() => {
     if (!apiError) return;
@@ -57,7 +61,7 @@ export default function useRicariche() {
 
   const caricaRicariche = useCallback(async (p = 0) => {
     const bid = isAdmin
-      ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null)
+      ? (vistaBoutiqueId ? Number(vistaBoutiqueId) : null)
       : null;
     try {
       const { data } = await getRicariche(p, 11, bid);
@@ -67,14 +71,15 @@ export default function useRicariche() {
     } catch {
       setApiError("Errore nel caricamento delle ricariche.");
     }
-  }, [isAdmin]);
+  }, [isAdmin, vistaBoutiqueId]);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
+        const savedVistaBoutiqueId = localStorage.getItem(VISTA_BOUTIQUE_KEY) ?? localStorage.getItem(BOUTIQUE_KEY) ?? "";
         const bid = isAdmin
-          ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null)
+          ? (savedVistaBoutiqueId ? Number(savedVistaBoutiqueId) : null)
           : null;
         const [tarP, rigP, stP, bouP] = await Promise.allSettled([
           getTariffe(),
@@ -106,9 +111,11 @@ export default function useRicariche() {
       }
     };
     init();
-  }, [isAdmin, ruolo]);
+  }, [isAdmin, ruolo, setAuthBoutiqueName, utente?.boutiqueId]);
 
-  const handleBoutiqueChange = useCallback(async (boutiqueId) => {
+  const handleVistaBoutiqueChange = useCallback(async (boutiqueId) => {
+    localStorage.setItem(VISTA_BOUTIQUE_KEY, boutiqueId ?? "");
+    setVistaBoutiqueId(boutiqueId ?? "");
     const bid = boutiqueId ? Number(boutiqueId) : null;
     try {
       const [rigP, stP] = await Promise.allSettled([
@@ -137,7 +144,7 @@ export default function useRicariche() {
       const { data } = await creaRicarica(body);
       setFlashId(data.id);
       setFormKey(k => k + 1);
-      const bid = isAdmin ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null) : null;
+      const bid = isAdmin ? (vistaBoutiqueId ? Number(vistaBoutiqueId) : null) : null;
       const [, stRes] = await Promise.allSettled([caricaRicariche(0), getStatsOggi(bid)]);
       if (stRes.status === "fulfilled") { setStats(stRes.value.data); setCountN(stRes.value.data.countOggi); }
       setTimeout(() => setFlashId(null), 1500);
@@ -149,10 +156,10 @@ export default function useRicariche() {
   };
 
   const refreshStats = useCallback(async () => {
-    const bid = isAdmin ? (localStorage.getItem(BOUTIQUE_KEY) ? Number(localStorage.getItem(BOUTIQUE_KEY)) : null) : null;
+    const bid = isAdmin ? (vistaBoutiqueId ? Number(vistaBoutiqueId) : null) : null;
     const res = await getStatsOggi(bid).catch(() => null);
     if (res) { setStats(res.data); setCountN(res.data.countOggi); }
-  }, [isAdmin]);
+  }, [isAdmin, vistaBoutiqueId]);
 
   const handleModifica = async (formData, rigaId) => {
     setSubmitMod(true);
@@ -183,10 +190,10 @@ export default function useRicariche() {
   return {
     ruolo, isAdmin, utente,
     ricariche, totalPages, page,
-    countN, stats, tariffe, boutiques, boutiqueName,
+    countN, stats, tariffe, boutiques, boutiqueName, vistaBoutiqueId,
     loading, apiError, setApiError,
     flashId, editedIds,
     submitting, submitMod, formKey,
-    caricaRicariche, handleCrea, handleModifica, handleElimina, handleBoutiqueChange,
+    caricaRicariche, handleCrea, handleModifica, handleElimina, handleVistaBoutiqueChange,
   };
 }
