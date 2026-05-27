@@ -13,7 +13,7 @@ import axiosClient from "./axiosClient";
  *                     costoEffettivo, costoCliente, profitto, note,
  *                     boutiqueId, boutiqueNome }
  */
-export const getRicariche = (page = 0, size = 10) =>
+export const getRicariche = (page = 0, size = 11) =>
     axiosClient.get("/ricariche", {
         params: { page, size, sort: "dataOra,desc" },
     });

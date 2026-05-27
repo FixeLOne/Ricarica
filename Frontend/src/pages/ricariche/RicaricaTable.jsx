@@ -23,7 +23,7 @@ function Paginazione({ page, totalPages, onPageChange }) {
   }
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-stone-100 dark:border-stone-700/60 mt-auto">
+    <div className="flex items-center justify-between px-4 py-3 border-t border-stone-100 dark:border-stone-700/60">
       <span className="text-xs text-stone-400 dark:text-stone-500 tabular-nums">
         Pagina {page + 1} di {Math.max(1, totalPages)}
       </span>
