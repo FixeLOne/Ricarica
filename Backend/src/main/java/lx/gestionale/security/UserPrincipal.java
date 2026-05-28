@@ -15,8 +15,8 @@ public class UserPrincipal extends User {
 
     public UserPrincipal(String username, String password,
                          Collection<? extends GrantedAuthority> authorities,
-                         Long utenteId, Long boutiqueId, String ruolo) {
-        super(username, password, authorities);
+                         Long utenteId, Long boutiqueId, String ruolo, boolean enabled) {
+        super(username, password, enabled, true, true, true, authorities);
         this.utenteId = utenteId;
         this.boutiqueId = boutiqueId;
         this.ruolo=ruolo;

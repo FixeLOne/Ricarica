@@ -62,12 +62,12 @@ public class RicaricaService {
     @Transactional
     public RicaricaResponse salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
         Boutique boutique = switch (ruolo) {
-            case "DIPENDENTE" -> boutiqueAccessService.richiediBoutiqueAccessibile(boutiqueId, utenteId, boutiqueId, ruolo);
+            case "DIPENDENTE" -> boutiqueAccessService.richiediBoutiqueOperativa(boutiqueId, utenteId, boutiqueId, ruolo);
             case "ADMIN", "SUPER_ADMIN" -> {
                 if (request.getBoutiqueId() == null) {
                     throw new IllegalArgumentException("Specifica la boutique per la ricarica");
                 }
-                yield boutiqueAccessService.richiediBoutiqueAccessibile(request.getBoutiqueId(), utenteId, boutiqueId, ruolo);
+                yield boutiqueAccessService.richiediBoutiqueOperativa(request.getBoutiqueId(), utenteId, boutiqueId, ruolo);
             }
             default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
         };

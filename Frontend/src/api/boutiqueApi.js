@@ -23,6 +23,10 @@ import axiosClient from "./axiosClient";
  * PUT /api/v2/boutique/{id}
  *   Modifica dati base boutique.
  *   ModificaBoutiqueRequest: { nome, città, fattureAbilitate }
+ *
+ * PATCH /api/v2/boutique/{id}/stato
+ *   Attiva/disattiva operativamente una boutique.
+ *   ModificaStatoBoutiqueRequest: { attiva }
  */
 export const getBoutique = () =>
     axiosClient.get("/boutique");
@@ -38,6 +42,9 @@ export const creaBoutique = (data) =>
 
 export const modificaBoutique = (id, data) =>
     axiosClient.put(`/boutique/${id}`, data);
+
+export const modificaStatoBoutique = (id, attiva) =>
+    axiosClient.patch(`/boutique/${id}/stato`, { attiva });
 
 export const impostaFattureAbilitate = (id, abilitato) =>
     axiosClient.patch(`/boutique/${id}/fatture`, null, {

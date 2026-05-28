@@ -10,4 +10,5 @@ public class BoutiqueResponse {
     private String nome;
     private String città;
     private boolean fattureAbilitate;
+    private boolean attiva;
 }

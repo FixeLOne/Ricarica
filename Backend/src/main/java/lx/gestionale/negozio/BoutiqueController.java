@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.negozio.dto.BoutiqueResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
+import lx.gestionale.negozio.dto.ModificaStatoBoutiqueRequest;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -45,6 +46,14 @@ public class BoutiqueController {
             @AuthenticationPrincipal UserPrincipal principal) {
         boutiqueService.impostaFattureAbilitate(id, abilitato, principal.getUtenteId());
         return ResponseEntity.ok("Fatture " + (abilitato ? "abilitate" : "disabilitate") + " con successo");
+    }
+
+    @PatchMapping("/{id}/stato")
+    public ResponseEntity<BoutiqueResponse> modificaStatoBoutique(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificaStatoBoutiqueRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueService.modificaStatoBoutique(id, request.isAttiva(), principal.getUtenteId()));
     }
 
     @GetMapping("/{id}")

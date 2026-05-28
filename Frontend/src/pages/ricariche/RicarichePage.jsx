@@ -39,6 +39,7 @@ export default function RicarichePage() {
 
   const [modificaRiga, setModificaRiga] = useState(null);
   const [confirmRiga,  setConfirmRiga]  = useState(null);
+  const boutiquesOperative = boutiques.filter((boutique) => boutique.attiva !== false);
 
   const onModificaSubmit = async (formData) => {
     const ok = await handleModifica(formData, modificaRiga.id);
@@ -101,7 +102,9 @@ export default function RicarichePage() {
                 <SelectContent>
                   <SelectItem value={ALL_BOUTIQUES_VALUE}>Tutte</SelectItem>
                   {boutiques.map(b => (
-                    <SelectItem key={b.id} value={String(b.id)}>{b.nome}</SelectItem>
+                    <SelectItem key={b.id} value={String(b.id)}>
+                      {b.nome}{b.attiva === false ? " · disattivata" : ""}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -129,7 +132,7 @@ export default function RicarichePage() {
               key={formKey}
               onSubmit={handleCrea}
               tariffe={tariffe}
-              boutiques={boutiques}
+              boutiques={boutiquesOperative}
               ruolo={ruolo}
               isSubmitting={submitting}
               submitLabel="Aggiungi"

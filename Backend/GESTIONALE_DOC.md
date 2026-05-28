@@ -104,17 +104,20 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 ## Moduli Funzionali
 
 ### 1. Boutique (Negozi)
-**Entity:** `Boutique` — ha `nome`, `città`, riferimento all'`admin` proprietario.
+**Entity:** `Boutique` — ha `nome`, `città`, `fattureAbilitate`, `attiva`, riferimento all'`admin` proprietario.
 
 **Operazioni:**
 - `POST /api/v2/boutique` — crea una boutique **e** contestualmente crea l'account `DIPENDENTE` associato (username/password configurabili nella request). Transazionale: o tutto va a buon fine o niente.
 - `GET /api/v2/boutique` — lista delle boutique dell'admin loggato
 - `GET /api/v2/boutique/tutte` — tutte le boutique del sistema (solo SUPER_ADMIN)
 - `PUT /api/v2/boutique/{id}` — modifica `nome`, `città`, `fattureAbilitate` con controllo ownership condiviso
+- `PATCH /api/v2/boutique/{id}/stato` — attiva/disattiva operativamente la boutique tramite body `{ "attiva": true|false }`
 
 **Vincoli:**
 - Un Admin non può avere due boutique con lo stesso nome
 - Lo username dell'account dipendente deve essere unico nel sistema
+- Una boutique disattivata resta consultabile nello storico, ma non può ricevere nuove ricariche o nuove fatture
+- Il login del dipendente associato a una boutique disattivata viene bloccato
 
 ---
 
@@ -220,6 +223,7 @@ Questi dati sono considerati pubblici per la produzione dei documenti fiscali/co
 **Vincoli di business:**
 - Solo fatture in stato `BOZZA` possono essere modificate o eliminate
 - Solo fatture in stato `EMESSA` possono generare un AVOIR
+- `attiva` su Boutique: se `false`, la creazione di nuove fatture e nuove ricariche viene bloccata
 - `fattureAbilitate` su Boutique: se `false`, la creazione lancia eccezione (controllo solo in scrittura — vedi TODO)
 
 ---

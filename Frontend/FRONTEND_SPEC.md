@@ -80,7 +80,7 @@ src/
 Aggiornato al 27/05/2026.
 
 - Implementato: login, layout principale, sidebar/topbar, tema, pagina ricariche, pagina tariffe base.
-- Placeholder/work in progress: dashboard dipendente/admin/superadmin, fatture, editor fattura, boutique, tutte le boutique, azienda, export, gestione admin.
+- Placeholder/work in progress: dashboard dipendente/admin/superadmin, fatture, editor fattura, tutte le boutique, azienda, export, gestione admin.
 - `SUPER_ADMIN` è tracciato nel contratto ma non è prioritario: i problemi specifici di selezione `adminId` e creazione ricariche sono backlog non urgente.
 - La pagina `/azienda` resta solo ADMIN; il `GET /azienda` via API è invece intenzionalmente accessibile anche ai DIPENDENTI per generare fatture con i dati pubblici dell'azienda.
 
@@ -160,6 +160,7 @@ Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono c
 | POST | `/boutique` | ADMIN | Crea boutique + account dipendente |
 | PUT | `/boutique/{id}` | ADMIN, SUPER_ADMIN | Modifica `nome`, `città`, `fattureAbilitate` |
 | PATCH | `/boutique/{id}/fatture?abilitato=true\|false` | ADMIN | Abilita/disabilita fatture |
+| PATCH | `/boutique/{id}/stato` | ADMIN | Attiva/disattiva operativamente una boutique con body `{ attiva }` |
 
 ### Tariffe
 | Metodo | Endpoint | Ruoli | Note |
@@ -310,7 +311,8 @@ Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono c
   id: number,
   nome: string,
   città: string,                 // attenzione: accento sulla i
-  fattureAbilitate: boolean
+  fattureAbilitate: boolean,
+  attiva: boolean
   // ⚠️ NON ha adminId
 }
 ```
@@ -333,6 +335,13 @@ Nota: i dipendenti non accedono alla pagina di gestione `/azienda`, ma possono c
   nome: string,                  // @NotBlank, max 100
   città: string,                 // @NotBlank, max 100
   fattureAbilitate: boolean
+}
+```
+
+### ModificaStatoBoutiqueRequest
+```js
+{
+  attiva: boolean
 }
 ```
 
@@ -527,12 +536,16 @@ Errore:            #F87171   (red-400)
 - SUPER_ADMIN: selezione `adminId` e chiamate `getTariffe(adminId)`/save con `adminId` sono backlog non urgente.
 
 ### BoutiquePage (`/boutique`) — ADMIN / `/boutique/tutte` — SUPER_ADMIN
+- Stato frontend: pagina ADMIN implementata con card responsive, ricerca, filtri, statistiche rapide, creazione boutique + account dipendente, modifica dati base e attiva/disattiva.
 - Modifica inline/modal con `PUT /boutique/{id}` per `nome`, `città`, `fattureAbilitate`
-- Lista boutique con `nome`, `città`, `fattureAbilitate`
+- Lista boutique con `nome`, `città`, `fattureAbilitate`, `attiva`
 - Toggle inline per `fattureAbilitate` → chiama `PATCH /boutique/{id}/fatture?abilitato=`
+- Azione `Disattiva/Riattiva` → chiama `PATCH /boutique/{id}/stato`
+- Filtri UI: `Tutte`, `Attive`, `Disattivate`, `Fatture attive`, `Fatture spente`, più filtro città quando ci sono più città
 - Pulsante "Nuova Boutique" → form con: `nome`, `città`, `nomeAccount`, `usernameAccount`, `passwordAccount`
 - Il form di creazione include il toggle fattureAbilitate (default false).
 - Il toggle inline nella lista rimane disponibile per modificarlo dopo la creazione tramite PATCH /boutique/{id}/fatture?abilitato=
+- Nota implementativa: nel form React il campo è `citta`, ma il payload inviato al backend usa esattamente la chiave `città`.
 
 ### ExportPage (`/export`) — ADMIN, SUPER_ADMIN
 - Date picker `dal` / `al`
@@ -556,7 +569,7 @@ Errore:            #F87171   (red-400)
 - Non urgente SUPER_ADMIN: tariffe frontend non passano ancora `adminId`.
 - Coerenza tariffe: decidere se costi/prezzi a zero sono validi. O backend passa a `@PositiveOrZero`, o frontend blocca `0`.
 - Qualità frontend: `npm run lint` fallisce con errori Fast Refresh, import inutilizzati, `idx` inutilizzato e `__dirname` non definito nella config ESLint.
-- Pagine incomplete: dashboard, fatture, boutique, azienda, export e gestione admin sono ancora placeholder o parziali.
+- Pagine incomplete: dashboard, fatture, azienda, export, tutte le boutique e gestione admin sono ancora placeholder o parziali.
 
 ---
 

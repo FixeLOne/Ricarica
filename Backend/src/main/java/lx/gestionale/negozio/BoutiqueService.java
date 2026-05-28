@@ -76,6 +76,13 @@ public class BoutiqueService {
         return toResponse(boutique);
     }
 
+    @Transactional
+    public BoutiqueResponse modificaStatoBoutique(Long boutiqueId, boolean attiva, Long adminId) {
+        Boutique boutique = boutiqueAccessService.richiediBoutiqueDellAdmin(boutiqueId, adminId);
+        boutique.setAttiva(attiva);
+        return toResponse(boutique);
+    }
+
     // ── Privati ───────────────────────────────────────────────────────────────
 
     private Utente trovaAdmin(String username) {
@@ -126,7 +133,8 @@ public class BoutiqueService {
                 b.getId(),
                 b.getNome(),
                 b.getCittà(),
-                b.isFattureAbilitate()
+                b.isFattureAbilitate(),
+                b.isAttiva()
         );
     }
 }

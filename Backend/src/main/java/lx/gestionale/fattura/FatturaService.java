@@ -7,6 +7,7 @@ import lx.gestionale.fattura.riga.RigaFattura;
 import lx.gestionale.fattura.riga.dto.RigaFatturaRequest;
 import lx.gestionale.fattura.riga.dto.RigaFatturaResponse;
 import lx.gestionale.negozio.Boutique;
+import lx.gestionale.negozio.BoutiqueAccessService;
 import lx.gestionale.negozio.BoutiqueRepository;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
@@ -30,6 +31,7 @@ public class FatturaService {
     private final ContatoreFatturaService contatoreFatturaService;
     private final BoutiqueRepository boutiqueRepository;
     private final UtenteRepository utenteRepository;
+    private final BoutiqueAccessService boutiqueAccessService;
 
     @Value("${fattura.timbre-fiscal.valore:1.000}")
     private BigDecimal timbreValore;
@@ -132,6 +134,7 @@ public class FatturaService {
     private Boutique caricaBoutiqueAbilitata(Long boutiqueId) {
         Boutique boutique = boutiqueRepository.findById(boutiqueId)
                 .orElseThrow(() -> new IllegalArgumentException("Boutique non trovata"));
+        boutiqueAccessService.verificaBoutiqueAttiva(boutique);
         if (!boutique.isFattureAbilitate()) {
             throw new IllegalArgumentException("Le fatture non sono abilitate per questa boutique");
         }

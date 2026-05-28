@@ -41,6 +41,12 @@ public class BoutiqueAccessService {
         }
     }
 
+    public Boutique richiediBoutiqueOperativa(Long boutiqueId, Long utenteId, Long boutiqueIdJwt, String ruolo) {
+        Boutique boutique = richiediBoutiqueAccessibile(boutiqueId, utenteId, boutiqueIdJwt, ruolo);
+        verificaBoutiqueAttiva(boutique);
+        return boutique;
+    }
+
     public Boutique richiediBoutiqueDellAdmin(Long boutiqueId, Long adminId) {
         Boutique boutique = richiediBoutique(boutiqueId);
         verificaBoutiqueDellAdmin(boutique, adminId);
@@ -57,6 +63,12 @@ public class BoutiqueAccessService {
     public void verificaBoutiqueDellAdmin(Boutique boutique, Long adminId) {
         if (boutique.getAdmin() == null || !boutique.getAdmin().getId().equals(adminId)) {
             throw new IllegalArgumentException("Non hai i permessi su questa boutique");
+        }
+    }
+
+    public void verificaBoutiqueAttiva(Boutique boutique) {
+        if (!boutique.isAttiva()) {
+            throw new IllegalArgumentException("Boutique disattivata: non può ricevere nuove operazioni");
         }
     }
 }

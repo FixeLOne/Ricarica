@@ -11,6 +11,13 @@ export const MANUALE_VALUE = "MANUALE";
 export const BOUTIQUE_KEY  = "ricariche-boutique-id";
 export const VISTA_BOUTIQUE_KEY = "ricariche-vista-boutique-id";
 
+function normalizeBoutique(boutique) {
+  return {
+    ...boutique,
+    attiva: boutique.attiva !== false,
+  };
+}
+
 export function buildBody(data, tariffe, ruolo, boutiqueIdJwt) {
   const isManuale = data.gigaValore === MANUALE_VALUE;
   const body = {
@@ -99,7 +106,7 @@ export default function useRicariche() {
           setCountN(stP.value.data.countOggi);
         }
         if (bouP.status === "fulfilled" && bouP.value?.data) {
-          const lista = Array.isArray(bouP.value.data) ? bouP.value.data : [];
+          const lista = Array.isArray(bouP.value.data) ? bouP.value.data.map(normalizeBoutique) : [];
           setBoutiques(lista);
           if (!isAdmin && utente?.boutiqueId) {
             const found = lista.find(b => b.id === utente.boutiqueId);

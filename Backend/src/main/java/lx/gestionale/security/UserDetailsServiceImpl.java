@@ -19,14 +19,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     public @org.jspecify.annotations.NonNull UserDetails loadUserByUsername(@org.jspecify.annotations.NonNull String username) throws UsernameNotFoundException {
         return utenteRepository.findByUsername(username)
-                .map(utente -> new UserPrincipal(
-                        utente.getUsername(),
-                        utente.getPassword(),
-                        List.of(new SimpleGrantedAuthority("ROLE_" + utente.getRuolo().name())),
-                        utente.getId(), // Passiamo l'ID dell'utente
-                        utente.getBoutique() != null ? utente.getBoutique().getId() : null, // Passiamo l'ID boutique
-                        utente.getRuolo().name()
-                ))
+                .map(utente -> {
+                    boolean enabled = utente.getBoutique() == null || utente.getBoutique().isAttiva();
+                    return new UserPrincipal(
+                            utente.getUsername(),
+                            utente.getPassword(),
+                            List.of(new SimpleGrantedAuthority("ROLE_" + utente.getRuolo().name())),
+                            utente.getId(), // Passiamo l'ID dell'utente
+                            utente.getBoutique() != null ? utente.getBoutique().getId() : null, // Passiamo l'ID boutique
+                            utente.getRuolo().name(),
+                            enabled
+                    );
+                })
                 .orElseThrow(() -> new UsernameNotFoundException("Utente non trovato: " + username));
     }
 }

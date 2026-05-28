@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.security.dto.LoginRequest;
 import lx.gestionale.security.dto.LoginResponse;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,8 @@ public class AuthService {
                     .orElseThrow(() -> new IllegalStateException("Ruolo mancante"));
             String token = jwtService.generaToken(principal.getUsername(), principal.getUtenteId(), principal.getBoutiqueId(), ruolo);
             return new LoginResponse(token, principal.getUsername(), ruolo, principal.getBoutiqueId());
+        } catch (DisabledException e) {
+            throw new IllegalArgumentException("Boutique disattivata");
         } catch (AuthenticationException e) {
             throw new IllegalArgumentException("Credenziali non valide");
         }

@@ -1,1 +1,609 @@
-export default function BoutiquePage() { return <div className="p-8 text-stone-900 dark:text-stone-50">BoutiquePage — work in progress</div>; }
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  AlertCircle,
+  Building2,
+  CirclePause,
+  CirclePlay,
+  FileCheck2,
+  FileX2,
+  MapPin,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Store,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { useAuth } from "@/context/AuthContext";
+import {
+  creaBoutique,
+  getBoutique,
+  getTutteLeBoutique,
+  impostaFattureAbilitate,
+  modificaBoutique,
+  modificaStatoBoutique,
+} from "@/api/boutiqueApi";
+import BoutiqueFormModal from "./BoutiqueFormModal";
+
+const FILTRI = [
+  { id: "tutte", label: "Tutte" },
+  { id: "attive", label: "Attive" },
+  { id: "disattivate", label: "Disattivate" },
+  { id: "fatture-attive", label: "Fatture attive" },
+  { id: "fatture-spente", label: "Fatture spente" },
+];
+
+function getCitta(boutique) {
+  return boutique?.citta ?? boutique?.["città"] ?? "";
+}
+
+function normalizeBoutique(boutique) {
+  return {
+    ...boutique,
+    citta: getCitta(boutique),
+    fattureAbilitate: Boolean(boutique.fattureAbilitate),
+    attiva: boutique.attiva !== false,
+  };
+}
+
+function getApiError(error) {
+  return (
+    error?.response?.data?.errore ||
+    error?.response?.data?.message ||
+    (typeof error?.response?.data === "string" ? error.response.data : null) ||
+    "Operazione non riuscita"
+  );
+}
+
+function EmptyState({ canCreate, onCreate }) {
+  return (
+    <div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--brand-border)] bg-[var(--brand-soft)] px-6 py-12 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[var(--brand-text)] shadow-sm dark:bg-stone-900/60">
+        <Store className="h-5 w-5" />
+      </span>
+      <h2 className="mt-4 text-base font-semibold text-stone-950 dark:text-stone-50">Nessuna boutique</h2>
+      <p className="mt-1 max-w-sm text-sm text-stone-500 dark:text-stone-400">
+        Crea il primo punto vendita e il relativo account dipendente in un unico passaggio.
+      </p>
+      {canCreate && (
+        <Button onClick={onCreate} className="brand-primary mt-5 h-9 rounded-xl font-semibold">
+          <Plus className="h-4 w-4" />
+          Nuova boutique
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function LoadingGrid() {
+  return (
+    <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, index) => (
+        <div
+          key={index}
+          className="h-52 animate-pulse rounded-2xl border border-stone-200 bg-white/75 dark:border-stone-800 dark:bg-stone-900/70"
+        >
+          <div className="h-full rounded-2xl bg-gradient-to-br from-stone-100 via-transparent to-[var(--brand-soft)] dark:from-stone-800/70 dark:to-[var(--brand-soft)]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BoutiqueCard({ boutique, onEdit, onToggleFatture, onRequestStato, toggling }) {
+  const fattureAttive = boutique.fattureAbilitate;
+  const attiva = boutique.attiva;
+
+  return (
+    <article className={[
+      "group overflow-hidden rounded-2xl border bg-white shadow-[0_18px_48px_-42px_rgba(15,23,42,0.7)] transition-colors dark:bg-stone-900",
+      attiva
+        ? "border-stone-200 hover:border-[var(--brand-border)] dark:border-stone-800"
+        : "border-stone-200/80 opacity-90 dark:border-stone-800/80",
+    ].join(" ")}>
+      <div className={[
+        "relative border-b px-5 py-4",
+        attiva
+          ? "border-stone-100 bg-gradient-to-br from-white via-white to-[var(--brand-soft)] dark:border-stone-800 dark:from-stone-900 dark:via-stone-900 dark:to-[var(--brand-soft)]"
+          : "border-stone-100 bg-stone-50/90 dark:border-stone-800 dark:bg-stone-900/70",
+      ].join(" ")}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className={[
+              "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border bg-white shadow-sm dark:bg-stone-950/50",
+              attiva
+                ? "border-[var(--brand-border)] text-[var(--brand-text)]"
+                : "border-stone-200 text-stone-400 dark:border-stone-700 dark:text-stone-500",
+            ].join(" ")}>
+              {attiva ? <Store className="h-5 w-5" /> : <CirclePause className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <h2 className="truncate text-base font-semibold tracking-tight text-stone-950 dark:text-stone-50">
+                  {boutique.nome}
+                </h2>
+                <span className={[
+                  "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                  attiva
+                    ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                    : "bg-stone-200 text-stone-600 dark:bg-stone-800 dark:text-stone-300",
+                ].join(" ")}>
+                  {attiva ? "Attiva" : "Disattivata"}
+                </span>
+              </div>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-stone-500 dark:text-stone-400">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">{boutique.citta || "Città non indicata"}</span>
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onEdit(boutique)}
+            className="rounded-xl p-2 text-stone-400 transition-colors hover:bg-white/80 hover:text-[var(--brand-text)] dark:hover:bg-stone-800"
+            aria-label={`Modifica ${boutique.nome}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="space-y-4 px-5 py-4">
+        {!attiva && (
+          <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-600 dark:border-stone-800 dark:bg-stone-950/35 dark:text-stone-400">
+            Non disponibile per nuove ricariche e nuove fatture.
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/35">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              className={[
+                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                fattureAttive
+                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                  : "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400",
+              ].join(" ")}
+            >
+              {fattureAttive ? <FileCheck2 className="h-4 w-4" /> : <FileX2 className="h-4 w-4" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
+                Fatture {fattureAttive ? "attive" : "spente"}
+              </p>
+              <p className="truncate text-xs text-stone-500 dark:text-stone-400">
+                {fattureAttive ? "Dati azienda disponibili" : "Editor fatture disattivato"}
+              </p>
+            </div>
+          </div>
+
+          <Switch
+            checked={fattureAttive}
+            disabled={toggling}
+            onCheckedChange={(checked) => onToggleFatture(boutique, checked)}
+            className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
+            aria-label={`Fatture ${boutique.nome}`}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-xl border border-stone-200/80 bg-white px-3 py-3 dark:border-stone-800 dark:bg-stone-950/25">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400 dark:text-stone-500">ID</p>
+            <p className="mt-1 text-sm font-semibold tabular-nums text-stone-800 dark:text-stone-200">#{boutique.id}</p>
+          </div>
+          <div className={[
+            "rounded-xl border px-3 py-3",
+            attiva
+              ? "border-[var(--brand-border)] bg-[var(--brand-soft)]"
+              : "border-stone-200 bg-stone-50 dark:border-stone-800 dark:bg-stone-950/25",
+          ].join(" ")}>
+            <p className={[
+              "text-[10px] font-semibold uppercase tracking-[0.16em]",
+              attiva ? "text-[var(--brand-text)]" : "text-stone-400 dark:text-stone-500",
+            ].join(" ")}>
+              Stato
+            </p>
+            <p className="mt-1 text-sm font-semibold text-stone-800 dark:text-stone-100">
+              {attiva ? "Operativa" : "Sospesa"}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-stone-100 pt-3 dark:border-stone-800">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onRequestStato(boutique)}
+            className={[
+              "h-8 rounded-xl px-3 text-xs font-semibold",
+              attiva
+                ? "border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-800"
+                : "border-[var(--brand-border)] bg-[var(--brand-soft)] text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]",
+            ].join(" ")}
+          >
+            {attiva ? <CirclePause className="h-3.5 w-3.5" /> : <CirclePlay className="h-3.5 w-3.5" />}
+            {attiva ? "Disattiva" : "Riattiva"}
+          </Button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+export default function BoutiquePage() {
+  const { utente } = useAuth();
+  const [boutiques, setBoutiques] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(null);
+  const [query, setQuery] = useState("");
+  const [filtro, setFiltro] = useState("tutte");
+  const [cittaFiltro, setCittaFiltro] = useState("tutte");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedBoutique, setSelectedBoutique] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [modalError, setModalError] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [statoBoutique, setStatoBoutique] = useState(null);
+  const [statoSubmitting, setStatoSubmitting] = useState(false);
+
+  const isSuperAdmin = utente?.ruolo === "SUPER_ADMIN";
+  const canCreate = utente?.ruolo === "ADMIN";
+
+  const loadBoutiques = useCallback(async () => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      const response = isSuperAdmin ? await getTutteLeBoutique() : await getBoutique();
+      setBoutiques((response.data ?? []).map(normalizeBoutique));
+    } catch (error) {
+      setApiError(getApiError(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [isSuperAdmin]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadBoutiques);
+  }, [loadBoutiques]);
+
+  const stats = useMemo(() => {
+    const fattureAttive = boutiques.filter((boutique) => boutique.fattureAbilitate).length;
+    const attive = boutiques.filter((boutique) => boutique.attiva).length;
+    return {
+      totale: boutiques.length,
+      attive,
+      disattivate: boutiques.length - attive,
+      fattureAttive,
+      fattureSpente: boutiques.length - fattureAttive,
+    };
+  }, [boutiques]);
+
+  const cittaOptions = useMemo(() => {
+    const citta = boutiques
+      .map((boutique) => boutique.citta)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    return Array.from(new Set(citta));
+  }, [boutiques]);
+
+  const filteredBoutiques = useMemo(() => {
+    const value = query.trim().toLowerCase();
+    return boutiques.filter((boutique) => (
+      (!value ||
+        boutique.nome?.toLowerCase().includes(value) ||
+        boutique.citta?.toLowerCase().includes(value)) &&
+      (cittaFiltro === "tutte" || boutique.citta === cittaFiltro) &&
+      (filtro === "tutte" ||
+        (filtro === "attive" && boutique.attiva) ||
+        (filtro === "disattivate" && !boutique.attiva) ||
+        (filtro === "fatture-attive" && boutique.fattureAbilitate) ||
+        (filtro === "fatture-spente" && !boutique.fattureAbilitate))
+    ));
+  }, [boutiques, cittaFiltro, filtro, query]);
+
+  const openCreate = () => {
+    setSelectedBoutique(null);
+    setModalError(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (boutique) => {
+    setSelectedBoutique(boutique);
+    setModalError(null);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    if (submitting) return;
+    setModalOpen(false);
+    setSelectedBoutique(null);
+    setModalError(null);
+  };
+
+  const handleSave = async (values) => {
+    setSubmitting(true);
+    setModalError(null);
+    try {
+      if (selectedBoutique) {
+        const response = await modificaBoutique(selectedBoutique.id, values);
+        const updated = normalizeBoutique(response.data);
+        setBoutiques((current) => current.map((boutique) => (
+          boutique.id === updated.id ? updated : boutique
+        )));
+      } else {
+        await creaBoutique(values);
+        await loadBoutiques();
+      }
+      closeModal();
+    } catch (error) {
+      setModalError(getApiError(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleToggleFatture = async (boutique, checked) => {
+    const previous = boutique.fattureAbilitate;
+    setTogglingId(boutique.id);
+    setApiError(null);
+    setBoutiques((current) => current.map((item) => (
+      item.id === boutique.id ? { ...item, fattureAbilitate: checked } : item
+    )));
+
+    try {
+      await impostaFattureAbilitate(boutique.id, checked);
+    } catch (error) {
+      setBoutiques((current) => current.map((item) => (
+        item.id === boutique.id ? { ...item, fattureAbilitate: previous } : item
+      )));
+      setApiError(getApiError(error));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleConfermaStato = async () => {
+    if (!statoBoutique) return;
+
+    const nextAttiva = !statoBoutique.attiva;
+    const previous = statoBoutique.attiva;
+    setStatoSubmitting(true);
+    setApiError(null);
+    setBoutiques((current) => current.map((item) => (
+      item.id === statoBoutique.id ? { ...item, attiva: nextAttiva } : item
+    )));
+
+    try {
+      const response = await modificaStatoBoutique(statoBoutique.id, nextAttiva);
+      const updated = normalizeBoutique(response.data);
+      setBoutiques((current) => current.map((item) => (
+        item.id === updated.id ? updated : item
+      )));
+      setStatoBoutique(null);
+    } catch (error) {
+      setBoutiques((current) => current.map((item) => (
+        item.id === statoBoutique.id ? { ...item, attiva: previous } : item
+      )));
+      setApiError(getApiError(error));
+    } finally {
+      setStatoSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[var(--brand-primary)] shadow-[0_0_0_4px_var(--brand-soft)]" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--brand-text)]">
+              Punti vendita
+            </p>
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">Boutique</h1>
+            <p className="mt-1 max-w-2xl text-sm text-stone-500 dark:text-stone-400">
+              Gestisci le boutique, l'accesso dipendente e l'abilitazione delle fatture.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={loadBoutiques}
+            className="h-9 rounded-xl border-stone-200 text-stone-600 hover:bg-stone-50 dark:border-stone-800 dark:text-stone-300 dark:hover:bg-stone-900"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            Aggiorna
+          </Button>
+          {canCreate && (
+            <Button onClick={openCreate} className="brand-primary h-9 rounded-xl font-semibold">
+              <Plus className="h-4 w-4" />
+              Nuova boutique
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">Totale</p>
+            <Store className="h-4 w-4 text-[var(--brand-text)]" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.totale}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">boutique registrate</p>
+        </div>
+        <div className="rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-soft)] p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-text)]">Operative</p>
+            <CirclePlay className="h-4 w-4 text-[var(--brand-text)]" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.attive}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">abilitate alle operazioni</p>
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">Disattivate</p>
+            <Building2 className="h-4 w-4 text-stone-400 dark:text-stone-500" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.disattivate}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">fuori dai nuovi flussi</p>
+        </div>
+        <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">Fatture attive</p>
+            <FileCheck2 className="h-4 w-4 text-[var(--brand-text)]" />
+          </div>
+          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.fattureAttive}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{stats.fattureSpente} senza fatture</p>
+        </div>
+      </section>
+
+      <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="relative w-full lg:max-w-sm">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Cerca boutique o città"
+              className="h-10 rounded-xl border-stone-200 bg-stone-50 pl-9 shadow-none focus-visible:border-[var(--brand-border)] focus-visible:ring-2 focus-visible:ring-[var(--brand-ring)] dark:border-stone-800 dark:bg-stone-950/40"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {cittaOptions.length > 1 && (
+              <select
+                value={cittaFiltro}
+                onChange={(event) => setCittaFiltro(event.target.value)}
+                className="h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-medium text-stone-600 outline-none transition-colors focus:border-[var(--brand-border)] focus:ring-2 focus:ring-[var(--brand-ring)] dark:border-stone-800 dark:bg-stone-950/40 dark:text-stone-300"
+                aria-label="Filtra per città"
+              >
+                <option value="tutte">Tutte le città</option>
+                {cittaOptions.map((citta) => (
+                  <option key={citta} value={citta}>{citta}</option>
+                ))}
+              </select>
+            )}
+            <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
+              {filteredBoutiques.length} di {boutiques.length} boutique
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-0.5">
+          {FILTRI.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setFiltro(item.id)}
+              className={[
+                "shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors",
+                filtro === item.id
+                  ? "brand-primary"
+                  : "border border-stone-200 bg-stone-50 text-stone-500 hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:border-stone-800 dark:bg-stone-950/30 dark:text-stone-400",
+              ].join(" ")}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {apiError && (
+        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:border-red-800/70 dark:bg-red-500/10 dark:text-red-300">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
+
+      {loading ? (
+        <LoadingGrid />
+      ) : boutiques.length === 0 ? (
+        <EmptyState canCreate={canCreate} onCreate={openCreate} />
+      ) : filteredBoutiques.length === 0 ? (
+        <div className="rounded-2xl border border-stone-200 bg-white px-6 py-12 text-center dark:border-stone-800 dark:bg-stone-900">
+          <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">Nessun risultato</p>
+          <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">Prova con un nome o una città diversa.</p>
+        </div>
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-3">
+          {filteredBoutiques.map((boutique) => (
+            <BoutiqueCard
+              key={boutique.id}
+              boutique={boutique}
+              onEdit={openEdit}
+              onToggleFatture={handleToggleFatture}
+              onRequestStato={setStatoBoutique}
+              toggling={togglingId === boutique.id}
+            />
+          ))}
+        </div>
+      )}
+
+      <BoutiqueFormModal
+        open={modalOpen}
+        boutique={selectedBoutique}
+        onClose={closeModal}
+        onSave={handleSave}
+        isSubmitting={submitting}
+        serverError={modalError}
+      />
+
+      {statoBoutique && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/35 p-4 backdrop-blur-[2px]"
+          onClick={() => !statoSubmitting && setStatoBoutique(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-stone-200 bg-white p-5 shadow-[0_26px_70px_-42px_rgba(15,23,42,0.65)] dark:border-stone-800 dark:bg-stone-900"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-text)]">
+                {statoBoutique.attiva ? <CirclePause className="h-5 w-5" /> : <CirclePlay className="h-5 w-5" />}
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold text-stone-950 dark:text-stone-50">
+                  {statoBoutique.attiva ? "Disattiva boutique" : "Riattiva boutique"}
+                </h2>
+                <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                  {statoBoutique.attiva
+                    ? `${statoBoutique.nome} non sarà più disponibile per nuove ricariche o nuove fatture.`
+                    : `${statoBoutique.nome} tornerà disponibile nei flussi operativi.`}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={statoSubmitting}
+                onClick={() => setStatoBoutique(null)}
+                className="h-9 rounded-xl border-stone-200 text-stone-700 dark:border-stone-800 dark:text-stone-300"
+              >
+                Annulla
+              </Button>
+              <Button
+                type="button"
+                disabled={statoSubmitting}
+                onClick={handleConfermaStato}
+                className="brand-primary h-9 min-w-[104px] rounded-xl font-semibold"
+              >
+                {statoSubmitting ? "Salvo..." : statoBoutique.attiva ? "Disattiva" : "Riattiva"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
