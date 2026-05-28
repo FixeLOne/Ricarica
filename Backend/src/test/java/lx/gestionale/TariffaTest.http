@@ -1,0 +1,194 @@
+### =====================================================================
+### RECHARGE NET — THE ENTERPRISE MASTER AUDIT
+### Focus: End-to-End Business Flow, RBAC Isolamento, State Machine, Security
+### =====================================================================
+
+@base = http://localhost:8080/api/v2
+
+### ── 0. SETUP: ACCESSO ALLE CHIAVI DEL REGNO ──────────────────────────
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"superadmin","password":"superadmin123"}
+> {% client.global.set("t_super", response.body.token); %}
+###
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminA","password":"adminA123"}
+> {% client.global.set("t_adminA", response.body.token); client.global.set("b_A1", response.body.boutiqueId || 1); %}
+###
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminB","password":"adminB123"}
+> {% client.global.set("t_adminB", response.body.token); client.global.set("b_B1", response.body.boutiqueId || 3); %}
+###
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA1","password":"dipA1123"}
+> {% client.global.set("t_dipA1", response.body.token); %}
+###
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA2","password":"dipA2123"}
+> {% client.global.set("t_dipA2", response.body.token); %}
+
+
+### =====================================================================
+### FASE 1: LE FONDAMENTA (AZIENDA E LISTINI)
+### L'Admin A configura il suo negozio, il SuperAdmin vigila, Admin B attacca.
+### =====================================================================
+
+### 1.1 [BUSINESS] Admin A configura i dati della sua azienda -> 200
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"Impero Admin A","indirizzo":"Via Centrale","matriculeFiscale":"1234567A"}
+
+### 1.2 [SECURITY IDOR] Admin B tenta di sovrascrivere l'azienda di Admin A -> 200 (MA DEVE MODIFICARE LA SUA, NON QUELLA DI A!)
+### (Grazie al tuo fix, questo modificherà l'azienda di Admin B, salvaguardando Admin A)
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminB}}
+Content-Type: application/json
+
+{"ragioneSociale":"Hacker Corp","indirizzo":"Via del Furto","matriculeFiscale":"0000000X"}
+
+### 1.3 [BUSINESS] Admin A crea una tariffa Ooredoo 50GB -> 200
+POST {{base}}/tariffe
+Authorization: Bearer eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJkaXBBMSIsInJ1b2xvIjoiQURNSU4iLCJib3V0aXF1ZUlkIjoxLCJ1dGVudGVJZCI6NSwiaWF0IjoxNzc5OTk2MDMxLCJleHAiOjE3ODAwODI0MzF9.Zkeas-4vjxFwaj7ipy88hZjdOgrDOv14uZcnue_cUg75YLPiKi2IKws1IEPwZoFx
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":50.0,"costoAcquisto":20.000,"prezzoVendita":25.000}
+> {% client.global.set("tariffa_50gb", response.body.id); %}
+
+### 1.4 [BUSINESS] Admin A crea una tariffa Ooredoo 100GB -> 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":100.0,"costoAcquisto":40.000,"prezzoVendita":45.000}
+> {% client.global.set("tariffa_100gb", response.body.id); %}
+
+### 1.5 [LOGIC TRAP] L'Impiegato distratto tenta di trasformare la 50GB in 100GB!
+### ATTESO: 400 (Fermato dal fix che impedisce duplicati via PUT)
+PUT {{base}}/tariffe/{{tariffa_50gb}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":100.0,"costoAcquisto":35.000,"prezzoVendita":45.000}
+
+
+### =====================================================================
+### FASE 2: VITA DA NEGOZIO (RICARICHE E TRUFFE)
+### Il dipendente fa il suo lavoro, ma prova anche a rubare dalla cassa.
+### =====================================================================
+
+### 2.1 [HAPPY PATH] DipA1 fa una ricarica automatica Ooredoo 50GB -> 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21111111","giga":50.0,"manuale":false}
+> {% client.global.set("ric_dip_auto", response.body.id); %}
+
+### 2.2 [THE THEFT] DipA1 fa una ricarica manuale e prova a registrare un PROFITTO NEGATIVO per rubare soldi.
+### ATTESO: 400 (Fermato dal tuo fix: costoEffettivo > costoCliente)
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"51111111","giga":10.0,"manuale":true,"costoEffettivo":15.000,"costoCliente":5.000}
+
+### 2.3 [XSS INJECTION] DipA1 inserisce uno script nelle note della ricarica
+### ATTESO: 400 (Fermato dalla regex anti-XSS sulle note)
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21222222","giga":10.0,"manuale":true,"costoEffettivo":5.0,"costoCliente":8.0,"note":"<script>alert('Hack')</script>"}
+
+### 2.4 [ISOLAMENTO] DipA2 (Boutique 2) prova a eliminare la ricarica di DipA1 (Boutique 1)
+### ATTESO: 400 (Non hai i permessi)
+DELETE {{base}}/ricariche/{{ric_dip_auto}}
+Authorization: Bearer {{t_dipA2}}
+
+
+### =====================================================================
+### FASE 3: IL GIOCO DELLE FATTURE (MACCHINA A STATI E PARADOSSI)
+### Verifichiamo che la contabilità sia inattaccabile.
+### =====================================================================
+
+### 3.1 [SETUP] Admin A crea una Fattura BOZZA -> 201
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-17",
+  "nomeCliente": "Stark Industries",
+  "timbreFiscal": true,
+  "remiseGlobale": 0,
+  "boutiqueId": {{b_A1}},
+  "righe": [{"descrizione":"Fornitura Ricariche","quantita":100,"prezzoUnitarioHT":5.000,"aliquotaTVA":19}]
+}
+> {% client.global.set("fatt_stark", response.body.id); %}
+
+### 3.2 [MATH PARADOX] Admin A impazzisce e mette uno SCONTO superiore al totale.
+### ATTESO: 400 (Il totale netto non può essere negativo)
+PUT {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-17",
+  "nomeCliente": "Stark Industries",
+  "timbreFiscal": true,
+  "remiseGlobale": 99999.000,
+  "righe": [{"descrizione":"Fornitura Ricariche","quantita":100,"prezzoUnitarioHT":5.000,"aliquotaTVA":19}]
+}
+
+### 3.3 [STATE MACHINE] Admin A emette la fattura -> 200
+PATCH {{base}}/fatture/{{fatt_stark}}/emetti
+Authorization: Bearer {{t_adminA}}
+
+### 3.4 [STATE MACHINE] Admin A ci ripensa e prova a ELIMINARE la fattura emessa!
+### ATTESO: 400 (Solo le BOZZE si eliminano. Le emesse richiedono un AVOIR)
+DELETE {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminA}}
+
+### 3.5 [BUSINESS] Admin A crea l'Avoir (Nota di credito) per stornarla -> 201
+POST {{base}}/fatture/{{fatt_stark}}/avoir
+Authorization: Bearer {{t_adminA}}
+> {% client.global.set("avoir_stark", response.body.id); %}
+
+### 3.6 [INCEPTION] Admin A prova a creare un Avoir... dell'Avoir!
+### ATTESO: 400 (Non è possibile emettere un Avoir su un Avoir)
+POST {{base}}/fatture/{{avoir_stark}}/avoir
+Authorization: Bearer {{t_adminA}}
+
+
+### =====================================================================
+### FASE 4: STRESS TEST, EXPORT E PAGINAZIONE
+### Protezione contro DoS e Memory Leaks
+### =====================================================================
+
+### 4.1 [PAGINATION DOS] Admin A richiede un miliardo di ricariche per far crashare il server.
+### ATTESO: 200, ma la risposta DEVE contenere solo 20 o 100 elementi (grazie a Spring Data Pageable)
+GET {{base}}/ricariche?page=0&size=999999999
+Authorization: Bearer {{t_adminA}}
+
+### 4.2 [DASHBOARD AGGREGATION] SuperAdmin chiede la dashboard.
+### ATTESO: 200 (Verifica che veda i numeri aggregati di tutte le operazioni del sistema)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_super}}
+
+### 4.3 [EXPORT ISOLATION] Dipendente B1 esporta l'Excel
+### ATTESO: 200 (Il file DEVE contenere solo le ricariche della Boutique 3, non quelle create al punto 2.1)
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_dipB1}}

@@ -78,24 +78,24 @@ export default function RicaricaTable({
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-white to-transparent lg:hidden dark:from-stone-900" />
         <table className="w-full min-w-[860px] table-fixed">
           <colgroup>
-            <col className="w-16" />       {/* Ora */}
-            <col className="w-32" />       {/* Numero */}
-            <col className="w-24" />       {/* Operatore */}
-            <col className="w-16" />       {/* Giga */}
+            <col className="w-16" />
+            <col className="w-32" />
+            <col className="w-24" />
+            <col className="w-16" />
             {isAdmin ? (
               <>
-                <col className="w-36" />   {/* Note */}
-                <col className="w-24" />   {/* Prezzo */}
-                <col className="w-24" />   {/* Profitto */}
-                <col className="w-28" />   {/* Boutique */}
+                <col className="w-36" />
+                <col className="w-24" />
+                <col className="w-24" />
+                <col className="w-28" />
               </>
             ) : (
               <>
-                <col className="w-40" />   {/* Note */}
-                <col className="w-24" />   {/* Prezzo */}
+                <col className="w-40" />
+                <col className="w-24" />
               </>
             )}
-            <col className="w-20" />       {/* Azioni */}
+            <col className="w-20" />
           </colgroup>
           <thead>
             <tr className="border-b border-[var(--brand-border)] bg-[var(--brand-soft)]">

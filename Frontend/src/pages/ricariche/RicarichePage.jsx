@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import useRicariche from "@/hooks/useRicariche";
 import RicaricaForm from "./RicaricaForm";
 import RicaricaTable from "./RicaricaTable";
@@ -39,7 +39,18 @@ export default function RicarichePage() {
 
   const [modificaRiga, setModificaRiga] = useState(null);
   const [confirmRiga,  setConfirmRiga]  = useState(null);
-  const boutiquesOperative = boutiques.filter((boutique) => boutique.attiva !== false);
+  const boutiquesOperative = boutiques.filter((boutique) =>
+    boutique.attiva !== false && boutique.ricaricheAbilitate !== false
+  );
+  const boutiqueCorrente = !isAdmin && boutiques.length > 0 ? boutiques[0] : null;
+  const puoCreareRicarica = isAdmin
+    ? boutiquesOperative.length > 0
+    : !boutiqueCorrente || (boutiqueCorrente.attiva !== false && boutiqueCorrente.ricaricheAbilitate !== false);
+  const bloccoRicarica = boutiqueCorrente?.attiva === false
+    ? "Boutique disattivata: non puoi inserire nuove ricariche."
+    : boutiqueCorrente?.ricaricheAbilitate === false
+      ? "Ricariche spente per questa boutique."
+      : "Nessuna boutique operativa con ricariche attive.";
 
   const onModificaSubmit = async (formData) => {
     const ok = await handleModifica(formData, modificaRiga.id);
@@ -103,7 +114,9 @@ export default function RicarichePage() {
                   <SelectItem value={ALL_BOUTIQUES_VALUE}>Tutte</SelectItem>
                   {boutiques.map(b => (
                     <SelectItem key={b.id} value={String(b.id)}>
-                      {b.nome}{b.attiva === false ? " · disattivata" : ""}
+                      {b.nome}
+                      {b.attiva === false ? " · disattivata" : ""}
+                      {b.ricaricheAbilitate === false ? " · ricariche spente" : ""}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -127,16 +140,39 @@ export default function RicarichePage() {
           <div className={cardHeaderCn}>
             <p className={cardHeaderTextCn}>Nuova ricarica</p>
           </div>
-            <div className="p-5">
-            <RicaricaForm
-              key={formKey}
-              onSubmit={handleCrea}
-              tariffe={tariffe}
-              boutiques={boutiquesOperative}
-              ruolo={ruolo}
-              isSubmitting={submitting}
-              submitLabel="Aggiungi"
-            />
+          <div className="p-5">
+            {puoCreareRicarica ? (
+              <RicaricaForm
+                key={formKey}
+                onSubmit={handleCrea}
+                tariffe={tariffe}
+                boutiques={boutiquesOperative}
+                ruolo={ruolo}
+                isSubmitting={submitting}
+                submitLabel="Aggiungi"
+              />
+            ) : (
+              <div className="flex min-h-[260px] flex-col justify-between rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-soft)] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-[var(--brand-text)] shadow-sm dark:bg-stone-900/60">
+                    <AlertTriangle className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="text-sm font-semibold text-stone-950 dark:text-stone-50">
+                      Ricariche non disponibili
+                    </h2>
+                    <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
+                      {bloccoRicarica}
+                    </p>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
+                    Riattiva il servizio dalla pagina Boutique per tornare a creare ricariche.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

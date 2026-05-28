@@ -1,0 +1,1518 @@
+### =====================================================================
+### RECHARGE NET — ARMAGEDDON TEST SUITE COMPLETA
+### Copre: auth, boutique, tariffe, ricariche, fatture, dashboard, export
+### Include: happy path, violazioni ownership, edge case, crash bait,
+###          paradossi di stato, injection, sequenze illegali
+### =====================================================================
+
+@base = http://localhost:8080/api/v2
+
+
+### =====================================================================
+### SEZIONE 0 — LOGIN E TOKEN
+### =====================================================================
+
+### 0.1 Login SuperAdmin -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"superadmin","password":"superadmin123"}
+
+> {%
+    client.global.set("tokenSuper", response.body.token);
+%}
+
+###
+
+### 0.2 Login Admin A -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminA","password":"adminA123"}
+
+> {%
+    client.global.set("tokenAdminA", response.body.token);
+%}
+
+###
+
+### 0.3 Login Admin B -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminB","password":"adminB123"}
+
+> {%
+    client.global.set("tokenAdminB", response.body.token);
+%}
+
+###
+
+### 0.4 Login Dipendente A1 -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA1","password":"dipA1123"}
+
+> {%
+    client.global.set("tokenDipA1", response.body.token);
+%}
+
+###
+
+### 0.5 Login Dipendente A2 -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA2","password":"dipA2123"}
+
+> {%
+    client.global.set("tokenDipA2", response.body.token);
+%}
+
+###
+
+### 0.6 Login Dipendente B1 -> ATTESO: 200 + token
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipB1","password":"dipB1123"}
+
+> {%
+    client.global.set("tokenDipB1", response.body.token);
+%}
+
+###
+
+### 0.7 [CRASH BAIT] Login con body completamente vuoto -> ATTESO: 400 (non 500)
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{}
+
+###
+
+### 0.8 [CRASH BAIT] Login con password sbagliata -> ATTESO: 401
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminA","password":"SBAGLIATA"}
+
+###
+
+### 0.9 [SECURITY] Login senza Content-Type -> ATTESO: 400 o 415
+POST {{base}}/auth/login
+
+{"username":"adminA","password":"adminA123"}
+
+###
+
+### 0.10 [SECURITY] Token Bearer assente su endpoint protetto -> ATTESO: 401
+GET {{base}}/boutique
+
+###
+
+### 0.11 [SECURITY] Token completamente inventato -> ATTESO: 401
+GET {{base}}/boutique
+Authorization: Bearer questo.token.efalso
+
+###
+
+### 0.12 [SECURITY] Token corretto ma senza prefisso Bearer -> ATTESO: 401
+GET {{base}}/boutique
+Authorization: {{tokenAdminA}}
+
+###
+
+### 0.13 [SECURITY] Token con Bearer ma valore vuoto -> ATTESO: 401
+GET {{base}}/boutique
+Authorization: Bearer
+
+###
+
+
+### =====================================================================
+### SEZIONE 1 — SETUP: RECUPERO ID DINAMICI
+### =====================================================================
+
+### 1.1 Recupera boutique di Admin A (serve boutiqueA1_id e boutiqueA2_id)
+GET {{base}}/boutique
+Authorization: Bearer {{tokenAdminA}}
+
+> {%
+    client.global.set("boutiqueA1_id", response.body[0].id);
+    client.global.set("boutiqueA2_id", response.body.length > 1 ? response.body[1].id : response.body[0].id);
+%}
+
+###
+
+### 1.2 Recupera boutique di Admin B
+GET {{base}}/boutique
+Authorization: Bearer {{tokenAdminB}}
+
+> {%
+    client.global.set("boutiqueB1_id", response.body[0].id);
+%}
+
+###
+
+### 1.3 SuperAdmin vede TUTTE le boutique del sistema -> ATTESO: 200 lista completa
+GET {{base}}/boutique/tutte
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 1.4 [SECURITY] Admin A tenta di vedere tutte le boutique -> ATTESO: 403
+GET {{base}}/boutique/tutte
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 1.5 [SECURITY] Dipendente tenta di vedere tutte le boutique -> ATTESO: 403
+GET {{base}}/boutique/tutte
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 2 — UTENTI E ADMIN
+### =====================================================================
+
+### 2.1 SuperAdmin crea un nuovo Admin -> ATTESO: 200
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"Admin Test","username":"adminTest","password":"password123"}
+
+###
+
+### 2.2 [SECURITY] Admin A tenta di creare un Admin -> ATTESO: 403
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"nome":"Hacker Admin","username":"hacker","password":"hacker123"}
+
+###
+
+### 2.3 [SECURITY] Dipendente tenta di creare un Admin -> ATTESO: 403
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"nome":"Dipendente Admin","username":"dipAdmin","password":"pass1234"}
+
+###
+
+### 2.4 [VALIDATION] Crea Admin con username troppo corto (< 3 char) -> ATTESO: 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"X","username":"ab","password":"password123"}
+
+###
+
+### 2.5 [VALIDATION] Crea Admin con password troppo corta (< 8 char) -> ATTESO: 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"Admin Corto","username":"admincorto","password":"abc"}
+
+###
+
+### 2.6 [VALIDATION] Crea Admin con body vuoto -> ATTESO: 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{}
+
+###
+
+### 2.7 [CRASH BAIT] Username duplicato -> ATTESO: 400 o 500 se constraint non gestito
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"Admin Duplicato","username":"adminA","password":"password123"}
+
+###
+
+
+### =====================================================================
+### SEZIONE 3 — BOUTIQUE
+### =====================================================================
+
+### 3.1 [SECURITY] Dipendente tenta di creare boutique -> ATTESO: 403
+POST {{base}}/boutique
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"nome":"Boutique Hacker","citta":"Napoli","usernameDipendente":"dipHack","passwordDipendente":"pass1234"}
+
+###
+
+### 3.2 [SECURITY] SuperAdmin tenta di creare boutique (solo ADMIN può) -> ATTESO: 403
+POST {{base}}/boutique
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"Boutique Super","citta":"Roma","usernameDipendente":"dipSuper","passwordDipendente":"pass1234"}
+
+###
+
+### 3.3 [VALIDATION] Crea boutique senza nome -> ATTESO: 400
+POST {{base}}/boutique
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"citta":"Tunisi","usernameDipendente":"dipNew","passwordDipendente":"pass1234"}
+
+###
+
+### 3.4 [VALIDATION] Crea boutique con body vuoto -> ATTESO: 400
+POST {{base}}/boutique
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{}
+
+###
+
+### 3.5 [BUSINESS] Admin A crea boutique con nome duplicato (stesso admin) -> ATTESO: 400
+POST {{base}}/boutique
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"nome":"Boutique A1","citta":"Tunisi","usernameDipendente":"dipDuplicato","passwordDipendente":"pass1234"}
+
+###
+
+### 3.6 [BUSINESS] Admin A crea boutique con username dipendente già esistente -> ATTESO: 400
+POST {{base}}/boutique
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"nome":"Boutique Nuova","citta":"Tunisi","usernameDipendente":"dipA1","passwordDipendente":"pass1234"}
+
+###
+
+
+### =====================================================================
+### SEZIONE 4 — DATI AZIENDA
+### =====================================================================
+
+### 4.1 Admin A salva dati azienda -> ATTESO: 200
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"Telecom Admin A Srl","indirizzo":"Via Tunisia 42","matriculeFiscale":"TN123456A"}
+
+###
+
+### 4.2 [VALIDATION] Dati azienda con body vuoto -> ATTESO: 400
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{}
+
+###
+
+### 4.3 [VALIDATION] Dati azienda con campi blank (solo spazi) -> ATTESO: 400
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"   ","indirizzo":"   ","matriculeFiscale":"   "}
+
+###
+
+### 4.4 [SECURITY] Dipendente tenta di modificare dati azienda -> ATTESO: 403
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"ragioneSociale":"Hack Srl","indirizzo":"Via Hack","matriculeFiscale":"HACK000"}
+
+###
+
+### 4.5 [SECURITY] SuperAdmin tenta di modificare dati azienda (endpoint solo ADMIN) -> ATTESO: 403
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"ragioneSociale":"Super Srl","indirizzo":"Via Super","matriculeFiscale":"SUPER000"}
+
+###
+
+### 4.6 Admin A legge i propri dati azienda -> ATTESO: 200
+GET {{base}}/azienda
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 4.7 [CRASH BAIT] Admin B legge dati azienda (non ancora inseriti) -> ATTESO: 404 o body null gestito
+GET {{base}}/azienda
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 5 — TARIFFE
+### =====================================================================
+
+### 5.1 Admin A crea tariffa corretta -> ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":15.0,"costoAcquisto":7.000,"prezzoVendita":12.000}
+
+> {%
+    client.global.set("tariffaA_id", response.body.id);
+%}
+
+###
+
+### 5.2 [CRASH BAIT] Enum operatore inesistente -> ATTESO: 400 (non 500)
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"SPACEX","giga":10.0,"costoAcquisto":5.0,"prezzoVendita":10.0}
+
+###
+
+### 5.3 [VALIDATION] Tutti i campi null -> ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":null,"giga":null,"costoAcquisto":null,"prezzoVendita":null}
+
+###
+
+### 5.4 [VALIDATION] Prezzi negativi -> ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":10.0,"costoAcquisto":-5.0,"prezzoVendita":-1.0}
+
+###
+
+### 5.5 [VALIDATION] Giga negativi -> ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":-10.0,"costoAcquisto":5.0,"prezzoVendita":10.0}
+
+###
+
+### 5.6 [CRASH BAIT] Giga come stringa invece di numero -> ATTESO: 400 (non 500)
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":"TANTI","costoAcquisto":5.0,"prezzoVendita":10.0}
+
+###
+
+### 5.7 Admin A legge il proprio listino -> ATTESO: 200
+GET {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.8 [SECURITY] SuperAdmin legge listino con adminId di Admin A -> ATTESO: 200 (bypass)
+GET {{base}}/tariffe?adminId=1
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 5.9 [SECURITY] Admin B tenta di modificare tariffa di Admin A -> ATTESO: 400/403
+PUT {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenAdminB}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":15.0,"costoAcquisto":1.0,"prezzoVendita":1.0}
+
+###
+
+### 5.10 [SECURITY] Dipendente tenta di modificare tariffa -> ATTESO: 403
+PUT {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":15.0,"costoAcquisto":1.0,"prezzoVendita":1.0}
+
+###
+
+### 5.11 [SECURITY] Admin B tenta di eliminare tariffa di Admin A -> ATTESO: 400/403
+DELETE {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 5.12 Modifica tariffa corretta (Admin A su propria tariffa) -> ATTESO: 200
+PUT {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":15.0,"costoAcquisto":8.000,"prezzoVendita":13.000}
+
+###
+
+### 5.13 Elimina tariffa corretta -> ATTESO: 204
+DELETE {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.14 [CRASH BAIT] Elimina tariffa già eliminata (ID inesistente) -> ATTESO: 400/404 (non 500)
+DELETE {{base}}/tariffe/{{tariffaA_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.15 [CRASH BAIT] Elimina tariffa con ID non numerico -> ATTESO: 400 (non 500)
+DELETE {{base}}/tariffe/abc
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.16 SuperAdmin modifica tariffa di Admin A (bypass ownership) -> ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"telecom","giga":20.0,"costoAcquisto":9.0,"prezzoVendita":15.0}
+
+> {%
+    client.global.set("tariffaA2_id", response.body.id);
+%}
+
+###
+
+PUT {{base}}/tariffe/{{tariffaA2_id}}
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"operatore":"telecom","giga":20.0,"costoAcquisto":9.5,"prezzoVendita":15.5}
+
+###
+
+
+### =====================================================================
+### SEZIONE 6 — RICARICHE
+### =====================================================================
+
+### 6.1 Dipendente A1 crea ricarica corretta (listino automatico) -> ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":false}
+
+> {%
+    client.global.set("ricaricaDip_id", response.body.id);
+%}
+
+###
+
+### 6.2 Dipendente A1 crea ricarica manuale -> ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"51234567","giga":5.0,"manuale":true,"costoEffettivo":3.000,"costoCliente":5.000}
+
+> {%
+    client.global.set("ricaricaManuale_id", response.body.id);
+%}
+
+###
+
+### 6.3 Admin A crea ricarica specificando boutiqueId -> ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"numero":"91234567","giga":10.0,"manuale":true,"costoEffettivo":5.000,"costoCliente":8.000,"boutiqueId":{{boutiqueA1_id}}}
+
+> {%
+    client.global.set("ricaricaAdmin_id", response.body.id);
+%}
+
+###
+
+### 6.4 [SECURITY] Admin A crea ricarica su boutique di Admin B -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"numero":"91234568","giga":10.0,"manuale":true,"costoEffettivo":5.0,"costoCliente":8.0,"boutiqueId":{{boutiqueB1_id}}}
+
+###
+
+### 6.5 [SECURITY] Admin A senza specificare boutiqueId -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"numero":"91234569","giga":10.0,"manuale":true,"costoEffettivo":5.0,"costoCliente":8.0}
+
+###
+
+### 6.6 [VALIDATION] Numero con meno di 8 cifre -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"1234","giga":10.0,"manuale":false}
+
+###
+
+### 6.7 [VALIDATION] Numero con lettere -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"ABCD1234","giga":10.0,"manuale":false}
+
+###
+
+### 6.8 [VALIDATION] Numero con primo digit non mappato (operatore sconosciuto) -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"11234567","giga":10.0,"manuale":false}
+
+###
+
+### 6.9 [CRASH BAIT] giga come stringa -> ATTESO: 400 (non 500)
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":"MOLTI","manuale":false}
+
+###
+
+### 6.10 [CRASH BAIT] manuale=true senza prezzi -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":true}
+
+###
+
+### 6.11 [CRASH BAIT] Prezzi negativi in modalità manuale -> ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":true,"costoEffettivo":-500.0,"costoCliente":-100.0}
+
+###
+
+### 6.12 [CRASH BAIT] manuale=false con nessuna tariffa esistente per quel combo -> ATTESO: 400 chiaro
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":99999.0,"manuale":false}
+
+###
+
+### 6.13 [SECURITY] Dipendente A1 tenta di modificare ricarica di Dipendente A2 -> ATTESO: 400
+PUT {{base}}/ricariche/{{ricaricaDip_id}}
+Authorization: Bearer {{tokenDipA2}}
+Content-Type: application/json
+
+{"numero":"21234500","giga":5.0,"manuale":true,"costoEffettivo":2.0,"costoCliente":4.0}
+
+###
+
+### 6.14 [SECURITY] Admin B tenta di modificare ricarica di Admin A -> ATTESO: 400
+PUT {{base}}/ricariche/{{ricaricaDip_id}}
+Authorization: Bearer {{tokenAdminB}}
+Content-Type: application/json
+
+{"numero":"21234500","giga":5.0,"manuale":true,"costoEffettivo":2.0,"costoCliente":4.0}
+
+###
+
+### 6.15 Dipendente A1 modifica la propria ricarica -> ATTESO: 200
+PUT {{base}}/ricariche/{{ricaricaDip_id}}
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":5.0,"manuale":true,"costoEffettivo":3.0,"costoCliente":5.5,"note":"Modifica test"}
+
+###
+
+### 6.16 Admin A modifica ricarica del proprio negozio -> ATTESO: 200
+PUT {{base}}/ricariche/{{ricaricaAdmin_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"numero":"91234567","giga":10.0,"manuale":true,"costoEffettivo":5.5,"costoCliente":9.0,"boutiqueId":{{boutiqueA1_id}}}
+
+###
+
+### 6.17 SuperAdmin modifica qualsiasi ricarica (bypass ownership) -> ATTESO: 200
+PUT {{base}}/ricariche/{{ricaricaDip_id}}
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":5.0,"manuale":true,"costoEffettivo":2.5,"costoCliente":4.5}
+
+###
+
+### 6.18 [SECURITY] Dipendente A1 tenta di eliminare ricarica di Dipendente A2 -> ATTESO: 400
+DELETE {{base}}/ricariche/{{ricaricaManuale_id}}
+Authorization: Bearer {{tokenDipA2}}
+
+###
+
+### 6.19 [SECURITY] Dipendente B1 tenta di eliminare ricarica di Admin A -> ATTESO: 400
+DELETE {{base}}/ricariche/{{ricaricaAdmin_id}}
+Authorization: Bearer {{tokenDipB1}}
+
+###
+
+### 6.20 Admin A elimina propria ricarica -> ATTESO: 204
+DELETE {{base}}/ricariche/{{ricaricaAdmin_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 6.21 SuperAdmin elimina qualsiasi ricarica -> ATTESO: 204
+DELETE {{base}}/ricariche/{{ricaricaManuale_id}}
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 6.22 [CRASH BAIT] Elimina ricarica già eliminata -> ATTESO: 400/404 (non 500)
+DELETE {{base}}/ricariche/{{ricaricaManuale_id}}
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 6.23 [CRASH BAIT] ID ricarica non numerico -> ATTESO: 400 (non 500)
+DELETE {{base}}/ricariche/abc
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 7 — FATTURE: SETUP BOZZE
+### =====================================================================
+
+### 7.1 Admin A crea fattura BOZZA corretta su boutiqueA1 -> ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Alfa",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [
+    {"descrizione":"Servizio Ricariche Maggio","quantita":10,"prezzoUnitarioHT":5.000,"aliquotaTVA":19}
+  ]
+}
+
+> {%
+    client.global.set("fatturaA_bozza_id", response.body.id);
+%}
+
+###
+
+### 7.2 Admin A crea seconda fattura BOZZA (servirà per test sconto negativo) -> ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Beta",
+  "timbreFiscal": true,
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [
+    {"descrizione":"Prodotto A","quantita":2,"prezzoUnitarioHT":20.000,"aliquotaTVA":7},
+    {"descrizione":"Prodotto B","quantita":1,"prezzoUnitarioHT":15.000,"aliquotaTVA":7}
+  ]
+}
+
+> {%
+    client.global.set("fatturaA_bozza2_id", response.body.id);
+%}
+
+###
+
+### 7.3 Dipendente A1 crea fattura (boutique dal token) -> ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{
+  "tipo": "BON_DE_LIVRAISON",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Gamma",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "righe": [
+    {"descrizione":"Consegna Merce","quantita":1,"prezzoUnitarioHT":30.000,"aliquotaTVA":0}
+  ]
+}
+
+> {%
+    client.global.set("fatturaDip_bozza_id", response.body.id);
+%}
+
+###
+
+### 7.4 SuperAdmin crea fattura (nessun boutiqueId — solo admin) -> ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{
+  "tipo": "DEVIS",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Super",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "righe": [
+    {"descrizione":"Preventivo Annuale","quantita":1,"prezzoUnitarioHT":100.000,"aliquotaTVA":19}
+  ]
+}
+
+> {%
+    client.global.set("fatturaSuper_bozza_id", response.body.id);
+%}
+
+###
+
+
+### =====================================================================
+### SEZIONE 8 — FATTURE: VALIDAZIONI E CRASH BAIT CREAZIONE
+### =====================================================================
+
+### 8.1 [VALIDATION] Nessun tipo documento -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Senza Tipo",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.2 [CRASH BAIT] Tipo documento come stringa non valida -> ATTESO: 400 (non 500)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "RICEVUTA_FISCALE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Tipo Sbagliato",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.3 [VALIDATION] Lista righe vuota -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Senza Righe",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": []
+}
+
+###
+
+### 8.4 [VALIDATION] Lista righe assente -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Senza Righe Proprio",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}}
+}
+
+###
+
+### 8.5 [CRASH BAIT] Riga con tutti i campi null -> ATTESO: 400 (non NPE → 500)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Riga Vuota",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":null,"quantita":null,"prezzoUnitarioHT":null,"aliquotaTVA":null}]
+}
+
+###
+
+### 8.6 [VALIDATION] remiseGlobale negativa -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Sconto Negativo",
+  "remiseGlobale": -50,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.7 [CRASH BAIT] dataEmissione in formato non valido -> ATTESO: 400 (non 500)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "ieri-pomeriggio",
+  "nomeCliente": "Data Sbagliata",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.8 [CRASH BAIT] aliquotaTVA > 100 -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "TVA Assurda",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":9999}]
+}
+
+###
+
+### 8.9 [CRASH BAIT] quantita negativa -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Quantita Negativa",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":-5,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.10 [CRASH BAIT] prezzoUnitarioHT come stringa -> ATTESO: 400 (non 500)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Prezzo Stringa",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":"TANTO","aliquotaTVA":19}]
+}
+
+###
+
+### 8.11 [SECURITY] Admin A crea fattura su boutique di Admin B -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Hacker Cliente",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueB1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.12 [CRASH BAIT] boutiqueId inesistente -> ATTESO: 400 (non 500)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Boutique Fantasma",
+  "remiseGlobale": 0,
+  "boutiqueId": 999999,
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 8.13 [BUSINESS] Fattura su boutique con fattureAbilitate=false (boutiqueA2) -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Boutique Disabilitata",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA2_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+
+### =====================================================================
+### SEZIONE 9 — FATTURE: MODIFICA
+### =====================================================================
+
+### 9.1 Admin A modifica propria bozza -> ATTESO: 200
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Alfa Modificato",
+  "timbreFiscal": false,
+  "remiseGlobale": 5,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [
+    {"descrizione":"Servizio Aggiornato","quantita":10,"prezzoUnitarioHT":5.000,"aliquotaTVA":19}
+  ]
+}
+
+###
+
+### 9.2 [SECURITY] Admin B tenta di modificare fattura di Admin A -> ATTESO: 400
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminB}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Hacker",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Hack","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":0}]
+}
+
+###
+
+### 9.3 [SECURITY] Dipendente A2 tenta di modificare fattura di boutiqueA1 -> ATTESO: 400
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenDipA2}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Hacker Dip",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Hack","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":0}]
+}
+
+###
+
+### 9.4 [VALIDATION] Modifica con righe vuote -> ATTESO: 400
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Svuotato",
+  "remiseGlobale": 0,
+  "righe": []
+}
+
+###
+
+### 9.5 SuperAdmin modifica fattura di Admin A (bypass ownership) -> ATTESO: 200
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Alfa SuperAdmin Edit",
+  "timbreFiscal": false,
+  "remiseGlobale": 0,
+  "righe": [
+    {"descrizione":"Riga SuperAdmin","quantita":5,"prezzoUnitarioHT":10.000,"aliquotaTVA":19}
+  ]
+}
+
+###
+
+### 9.6 [CRASH BAIT] ID fattura non numerico -> ATTESO: 400 (non 500)
+PUT {{base}}/fatture/abc
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "ID Stringa",
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+
+### =====================================================================
+### SEZIONE 10 — FATTURE: BUG SCONTO NEGATIVO (APERTO)
+### =====================================================================
+
+### 10.1 [BUG APERTO] Crea bozza con remise > totale (dovrebbe essere bloccato ma non lo è in creazione)
+###       NOTA: dai test risulta che il backend già restituisce 400 anche in creazione. ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Sconto Impossibile",
+  "timbreFiscal": false,
+  "remiseGlobale": 9999,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [
+    {"descrizione":"Prodotto Economico","quantita":1,"prezzoUnitarioHT":10.000,"aliquotaTVA":19}
+  ]
+}
+
+> {%
+    client.global.set("fatturaSconto_id", response.body.id);
+%}
+
+###
+
+### 10.2 [BUG APERTO] Tenta di emettere la fattura con totaleNet negativo -> ATTESO: 400 (bloccato da emettiFattura)
+PATCH {{base}}/fatture/{{fatturaSconto_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 10.3 Cleanup: elimina la bozza con sconto impossibile
+DELETE {{base}}/fatture/{{fatturaSconto_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 11 — FATTURE: EMISSIONE
+### =====================================================================
+
+### 11.1 Admin A emette la prima bozza -> ATTESO: 200
+PATCH {{base}}/fatture/{{fatturaA_bozza_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 11.2 [PARADOSSO] Tenta di emettere fattura già EMESSA -> ATTESO: 400
+PATCH {{base}}/fatture/{{fatturaA_bozza_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 11.3 [PARADOSSO] Tenta di modificare fattura già EMESSA -> ATTESO: 400
+PUT {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Modifica Illegale",
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Hack","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":0}]
+}
+
+###
+
+### 11.4 [PARADOSSO] Tenta di eliminare fattura già EMESSA -> ATTESO: 400
+DELETE {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 11.5 [SECURITY] Admin B tenta di emettere fattura di Admin A -> ATTESO: 400
+PATCH {{base}}/fatture/{{fatturaA_bozza2_id}}/emetti
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 11.6 SuperAdmin emette fattura di Admin A (bypass ownership) -> ATTESO: 200
+PATCH {{base}}/fatture/{{fatturaA_bozza2_id}}/emetti
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 11.7 [CRASH BAIT] ID inesistente su emetti -> ATTESO: 400/404 (non 500)
+PATCH {{base}}/fatture/999999/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 12 — FATTURE: AVOIR E PARADOSSI
+### =====================================================================
+
+### 12.1 Admin A crea AVOIR sulla fattura emessa -> ATTESO: 201 con stato EMESSA
+POST {{base}}/fatture/{{fatturaA_bozza_id}}/avoir
+Authorization: Bearer {{tokenAdminA}}
+
+> {%
+    client.global.set("avoirA_id", response.body.id);
+%}
+
+###
+
+### 12.2 [PARADOSSO AVOIR] Tenta di creare AVOIR su un AVOIR -> ATTESO: 400
+POST {{base}}/fatture/{{avoirA_id}}/avoir
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 12.3 [PARADOSSO] Tenta di creare AVOIR su fattura ANNULLATA (origine già annullata dal 12.1) -> ATTESO: 400
+POST {{base}}/fatture/{{fatturaA_bozza_id}}/avoir
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 12.4 [PARADOSSO] Tenta di creare AVOIR su fattura BOZZA -> ATTESO: 400
+POST {{base}}/fatture/{{fatturaDip_bozza_id}}/avoir
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 12.5 [SECURITY] Admin B tenta AVOIR su fattura di Admin A -> ATTESO: 400
+POST {{base}}/fatture/{{fatturaA_bozza2_id}}/avoir
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 12.6 SuperAdmin crea AVOIR su fattura di Admin A (bypass) -> ATTESO: 201
+POST {{base}}/fatture/{{fatturaA_bozza2_id}}/avoir
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 12.7 [CRASH BAIT] AVOIR su ID inesistente -> ATTESO: 400/404 (non 500)
+POST {{base}}/fatture/999999/avoir
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 12.8 [PARADOSSO] Tenta di emettere l'AVOIR (già in stato EMESSA) -> ATTESO: 400
+PATCH {{base}}/fatture/{{avoirA_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 12.9 [PARADOSSO] Tenta di modificare l'AVOIR (già EMESSA) -> ATTESO: 400
+PUT {{base}}/fatture/{{avoirA_id}}
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "AVOIR",
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Hack Avoir","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":0}]
+}
+
+###
+
+### 12.10 [CRASH BAIT] Crea AVOIR via POST /fatture con fatturaOrigineId su BOZZA -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "AVOIR",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Avoir su Bozza",
+  "remiseGlobale": 0,
+  "fatturaOrigineId": {{fatturaDip_bozza_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":0}]
+}
+
+###
+
+
+### =====================================================================
+### SEZIONE 13 — FATTURE: LETTURA E ISOLAMENTO
+### =====================================================================
+
+### 13.1 Admin A legge tutte le proprie fatture -> ATTESO: 200 lista
+GET {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 13.2 Admin B legge le proprie fatture (deve vedere solo le sue) -> ATTESO: 200 lista vuota o sue
+GET {{base}}/fatture
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 13.3 SuperAdmin legge TUTTE le fatture del sistema -> ATTESO: 200 lista completa
+GET {{base}}/fatture
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 13.4 Dipendente A1 legge fatture della propria boutique -> ATTESO: 200
+GET {{base}}/fatture
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 13.5 [SECURITY] Admin B tenta di leggere fattura specifica di Admin A -> ATTESO: 400
+GET {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 13.6 [SECURITY] Dipendente A2 tenta di leggere fattura di boutiqueA1 -> ATTESO: 400
+GET {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenDipA2}}
+
+###
+
+### 13.7 SuperAdmin legge fattura specifica di qualsiasi admin -> ATTESO: 200
+GET {{base}}/fatture/{{fatturaA_bozza_id}}
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 13.8 [CRASH BAIT] ID fattura inesistente -> ATTESO: 400/404 (non 500)
+GET {{base}}/fatture/999999
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 13.9 [CRASH BAIT] ID fattura non numerico -> ATTESO: 400 (non 500)
+GET {{base}}/fatture/abc
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 14 — FATTURE: ELIMINAZIONE
+### =====================================================================
+
+### 14.1 Admin A elimina propria BOZZA -> ATTESO: 204
+DELETE {{base}}/fatture/{{fatturaDip_bozza_id}}
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 14.2 [PARADOSSO] Elimina fattura già eliminata -> ATTESO: 400/404
+DELETE {{base}}/fatture/{{fatturaDip_bozza_id}}
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 14.3a Setup: Admin A crea bozza "vittima" -> ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Vittima",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+> {%
+    client.global.set("fatturaVittima_id", response.body.id);
+%}
+
+###
+
+### 14.3b [SECURITY] Admin B tenta di eliminare bozza di Admin A -> ATTESO: 400
+DELETE {{base}}/fatture/{{fatturaVittima_id}}
+Authorization: Bearer {{tokenAdminB}}
+
+###
+
+### 14.3c Cleanup: Admin A elimina la bozza vittima -> ATTESO: 204
+DELETE {{base}}/fatture/{{fatturaVittima_id}}
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 14.4 SuperAdmin elimina bozza di qualsiasi admin -> ATTESO: 204
+DELETE {{base}}/fatture/{{fatturaSuper_bozza_id}}
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 15 — DASHBOARD
+### =====================================================================
+
+### 15.1 Dipendente A1 vede riepilogo oggi -> ATTESO: 200 { totaleOperazioni, profittoTotale }
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 15.2 Admin A vede riepilogo aggregato di tutte le sue boutique -> ATTESO: 200 lista per boutique
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 15.3 SuperAdmin vede riepilogo di tutto il sistema -> ATTESO: 200 (o lista vuota se non implementato)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 15.4 [SECURITY] Nessun token -> ATTESO: 401
+GET {{base}}/dashboard/riepilogo
+
+###
+
+### 15.5 [SECURITY] Token senza Bearer -> ATTESO: 401
+GET {{base}}/dashboard/riepilogo
+Authorization: {{tokenAdminA}}
+
+###
+
+
+### =====================================================================
+### SEZIONE 16 — EXPORT EXCEL
+### =====================================================================
+
+### 16.1 Admin A esporta ricariche range valido -> ATTESO: 200 file xlsx
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-05-14
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.2 Dipendente A1 esporta proprie ricariche -> ATTESO: 200
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-05-14
+Authorization: Bearer {{tokenDipA1}}
+
+###
+
+### 16.3 SuperAdmin esporta (aggregato sistema — da fare) -> ATTESO: 200 o file vuoto
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-05-14
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 16.4 [VALIDATION] dal > al (paradosso temporale) -> ATTESO: 400
+GET {{base}}/export/ricariche?dal=2050-01-01&al=2000-01-01
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.5 [VALIDATION] al nel futuro -> ATTESO: 400
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2099-12-31
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.6 [VALIDATION] Range > 366 giorni -> ATTESO: 400
+GET {{base}}/export/ricariche?dal=2024-01-01&al=2026-05-14
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.7 [CRASH BAIT] Date in formato non valido -> ATTESO: 400 (non 500)
+GET {{base}}/export/ricariche?dal=ieri&al=domani
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.8 [CRASH BAIT] Parametri dal/al mancanti -> ATTESO: 400 (non 500) — !!! BUG BACKEND: restituisce 500, manca validazione anticipata query param
+GET {{base}}/export/ricariche
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 16.9 [CRASH BAIT] Solo un parametro (al mancante) -> ATTESO: 400 (non 500) — !!! BUG BACKEND: restituisce 500, stessa causa del 16.8
+GET {{base}}/export/ricariche?dal=2026-01-01
+Authorization: Bearer {{tokenAdminA}}
+
+###

@@ -14,6 +14,4 @@ public class ModificaBoutiqueRequest {
     @NotBlank
     @Size(max = 100)
     private String città;
-
-    private boolean fattureAbilitate;
 }

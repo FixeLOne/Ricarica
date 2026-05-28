@@ -44,8 +44,12 @@ public class SecurityConfig {
 
                         // Solo l'ADMIN (proprietario) crea la boutique.
                         .requestMatchers(HttpMethod.POST, "/api/v2/boutique").hasRole("ADMIN")
+                        // Lista boutique dell'admin.
+                        .requestMatchers(HttpMethod.GET, "/api/v2/boutique").hasRole("ADMIN")
                         // Endpoint per vedere tutte le boutique del sistema.
                         .requestMatchers(HttpMethod.GET, "/api/v2/boutique/tutte").hasRole("SUPER_ADMIN")
+                        // Dettaglio boutique: il DIPENDENTE legge solo la propria, verificata nel service.
+                        .requestMatchers(HttpMethod.GET, "/api/v2/boutique/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         // Altri accessi per entrambi.
                         .requestMatchers("/api/v2/boutique/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
 

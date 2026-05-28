@@ -1,0 +1,1103 @@
+### =====================================================================
+### RECHARGE NET — MAESTRO AUDIT v2.0
+### Copertura: RBAC, State Machine, IDOR, XSS, Business Logic, Pagination,
+###             Export Isolation, Dashboard Aggregation, Tariffa Fallback,
+###             Avoir Paradox, Concurrent Data, Multi-Tenant Isolation
+### =====================================================================
+
+@base = http://localhost:8080/api/v2
+
+### ===================================================================
+### ██████  FASE 0 — LOGIN: EMISSIONE TOKEN PER TUTTI I SOGGETTI
+### ===================================================================
+
+### 0.1 [AUTH] SuperAdmin — padrone assoluto del sistema
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"superadmin","password":"superadmin123"}
+> {%
+    client.global.set("t_super", response.body.token);
+%}
+
+###
+
+### 0.2 [AUTH] Admin A — gestisce Boutique A1 e A2
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminA","password":"adminA123"}
+> {%
+    client.global.set("t_adminA", response.body.token);
+%}
+
+###
+
+### 0.3 [AUTH] Admin B — gestisce Boutique B1 e B2
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminB","password":"adminB123"}
+> {%
+    client.global.set("t_adminB", response.body.token);
+%}
+
+###
+
+### 0.4 [AUTH] Admin C — admin isolato senza boutique attive
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"adminC","password":"adminC123"}
+> {%
+    client.global.set("t_adminC", response.body.token);
+%}
+
+###
+
+### 0.5 [AUTH] Dipendente A1 — lavora su Boutique A1 (fatture abilitate)
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA1","password":"dipA1123"}
+> {%
+    client.global.set("t_dipA1", response.body.token);
+%}
+
+###
+
+### 0.6 [AUTH] Dipendente A2 — lavora su Boutique A2 (fatture NON abilitate)
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipA2","password":"dipA2123"}
+> {%
+    client.global.set("t_dipA2", response.body.token);
+%}
+
+###
+
+### 0.7 [AUTH] Dipendente B1 — lavora su Boutique B1
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipB1","password":"dipB1123"}
+> {%
+    client.global.set("t_dipB1", response.body.token);
+%}
+
+###
+
+### 0.8 [AUTH] Dipendente B2 — lavora su Boutique B2
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"dipB2","password":"dipB2123"}
+> {%
+    client.global.set("t_dipB2", response.body.token);
+%}
+
+###
+
+### 0.9 [SECURITY] Login con credenziali errate — ATTESO: 401
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"superadmin","password":"PASSWORD_SBAGLIATA"}
+
+###
+
+### 0.10 [SECURITY] Login con username inesistente — ATTESO: 401
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"fantasma","password":"12345678"}
+
+###
+
+### 0.11 [VALIDATION] Login con password troppo corta (< 8 char) — ATTESO: 400
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"superadmin","password":"abc"}
+
+###
+
+### 0.12 [SECURITY] Accesso a endpoint protetto senza token — ATTESO: 401
+GET {{base}}/ricariche
+
+
+
+### ===================================================================
+### ██████  FASE 1 — GESTIONE UTENTI (RBAC SUPER_ADMIN)
+### ===================================================================
+
+### 1.1 [HAPPY PATH] SuperAdmin crea un nuovo Admin D — ATTESO: 200
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_super}}
+Content-Type: application/json
+
+{"nome":"Admin D","username":"adminD","password":"adminD123"}
+
+###
+
+### 1.2 [RBAC] Admin A tenta di creare un altro Admin — ATTESO: 403
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"nome":"Admin Fantasma","username":"fantasmaAdmin","password":"fantasma123"}
+
+###
+
+### 1.3 [RBAC] Dipendente tenta di creare un Admin — ATTESO: 403
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"nome":"Admin Chaos","username":"chaosAdmin","password":"chaos12345"}
+
+###
+
+### 1.4 [VALIDATION] SuperAdmin crea Admin con username troppo corto — ATTESO: 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_super}}
+Content-Type: application/json
+
+{"nome":"Bad","username":"ab","password":"password123"}
+
+###
+
+### 1.5 [VALIDATION] SuperAdmin crea Admin con password troppo corta — ATTESO: 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_super}}
+Content-Type: application/json
+
+{"nome":"Bad","username":"validUsername","password":"short"}
+
+###
+
+### 1.6 [DUPLICATE] SuperAdmin ri-crea adminA (username già esistente) — ATTESO: 409 o 400
+POST {{base}}/utenti/admin
+Authorization: Bearer {{t_super}}
+Content-Type: application/json
+
+{"nome":"Doppione","username":"adminA","password":"adminA123"}
+
+
+
+### ===================================================================
+### ██████  FASE 2 — GESTIONE BOUTIQUE (MULTI-TENANT ISOLATION)
+### ===================================================================
+
+### 2.1 [HAPPY PATH] Admin A crea Boutique A3 — ATTESO: 200
+POST {{base}}/boutique
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"nome":"Boutique A3","citta":"Monastir"}
+> {%
+    client.global.set("id_boutiqueA3", response.body.id);
+%}
+
+###
+
+### 2.2 [HAPPY PATH] Admin A consulta le sue boutique — ATTESO: 200 con lista [A1,A2,A3]
+GET {{base}}/boutique
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 2.3 [RBAC] SuperAdmin vede TUTTE le boutique del sistema — ATTESO: 200 con lista completa
+GET {{base}}/boutique/tutte
+Authorization: Bearer {{t_super}}
+
+###
+
+### 2.4 [ISOLATION] Admin B consulta le boutique di Admin A per ID — ATTESO: 403 o 404
+GET {{base}}/boutique/1
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 2.5 [HAPPY PATH] Admin A abilita le fatture per Boutique A3 — ATTESO: 200
+PATCH {{base}}/boutique/{{id_boutiqueA3}}/fatture?abilitato=true
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 2.6 [ISOLATION IDOR] Admin B tenta di disabilitare le fatture di Boutique A1 — ATTESO: 403
+PATCH {{base}}/boutique/1/fatture?abilitato=false
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 2.7 [RBAC] Dipendente tenta di creare una boutique — ATTESO: 403
+POST {{base}}/boutique
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"nome":"Boutique Pirata","citta":"Pirateville"}
+
+
+
+### ===================================================================
+### ██████  FASE 3 — GESTIONE TARIFFE (LISTINO E FALLBACK)
+### ===================================================================
+
+### 3.1 [HAPPY PATH] Admin A crea tariffa Ooredoo 5GB — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":5.0,"costoAcquisto":3.500,"prezzoVendita":5.000}
+> {%
+    client.global.set("tariffa_ooredoo_5", response.body.id);
+%}
+
+###
+
+### 3.2 [HAPPY PATH] Admin A crea tariffa Ooredoo 50GB — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":50.0,"costoAcquisto":20.000,"prezzoVendita":25.000}
+> {%
+    client.global.set("tariffa_ooredoo_50", response.body.id);
+%}
+
+###
+
+### 3.3 [HAPPY PATH] Admin A crea tariffa Orange 10GB — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":10.0,"costoAcquisto":6.000,"prezzoVendita":9.000}
+> {%
+    client.global.set("tariffa_orange_10", response.body.id);
+%}
+
+###
+
+### 3.4 [HAPPY PATH] Admin A crea tariffa Telecom 20GB — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"telecom","giga":20.0,"costoAcquisto":8.000,"prezzoVendita":12.000}
+
+###
+
+### 3.5 [HAPPY PATH] Admin A crea tariffa Fisso 10GB — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"fisso","giga":10.0,"costoAcquisto":4.500,"prezzoVendita":7.000}
+
+###
+
+### 3.6 [HAPPY PATH] Admin A crea tariffa FALLBACK (operatore null) — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":null,"giga":15.0,"costoAcquisto":6.000,"prezzoVendita":9.000}
+> {%
+    client.global.set("tariffa_fallback_A", response.body.id);
+%}
+
+###
+
+### 3.7 [BUSINESS LOGIC] Margine negativo: costo > vendita — ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":10.0,"costoAcquisto":15.000,"prezzoVendita":10.000}
+
+###
+
+### 3.8 [VALIDATION] Giga negativi — ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":-5.0,"costoAcquisto":3.000,"prezzoVendita":5.000}
+
+###
+
+### 3.9 [VALIDATION] Prezzi a zero — ATTESO: 400 (@Positive)
+POST {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":10.0,"costoAcquisto":0,"prezzoVendita":0}
+
+###
+
+### 3.10 [LOGIC TRAP] Admin A tenta di trasformare la 5GB in 50GB (duplicato) — ATTESO: 400
+PUT {{base}}/tariffe/{{tariffa_ooredoo_5}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":50.0,"costoAcquisto":18.000,"prezzoVendita":24.000}
+
+###
+
+### 3.11 [HAPPY PATH] Admin A aggiorna prezzi della 5GB mantenendo stesso operatore+giga — ATTESO: 200
+PUT {{base}}/tariffe/{{tariffa_ooredoo_5}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":5.0,"costoAcquisto":3.200,"prezzoVendita":4.800}
+
+###
+
+### 3.12 [ISOLATION IDOR] Admin B modifica tariffa di Admin A — ATTESO: 403
+PUT {{base}}/tariffe/{{tariffa_ooredoo_5}}
+Authorization: Bearer {{t_adminB}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":5.0,"costoAcquisto":1.000,"prezzoVendita":1.500}
+
+###
+
+### 3.13 [ISOLATION IDOR] Admin B elimina tariffa di Admin A — ATTESO: 403
+DELETE {{base}}/tariffe/{{tariffa_ooredoo_5}}
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 3.14 [RBAC] SuperAdmin crea tariffa ASSEGNANDOLA ad Admin A (adminId esplicito) — ATTESO: 200
+POST {{base}}/tariffe
+Authorization: Bearer {{t_super}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":200.0,"costoAcquisto":80.000,"prezzoVendita":100.000,"adminId":2}
+
+###
+
+### 3.15 [RBAC] Dipendente non può vedere il listino tariffe — ATTESO: 403
+### (Se invece lo vede, verificare che veda SOLO le tariffe del suo admin)
+GET {{base}}/tariffe
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 3.16 [HAPPY PATH] Admin A visualizza il suo listino completo — ATTESO: 200
+GET {{base}}/tariffe
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 3.17 [RBAC] SuperAdmin visualizza listino di Admin A passando adminId — ATTESO: 200
+GET {{base}}/tariffe?adminId=2
+Authorization: Bearer {{t_super}}
+
+###
+
+### 3.18 [ISOLATION] Admin A tenta di vedere listino di Admin B con adminId — ATTESO: 403
+GET {{base}}/tariffe?adminId=3
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 3.19 [HAPPY PATH] Admin A elimina la tariffa fallback — ATTESO: 204
+DELETE {{base}}/tariffe/{{tariffa_fallback_A}}
+Authorization: Bearer {{t_adminA}}
+
+
+
+### ===================================================================
+### ██████  FASE 4 — RICARICHE (CUORE DEL GESTIONALE)
+### ===================================================================
+
+### 4.1 [HAPPY PATH] DipA1 ricarica automatica Ooredoo 5GB — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21111111","giga":5.0,"manuale":false}
+> {%
+    client.global.set("ric_auto_A1", response.body.id);
+%}
+
+###
+
+### 4.2 [HAPPY PATH] DipA1 ricarica automatica Ooredoo 50GB — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21111112","giga":50.0,"manuale":false}
+> {%
+    client.global.set("ric_50gb_A1", response.body.id);
+%}
+
+###
+
+### 4.3 [TARIFFA FALLBACK] DipA1 ricarica Orange 99GB (nessuna tariffa Orange 99GB → fallback) — ATTESO: 201 con tariffa fallback
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21333333","giga":99.0,"manuale":false}
+
+###
+
+### 4.4 [HAPPY PATH] DipA1 ricarica manuale con prezzi espliciti — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21444444","giga":10.0,"manuale":true,"costoEffettivo":6.000,"costoCliente":9.000,"note":"Cliente VIP"}
+> {%
+    client.global.set("ric_manuale_A1", response.body.id);
+%}
+
+###
+
+### 4.5 [THEFT ATTEMPT] DipA1 registra profitto negativo: costoEffettivo > costoCliente — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21555555","giga":10.0,"manuale":true,"costoEffettivo":15.000,"costoCliente":5.000}
+
+###
+
+### 4.6 [THEFT EQUAL] DipA1 registra margine zero (costo = prezzo): border case valido — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21666666","giga":10.0,"manuale":true,"costoEffettivo":8.000,"costoCliente":8.000,"note":"Pareggio volontario"}
+
+###
+
+### 4.7 [XSS] DipA1 inietta script nelle note — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21777777","giga":5.0,"manuale":true,"costoEffettivo":3.0,"costoCliente":5.0,"note":"<script>alert('xss')</script>"}
+
+###
+
+### 4.8 [XSS VARIANT] DipA1 usa tag HTML generici nelle note — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21888888","giga":5.0,"manuale":true,"costoEffettivo":3.0,"costoCliente":5.0,"note":"<b>testo</b>"}
+
+###
+
+### 4.9 [VALIDATION] Numero telefonico vuoto — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"","giga":5.0,"manuale":false}
+
+###
+
+### 4.10 [VALIDATION] Giga negativi — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21999999","giga":-10.0,"manuale":false}
+
+###
+
+### 4.11 [ISOLATION IDOR] DipA2 elimina ricarica di DipA1 — ATTESO: 403
+DELETE {{base}}/ricariche/{{ric_auto_A1}}
+Authorization: Bearer {{t_dipA2}}
+
+###
+
+### 4.12 [ISOLATION IDOR] DipB1 elimina ricarica di DipA1 — ATTESO: 403
+DELETE {{base}}/ricariche/{{ric_auto_A1}}
+Authorization: Bearer {{t_dipB1}}
+
+###
+
+### 4.13 [HAPPY PATH] DipA1 elimina la propria ricarica automatica — ATTESO: 204
+DELETE {{base}}/ricariche/{{ric_auto_A1}}
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 4.14 [NOT FOUND] DipA1 elimina ricarica già eliminata — ATTESO: 404
+DELETE {{base}}/ricariche/{{ric_auto_A1}}
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 4.15 [ISOLATION IDOR] DipA2 modifica ricarica di DipA1 — ATTESO: 403
+PUT {{base}}/ricariche/{{ric_manuale_A1}}
+Authorization: Bearer {{t_dipA2}}
+Content-Type: application/json
+
+{"numero":"21444444","giga":10.0,"manuale":true,"costoEffettivo":1.000,"costoCliente":1.500}
+
+###
+
+### 4.16 [HAPPY PATH] DipA1 modifica la propria ricarica manuale — ATTESO: 200
+PUT {{base}}/ricariche/{{ric_manuale_A1}}
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"21444444","giga":10.0,"manuale":true,"costoEffettivo":5.500,"costoCliente":9.500,"note":"Aggiornamento VIP"}
+
+###
+
+### 4.17 [RBAC ADMIN] Admin A crea ricarica specificando boutiqueId A1 — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"numero":"22000001","giga":50.0,"manuale":false,"boutiqueId":1}
+> {%
+    client.global.set("ric_admin_A1", response.body.id);
+%}
+
+###
+
+### 4.18 [ISOLATION RBAC] Admin A crea ricarica su Boutique B1 (non sua) — ATTESO: 403
+POST {{base}}/ricariche
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"numero":"22000002","giga":10.0,"manuale":false,"boutiqueId":3}
+
+###
+
+### 4.19 [HAPPY PATH] DipB1 crea alcune ricariche per il suo negozio — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipB1}}
+Content-Type: application/json
+
+{"numero":"31111111","giga":10.0,"manuale":false}
+
+###
+
+### 4.20 [PAGINATION] Admin A lista le sue ricariche (paginata) — ATTESO: 200, max 20 o 100 per pagina
+GET {{base}}/ricariche?page=0&size=10
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 4.21 [PAGINATION DOS] Admin A tenta di richiedere un miliardo di ricariche — ATTESO: 200 ma max spring default
+GET {{base}}/ricariche?page=0&size=999999999
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 4.22 [ISOLATION LIST] DipA1 vede solo le ricariche della Boutique A1, non quelle di B1 — ATTESO: 200
+GET {{base}}/ricariche?page=0&size=50
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 4.23 [RBAC ADMIN LIST] Admin A vede le ricariche di TUTTE le sue boutique — ATTESO: 200 aggregato
+GET {{base}}/ricariche?page=0&size=50
+Authorization: Bearer {{t_adminA}}
+
+
+
+### ===================================================================
+### ██████  FASE 5 — DATI AZIENDA (ISOLAMENTO TRA ADMIN)
+### ===================================================================
+
+### 5.1 [HAPPY PATH] Admin A configura i dati azienda — ATTESO: 200
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"Impero Admin A SRL","indirizzo":"Via Centrale 1, Tunisi","matriculeFiscale":"1234567A"}
+
+###
+
+### 5.2 [HAPPY PATH] Admin B configura i SUOI dati azienda — ATTESO: 200
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminB}}
+Content-Type: application/json
+
+{"ragioneSociale":"B Corp Tunisia","indirizzo":"Avenue Habib Bourguiba, Sousse","matriculeFiscale":"9876543B"}
+
+###
+
+### 5.3 [SECURITY IDOR] Admin B ri-chiama PUT azienda: deve modificare SOLO la sua, non quella di Admin A — ATTESO: 200
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminB}}
+Content-Type: application/json
+
+{"ragioneSociale":"B Corp Aggiornata","indirizzo":"Nuovo indirizzo B","matriculeFiscale":"9876543B"}
+
+###
+
+### 5.4 [VERIFY ISOLATION] Admin A legge i suoi dati azienda: devono essere ancora quelli del punto 5.1 — ATTESO: 200
+GET {{base}}/azienda
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 5.5 [VERIFY ISOLATION] Admin B legge i suoi dati azienda: devono riflettere il punto 5.3 — ATTESO: 200
+GET {{base}}/azienda
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 5.6 [VALIDATION] Admin A invia ragione sociale vuota — ATTESO: 400
+PUT {{base}}/azienda
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"","indirizzo":"Via X","matriculeFiscale":"1234567A"}
+
+###
+
+### 5.7 [RBAC] Dipendente tenta di aggiornare i dati azienda — ATTESO: 403
+PUT {{base}}/azienda
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"ragioneSociale":"Sabotaggio","indirizzo":"Via Hack","matriculeFiscale":"0000000X"}
+
+
+
+### ===================================================================
+### ██████  FASE 6 — FATTURE (STATE MACHINE E PARADOSSI CONTABILI)
+### ===================================================================
+
+### 6.1 [HAPPY PATH] Admin A crea fattura BOZZA per Boutique A1 — ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-17",
+  "nomeCliente": "Stark Industries",
+  "timbreFiscal": true,
+  "remiseGlobale": 0,
+  "boutiqueId": 1,
+  "righe": [
+    {"descrizione":"Ricariche Maggio","quantita":100,"prezzoUnitarioHT":5.000,"aliquotaTVA":19},
+    {"descrizione":"Assistenza tecnica","quantita":2,"prezzoUnitarioHT":50.000,"aliquotaTVA":19}
+  ]
+}
+> {%
+    client.global.set("fatt_stark", response.body.id);
+%}
+
+###
+
+### 6.2 [HAPPY PATH] Admin A crea una seconda fattura BOZZA — ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-17",
+  "nomeCliente": "Wayne Enterprises",
+  "timbreFiscal": false,
+  "remiseGlobale": 5.000,
+  "boutiqueId": 1,
+  "righe": [
+    {"descrizione":"Fornitura mensile","quantita":200,"prezzoUnitarioHT":4.500,"aliquotaTVA":7}
+  ]
+}
+> {%
+    client.global.set("fatt_wayne", response.body.id);
+%}
+
+###
+
+### 6.3 [XSS] Admin A usa un tag script nel nome cliente — ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "<script>alert(1)</script>",
+  "remiseGlobale": 0,
+  "boutiqueId": 1,
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10.000,"aliquotaTVA":19}]
+}
+
+###
+
+### 6.4 [VALIDATION] Fattura senza righe — ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Acme Corp",
+  "remiseGlobale": 0,
+  "boutiqueId": 1,
+  "righe": []
+}
+
+###
+
+### 6.5 [MATH PARADOX] Remise superiore al totale (sconto > imponibile) — ATTESO: 400
+PUT {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Stark Industries",
+  "timbreFiscal": true,
+  "remiseGlobale": 999999.000,
+  "boutiqueId": 1,
+  "righe": [{"descrizione":"Ricariche","quantita":1,"prezzoUnitarioHT":5.000,"aliquotaTVA":19}]
+}
+
+###
+
+### 6.6 [VALIDATION] Remise negativa — ATTESO: 400
+PUT {{base}}/fatture/{{fatt_wayne}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Wayne Enterprises",
+  "timbreFiscal": false,
+  "remiseGlobale": -50.000,
+  "boutiqueId": 1,
+  "righe": [{"descrizione":"Fornitura","quantita":10,"prezzoUnitarioHT":4.500,"aliquotaTVA":7}]
+}
+
+###
+
+### 6.7 [ISOLATION IDOR] Admin B legge la fattura di Admin A — ATTESO: 403 o 404
+GET {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 6.8 [ISOLATION IDOR] Admin B tenta di emettere fattura di Admin A — ATTESO: 403
+PATCH {{base}}/fatture/{{fatt_stark}}/emetti
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 6.9 [STATE MACHINE] Admin A emette la fattura Stark — ATTESO: 200
+PATCH {{base}}/fatture/{{fatt_stark}}/emetti
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.10 [STATE MACHINE] Admin A tenta di MODIFICARE una fattura già emessa — ATTESO: 400
+PUT {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Stark Industries MODIFICATA",
+  "remiseGlobale": 0,
+  "boutiqueId": 1,
+  "righe": [{"descrizione":"Nuova riga","quantita":1,"prezzoUnitarioHT":1.000,"aliquotaTVA":19}]
+}
+
+###
+
+### 6.11 [STATE MACHINE] Admin A tenta di ELIMINARE la fattura emessa — ATTESO: 400
+DELETE {{base}}/fatture/{{fatt_stark}}
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.12 [STATE MACHINE] Admin A tenta di EMETTERE nuovamente la fattura già emessa — ATTESO: 400
+PATCH {{base}}/fatture/{{fatt_stark}}/emetti
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.13 [BUSINESS] Admin A crea l'Avoir (nota di credito) per stornare Stark — ATTESO: 201
+POST {{base}}/fatture/{{fatt_stark}}/avoir
+Authorization: Bearer {{t_adminA}}
+> {%
+    client.global.set("avoir_stark", response.body.id);
+%}
+
+###
+
+### 6.14 [INCEPTION] Admin A crea un Avoir dell'Avoir — ATTESO: 400
+POST {{base}}/fatture/{{avoir_stark}}/avoir
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.15 [ISOLATION IDOR] Admin B crea Avoir di fattura di Admin A — ATTESO: 403
+POST {{base}}/fatture/{{fatt_stark}}/avoir
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 6.16 [HAPPY PATH] Admin A elimina la fattura BOZZA (Wayne) — ATTESO: 204
+DELETE {{base}}/fatture/{{fatt_wayne}}
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.17 [NOT FOUND] Admin A rilegge la fattura Wayne appena eliminata — ATTESO: 404
+GET {{base}}/fatture/{{fatt_wayne}}
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.18 [BOUTIQUE DISABLED] DipA2 (Boutique A2, fatture NON abilitate) tenta di creare fattura — ATTESO: 403 o 400
+POST {{base}}/fatture
+Authorization: Bearer {{t_dipA2}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Test Corp",
+  "remiseGlobale": 0,
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10.000,"aliquotaTVA":19}]
+}
+
+###
+
+### 6.19 [PAGINATION] Admin A lista le sue fatture — ATTESO: 200 paginata
+GET {{base}}/fatture?page=0&size=10
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 6.20 [AVOIR BOZZA] Admin A tenta di creare Avoir su una BOZZA (non emessa) — ATTESO: 400
+### Prima creiamo una bozza poi tentiamo direttamente l'avoir
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Bozza Corp",
+  "remiseGlobale": 0,
+  "boutiqueId": 1,
+  "righe": [{"descrizione":"Servizio","quantita":1,"prezzoUnitarioHT":100.000,"aliquotaTVA":19}]
+}
+> {%
+    client.global.set("fatt_bozza_temp", response.body.id);
+%}
+
+###
+
+POST {{base}}/fatture/{{fatt_bozza_temp}}/avoir
+Authorization: Bearer {{t_adminA}}
+
+
+
+### ===================================================================
+### ██████  FASE 7 — DASHBOARD (AGGREGAZIONE E ISOLAMENTO)
+### ===================================================================
+
+### 7.1 [HAPPY PATH] DipA1 vede riepilogo della sua Boutique A1 — ATTESO: 200 (DashboardRiepilogo)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 7.2 [HAPPY PATH] DipB1 vede riepilogo della sua Boutique B1 — ATTESO: 200 (DashboardRiepilogo)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_dipB1}}
+
+###
+
+### 7.3 [HAPPY PATH] Admin A vede riepilogo aggregato di tutte le sue boutique — ATTESO: 200 (List<DashboardAdminRiepilogo>)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 7.4 [HAPPY PATH] Admin B vede il suo riepilogo — ATTESO: 200 (DEVE essere diverso da Admin A)
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 7.5 [RBAC SUPER] SuperAdmin vede dashboard AGGREGATA di tutto il sistema — ATTESO: 200
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_super}}
+
+###
+
+### 7.6 [ISOLATION] Admin C (nessuna boutique) vede dashboard vuota — ATTESO: 200 con lista vuota o zeri
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{t_adminC}}
+
+###
+
+### 7.7 [SECURITY] Accesso dashboard senza token — ATTESO: 401
+GET {{base}}/dashboard/riepilogo
+
+
+
+### ===================================================================
+### ██████  FASE 8 — EXPORT EXCEL (ISOLAMENTO E DATE)
+### ===================================================================
+
+### 8.1 [HAPPY PATH] DipA1 esporta le ricariche del suo negozio — ATTESO: 200 file Excel
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 8.2 [ISOLATION] DipB1 esporta: DEVE contenere solo ricariche Boutique B1, non quelle A1 — ATTESO: 200
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_dipB1}}
+
+###
+
+### 8.3 [HAPPY PATH] Admin A esporta tutte le ricariche delle sue boutique — ATTESO: 200
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 8.4 [RBAC] SuperAdmin esporta tutte le ricariche del sistema — ATTESO: 200
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_super}}
+
+###
+
+### 8.5 [DATE RANGE EMPTY] DipA1 esporta range vuoto (anno passato senza dati) — ATTESO: 200 con Excel vuoto
+GET {{base}}/export/ricariche?dal=2020-01-01&al=2020-12-31
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 8.6 [DATE RANGE INVALID] Data fine precedente a data inizio — ATTESO: 400
+GET {{base}}/export/ricariche?dal=2026-12-31&al=2026-01-01
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 8.7 [VALIDATION] Formato data non valido — ATTESO: 400
+GET {{base}}/export/ricariche?dal=17-05-2026&al=31-12-2026
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 8.8 [SECURITY] Export senza token — ATTESO: 401
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+
+
+
+### ===================================================================
+### ██████  FASE 9 — SCENARI INCROCIATI E RACE CONDITIONS
+### ===================================================================
+
+### 9.1 [CROSS TENANT] Admin B esporta specificando boutiqueId di Admin A nel token — impossibile, ma verifichiamo
+### (Questo testa che boutiqueId nel token non sia manipolabile dall'esterno)
+GET {{base}}/export/ricariche?dal=2026-01-01&al=2026-12-31
+Authorization: Bearer {{t_adminB}}
+
+###
+
+### 9.2 [ORPHAN TARIFFA] Admin A crea tariffa, fa ricarica, poi elimina la tariffa
+### La ricarica esistente deve continuare ad avere i valori storici — non deve crashare
+DELETE {{base}}/tariffe/{{tariffa_orange_10}}
+Authorization: Bearer {{t_adminA}}
+
+###
+
+GET {{base}}/ricariche?page=0&size=50
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 9.3 [ZERO RESULT PAGE] DipA1 richiede pagina 9999 (fuori range) — ATTESO: 200 con lista vuota
+GET {{base}}/ricariche?page=9999&size=10
+Authorization: Bearer {{t_dipA1}}
+
+###
+
+### 9.4 [SUPER_ADMIN OVERSIGHT] SuperAdmin vede le tariffe di Admin B
+GET {{base}}/tariffe?adminId=3
+Authorization: Bearer {{t_super}}
+
+###
+
+### 9.5 [BOUNDARY] Ricarica con note al limite esatto di 255 caratteri — ATTESO: 201
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"29999999","giga":5.0,"manuale":true,"costoEffettivo":3.2,"costoCliente":4.8,"note":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+
+###
+
+### 9.6 [BOUNDARY OVERFLOW] Note oltre 255 caratteri — ATTESO: 400
+POST {{base}}/ricariche
+Authorization: Bearer {{t_dipA1}}
+Content-Type: application/json
+
+{"numero":"29999998","giga":5.0,"manuale":true,"costoEffettivo":3.2,"costoCliente":4.8,"note":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}
+
+###
+
+### 9.7 [FATTURA MULTI-RIGA AVANZATA] Admin A crea fattura con 5 righe e remise — ATTESO: 201
+POST {{base}}/fatture
+Authorization: Bearer {{t_adminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "nomeCliente": "Umbrella Corporation",
+  "timbreFiscal": true,
+  "remiseGlobale": 10.000,
+  "boutiqueId": 1,
+  "righe": [
+    {"descrizione":"Ricariche Ooredoo","quantita":50,"prezzoUnitarioHT":5.000,"aliquotaTVA":19},
+    {"descrizione":"Ricariche Orange","quantita":30,"prezzoUnitarioHT":9.000,"aliquotaTVA":19},
+    {"descrizione":"Ricariche Telecom","quantita":20,"prezzoUnitarioHT":12.000,"aliquotaTVA":19},
+    {"descrizione":"Ricariche Fisso","quantita":10,"prezzoUnitarioHT":7.000,"aliquotaTVA":7},
+    {"descrizione":"Spese gestione","quantita":1,"prezzoUnitarioHT":25.000,"aliquotaTVA":0}
+  ]
+}
+> {%
+    client.global.set("fatt_umbrella", response.body.id);
+%}
+
+###
+
+### 9.8 Emissione e poi lettura fattura Umbrella — ATTESO: 200 con totali corretti
+PATCH {{base}}/fatture/{{fatt_umbrella}}/emetti
+Authorization: Bearer {{t_adminA}}
+
+###
+
+GET {{base}}/fatture/{{fatt_umbrella}}
+Authorization: Bearer {{t_adminA}}
+
+###
+
+### 9.9 [AVOIR FULL CYCLE] Avoir della fattura Umbrella — ATTESO: 201
+POST {{base}}/fatture/{{fatt_umbrella}}/avoir
+Authorization: Bearer {{t_adminA}}
+> {%
+    client.global.set("avoir_umbrella", response.body.id);
+%}
+
+###
+
+### Verifica che l'avoir esista e sia di tipo AVOIR — ATTESO: 200
+GET {{base}}/fatture/{{avoir_umbrella}}
+Authorization: Bearer {{t_adminA}}

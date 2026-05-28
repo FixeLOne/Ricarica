@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.ricarica.dto.CreaRicaricaRequest;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueAccessService;
+import lx.gestionale.negozio.BoutiqueServizio;
 import lx.gestionale.ricarica.dto.RicaricaResponse;
 import lx.gestionale.ricarica.dto.StatsOggiResponse;
 import lx.gestionale.tariffa.Tariffa;
@@ -30,6 +31,8 @@ public class RicaricaService {
     private final TariffaService tariffaService;
 
     private final BoutiqueAccessService boutiqueAccessService;
+
+    private final RicaricaAccessService ricaricaAccessService;
 
     private Operatore assegnaOperatore(String numero) {
 
@@ -62,12 +65,16 @@ public class RicaricaService {
     @Transactional
     public RicaricaResponse salvaRicarica(CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
         Boutique boutique = switch (ruolo) {
-            case "DIPENDENTE" -> boutiqueAccessService.richiediBoutiqueOperativa(boutiqueId, utenteId, boutiqueId, ruolo);
+            case "DIPENDENTE" -> boutiqueAccessService.richiediBoutiqueConServizioAttivo(
+                    boutiqueId, utenteId, boutiqueId, ruolo, BoutiqueServizio.RICARICHE
+            );
             case "ADMIN", "SUPER_ADMIN" -> {
                 if (request.getBoutiqueId() == null) {
                     throw new IllegalArgumentException("Specifica la boutique per la ricarica");
                 }
-                yield boutiqueAccessService.richiediBoutiqueOperativa(request.getBoutiqueId(), utenteId, boutiqueId, ruolo);
+                yield boutiqueAccessService.richiediBoutiqueConServizioAttivo(
+                        request.getBoutiqueId(), utenteId, boutiqueId, ruolo, BoutiqueServizio.RICARICHE
+                );
             }
             default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
         };
@@ -104,22 +111,19 @@ public class RicaricaService {
 
     @Transactional
     public void eliminaRicarica(Long id, Long utenteId, Long boutiqueId, String ruolo) {
-        switch (ruolo) {
-            case "DIPENDENTE"  -> eliminaRicaricaDipendente(id, boutiqueId);
-            case "ADMIN"       -> eliminaRicaricaAdmin(id, utenteId);
-            case "SUPER_ADMIN" -> eliminaRicaricaSuperAdmin(id);
-            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
-        }
+        Ricarica ricarica = ricaricaAccessService.richiediRicaricaPerScrittura(
+                id, utenteId, boutiqueId, ruolo, "eliminare"
+        );
+        ricarica.setEliminato(true);
     }
 
     @Transactional
     public RicaricaResponse modificaRicarica(Long id, CreaRicaricaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
-        return switch (ruolo) {
-            case "DIPENDENTE"  -> modificaRicaricaDipendente(id, request, boutiqueId);
-            case "ADMIN"       -> modificaRicaricaAdmin(id, request, utenteId);
-            case "SUPER_ADMIN" -> modificaRicaricaSuperAdmin(id, request);
-            default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
-        };
+        Ricarica ricarica = ricaricaAccessService.richiediRicaricaPerScrittura(
+                id, utenteId, boutiqueId, ruolo, "modificare"
+        );
+        popolaDatiRicarica(ricarica, request, ricarica.getBoutique().getAdmin());
+        return toResponse(ricarica);
     }
 
     private void popolaDatiRicarica(Ricarica r, CreaRicaricaRequest request, Utente admin) {
@@ -158,62 +162,6 @@ public class RicaricaService {
                 r.getBoutique().getId(),
                 r.getBoutique().getNome()
         );
-    }
-
-
-    // ELIMINAZIONE
-
-    void eliminaRicaricaDipendente(Long id, Long boutiqueId) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!r.getBoutique().getId().equals(boutiqueId)) {
-            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
-        }
-        r.setEliminato(true);
-    }
-
-    void eliminaRicaricaAdmin(Long id, Long utenteId) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
-            throw new IllegalArgumentException("Non hai i permessi per eliminare questa ricarica.");
-        }
-        r.setEliminato(true);
-    }
-
-    void eliminaRicaricaSuperAdmin(Long id) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        r.setEliminato(true);
-    }
-
-    // MODIFICA
-
-    RicaricaResponse modificaRicaricaDipendente(Long id, CreaRicaricaRequest request, Long boutiqueId) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!r.getBoutique().getId().equals(boutiqueId)) {
-            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
-        }
-        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        return toResponse(r);
-    }
-
-    RicaricaResponse modificaRicaricaAdmin(Long id, CreaRicaricaRequest request, Long utenteId) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        if (!r.getBoutique().getAdmin().getId().equals(utenteId)) {
-            throw new IllegalArgumentException("Non hai i permessi per modificare questa ricarica.");
-        }
-        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        return toResponse(r);
-    }
-
-    RicaricaResponse modificaRicaricaSuperAdmin(Long id, CreaRicaricaRequest request) {
-        Ricarica r = ricaricaRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Ricarica con ID " + id + " non trovata."));
-        popolaDatiRicarica(r, request, r.getBoutique().getAdmin());
-        return toResponse(r);
     }
 
     @Transactional(readOnly = true)

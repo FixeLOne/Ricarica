@@ -23,9 +23,25 @@ public class Boutique {
 
     private String città;
 
+    private boolean ricaricheAbilitate = true;
+
     private boolean fattureAbilitate = false;
 
     private boolean attiva = true;
+
+    public boolean isServizioAbilitato(BoutiqueServizio servizio) {
+        return switch (servizio) {
+            case RICARICHE -> ricaricheAbilitate;
+            case FATTURE -> fattureAbilitate;
+        };
+    }
+
+    public void impostaServizioAbilitato(BoutiqueServizio servizio, boolean abilitato) {
+        switch (servizio) {
+            case RICARICHE -> ricaricheAbilitate = abilitato;
+            case FATTURE -> fattureAbilitate = abilitato;
+        }
+    }
 
     @ManyToOne
     @JoinColumn(name = "admin_id")

@@ -5,25 +5,32 @@ import {
   CirclePause,
   CirclePlay,
   FileCheck2,
-  FileX2,
   MapPin,
   Pencil,
   Plus,
   RefreshCw,
   Search,
   Store,
+  Zap,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/context/AuthContext";
 import {
   creaBoutique,
   getBoutique,
   getTutteLeBoutique,
-  impostaFattureAbilitate,
   modificaBoutique,
+  modificaServizioBoutique,
   modificaStatoBoutique,
 } from "@/api/boutiqueApi";
 import BoutiqueFormModal from "./BoutiqueFormModal";
@@ -32,8 +39,31 @@ const FILTRI = [
   { id: "tutte", label: "Tutte" },
   { id: "attive", label: "Attive" },
   { id: "disattivate", label: "Disattivate" },
+  { id: "ricariche-attive", label: "Ricariche attive" },
+  { id: "ricariche-spente", label: "Ricariche spente" },
   { id: "fatture-attive", label: "Fatture attive" },
   { id: "fatture-spente", label: "Fatture spente" },
+];
+
+const SERVIZI_BOUTIQUE = [
+  {
+    servizio: "RICARICHE",
+    serviziKey: "ricariche",
+    field: "ricaricheAbilitate",
+    label: "Ricariche",
+    onText: "Nuove ricariche abilitate",
+    offText: "Nuove ricariche bloccate",
+    icon: Zap,
+  },
+  {
+    servizio: "FATTURE",
+    serviziKey: "fatture",
+    field: "fattureAbilitate",
+    label: "Fatture",
+    onText: "Editor e dati fattura attivi",
+    offText: "Fatture disattivate",
+    icon: FileCheck2,
+  },
 ];
 
 function getCitta(boutique) {
@@ -41,11 +71,20 @@ function getCitta(boutique) {
 }
 
 function normalizeBoutique(boutique) {
+  const servizi = boutique.servizi ?? {};
+  const ricaricheAbilitate = servizi.ricariche ?? boutique.ricaricheAbilitate ?? true;
+  const fattureAbilitate = servizi.fatture ?? boutique.fattureAbilitate ?? false;
+
   return {
     ...boutique,
     citta: getCitta(boutique),
-    fattureAbilitate: Boolean(boutique.fattureAbilitate),
+    ricaricheAbilitate: Boolean(ricaricheAbilitate),
+    fattureAbilitate: Boolean(fattureAbilitate),
     attiva: boutique.attiva !== false,
+    servizi: {
+      ricariche: Boolean(ricaricheAbilitate),
+      fatture: Boolean(fattureAbilitate),
+    },
   };
 }
 
@@ -93,8 +132,47 @@ function LoadingGrid() {
   );
 }
 
-function BoutiqueCard({ boutique, onEdit, onToggleFatture, onRequestStato, toggling }) {
-  const fattureAttive = boutique.fattureAbilitate;
+function getServiceToggleKey(boutiqueId, servizio) {
+  return `${boutiqueId}:${servizio}`;
+}
+
+function ServizioRow({ boutique, item, onToggle, disabled }) {
+  const checked = boutique[item.field];
+  const Icon = item.icon;
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/35">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <span
+          className={[
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            checked
+              ? "bg-[var(--brand-soft)] text-[var(--brand-text)]"
+              : "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400",
+          ].join(" ")}
+        >
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">{item.label}</p>
+          <p className="truncate text-xs text-stone-500 dark:text-stone-400">
+            {checked ? item.onText : item.offText}
+          </p>
+        </div>
+      </div>
+
+      <Switch
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={(value) => onToggle(boutique, item, value)}
+        className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
+        aria-label={`${item.label} ${boutique.nome}`}
+      />
+    </div>
+  );
+}
+
+function BoutiqueCard({ boutique, onEdit, onToggleServizio, onRequestStato, togglingKey }) {
   const attiva = boutique.attiva;
 
   return (
@@ -155,39 +233,28 @@ function BoutiqueCard({ boutique, onEdit, onToggleFatture, onRequestStato, toggl
       <div className="space-y-4 px-5 py-4">
         {!attiva && (
           <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-600 dark:border-stone-800 dark:bg-stone-950/35 dark:text-stone-400">
-            Non disponibile per nuove ricariche e nuove fatture.
+            Non disponibile per nuove operazioni.
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-stone-200 bg-stone-50/70 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/35">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span
-              className={[
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-                fattureAttive
-                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
-                  : "bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400",
-              ].join(" ")}
-            >
-              {fattureAttive ? <FileCheck2 className="h-4 w-4" /> : <FileX2 className="h-4 w-4" />}
-            </span>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">
-                Fatture {fattureAttive ? "attive" : "spente"}
-              </p>
-              <p className="truncate text-xs text-stone-500 dark:text-stone-400">
-                {fattureAttive ? "Dati azienda disponibili" : "Editor fatture disattivato"}
-              </p>
-            </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3 px-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400 dark:text-stone-500">
+              Servizi
+            </p>
+            <p className="text-[11px] font-medium text-stone-400 dark:text-stone-500">
+              {SERVIZI_BOUTIQUE.filter((item) => boutique[item.field]).length}/{SERVIZI_BOUTIQUE.length} attivi
+            </p>
           </div>
-
-          <Switch
-            checked={fattureAttive}
-            disabled={toggling}
-            onCheckedChange={(checked) => onToggleFatture(boutique, checked)}
-            className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
-            aria-label={`Fatture ${boutique.nome}`}
-          />
+          {SERVIZI_BOUTIQUE.map((item) => (
+            <ServizioRow
+              key={item.servizio}
+              boutique={boutique}
+              item={item}
+              onToggle={onToggleServizio}
+              disabled={togglingKey === getServiceToggleKey(boutique.id, item.servizio)}
+            />
+          ))}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -246,7 +313,7 @@ export default function BoutiquePage() {
   const [selectedBoutique, setSelectedBoutique] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState(null);
-  const [togglingId, setTogglingId] = useState(null);
+  const [togglingKey, setTogglingKey] = useState(null);
   const [statoBoutique, setStatoBoutique] = useState(null);
   const [statoSubmitting, setStatoSubmitting] = useState(false);
 
@@ -271,14 +338,18 @@ export default function BoutiquePage() {
   }, [loadBoutiques]);
 
   const stats = useMemo(() => {
-    const fattureAttive = boutiques.filter((boutique) => boutique.fattureAbilitate).length;
     const attive = boutiques.filter((boutique) => boutique.attiva).length;
+    const serviziAttivi = boutiques.reduce((totale, boutique) => (
+      totale + SERVIZI_BOUTIQUE.filter((item) => boutique[item.field]).length
+    ), 0);
+    const serviziTotali = boutiques.length * SERVIZI_BOUTIQUE.length;
+
     return {
       totale: boutiques.length,
       attive,
       disattivate: boutiques.length - attive,
-      fattureAttive,
-      fattureSpente: boutiques.length - fattureAttive,
+      serviziAttivi,
+      serviziSpenti: serviziTotali - serviziAttivi,
     };
   }, [boutiques]);
 
@@ -300,6 +371,8 @@ export default function BoutiquePage() {
       (filtro === "tutte" ||
         (filtro === "attive" && boutique.attiva) ||
         (filtro === "disattivate" && !boutique.attiva) ||
+        (filtro === "ricariche-attive" && boutique.ricaricheAbilitate) ||
+        (filtro === "ricariche-spente" && !boutique.ricaricheAbilitate) ||
         (filtro === "fatture-attive" && boutique.fattureAbilitate) ||
         (filtro === "fatture-spente" && !boutique.fattureAbilitate))
     ));
@@ -346,23 +419,46 @@ export default function BoutiquePage() {
     }
   };
 
-  const handleToggleFatture = async (boutique, checked) => {
-    const previous = boutique.fattureAbilitate;
-    setTogglingId(boutique.id);
+  const handleToggleServizio = async (boutique, servizioConfig, checked) => {
+    const previous = boutique[servizioConfig.field];
+    const key = getServiceToggleKey(boutique.id, servizioConfig.servizio);
+    setTogglingKey(key);
     setApiError(null);
     setBoutiques((current) => current.map((item) => (
-      item.id === boutique.id ? { ...item, fattureAbilitate: checked } : item
+      item.id === boutique.id
+        ? normalizeBoutique({
+            ...item,
+            [servizioConfig.field]: checked,
+            servizi: {
+              ...item.servizi,
+              [servizioConfig.serviziKey]: checked,
+            },
+          })
+        : item
     )));
 
     try {
-      await impostaFattureAbilitate(boutique.id, checked);
+      const response = await modificaServizioBoutique(boutique.id, servizioConfig.servizio, checked);
+      const updated = normalizeBoutique(response.data);
+      setBoutiques((current) => current.map((item) => (
+        item.id === updated.id ? updated : item
+      )));
     } catch (error) {
       setBoutiques((current) => current.map((item) => (
-        item.id === boutique.id ? { ...item, fattureAbilitate: previous } : item
+        item.id === boutique.id
+          ? normalizeBoutique({
+              ...item,
+              [servizioConfig.field]: previous,
+              servizi: {
+                ...item.servizi,
+                [servizioConfig.serviziKey]: previous,
+              },
+            })
+          : item
       )));
       setApiError(getApiError(error));
     } finally {
-      setTogglingId(null);
+      setTogglingKey(null);
     }
   };
 
@@ -407,7 +503,7 @@ export default function BoutiquePage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">Boutique</h1>
             <p className="mt-1 max-w-2xl text-sm text-stone-500 dark:text-stone-400">
-              Gestisci le boutique, l'accesso dipendente e l'abilitazione delle fatture.
+              Gestisci le boutique, l'accesso dipendente e i servizi abilitati per ogni punto vendita.
             </p>
           </div>
         </div>
@@ -458,17 +554,17 @@ export default function BoutiquePage() {
         </div>
         <div className="rounded-2xl border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">Fatture attive</p>
-            <FileCheck2 className="h-4 w-4 text-[var(--brand-text)]" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">Servizi attivi</p>
+            <Zap className="h-4 w-4 text-[var(--brand-text)]" />
           </div>
-          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.fattureAttive}</p>
-          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{stats.fattureSpente} senza fatture</p>
+          <p className="mt-3 text-2xl font-semibold tabular-nums text-stone-950 dark:text-stone-50">{stats.serviziAttivi}</p>
+          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{stats.serviziSpenti} servizi spenti</p>
         </div>
       </section>
 
       <div className="space-y-3 rounded-2xl border border-stone-200 bg-white p-3 dark:border-stone-800 dark:bg-stone-900">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative w-full lg:max-w-sm">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="relative w-full xl:max-w-sm">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <Input
               value={query}
@@ -478,27 +574,12 @@ export default function BoutiquePage() {
             />
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            {cittaOptions.length > 1 && (
-              <select
-                value={cittaFiltro}
-                onChange={(event) => setCittaFiltro(event.target.value)}
-                className="h-10 rounded-xl border border-stone-200 bg-stone-50 px-3 text-sm font-medium text-stone-600 outline-none transition-colors focus:border-[var(--brand-border)] focus:ring-2 focus:ring-[var(--brand-ring)] dark:border-stone-800 dark:bg-stone-950/40 dark:text-stone-300"
-                aria-label="Filtra per città"
-              >
-                <option value="tutte">Tutte le città</option>
-                {cittaOptions.map((citta) => (
-                  <option key={citta} value={citta}>{citta}</option>
-                ))}
-              </select>
-            )}
-            <p className="text-xs font-medium text-stone-500 dark:text-stone-400">
-              {filteredBoutiques.length} di {boutiques.length} boutique
-            </p>
-          </div>
+          <p className="shrink-0 text-xs font-medium text-stone-500 dark:text-stone-400">
+            {filteredBoutiques.length} di {boutiques.length} boutique
+          </p>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-0.5">
+        <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
           {FILTRI.map((item) => (
             <button
               key={item.id}
@@ -514,6 +595,25 @@ export default function BoutiquePage() {
               {item.label}
             </button>
           ))}
+          {cittaOptions.length > 1 && (
+            <Select value={cittaFiltro} onValueChange={setCittaFiltro}>
+              <SelectTrigger
+                aria-label="Filtra per città"
+                className="h-8 w-[156px] shrink-0 rounded-full border-stone-200 bg-stone-50 px-3 text-xs font-semibold text-stone-600 shadow-none focus:ring-2 focus:ring-[var(--brand-ring)] focus:ring-offset-0 dark:border-stone-800 dark:bg-stone-950/30 dark:text-stone-300"
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-[var(--brand-text)]" />
+                  <SelectValue placeholder="Città" />
+                </span>
+              </SelectTrigger>
+              <SelectContent align="end" className="rounded-xl border-stone-200 dark:border-stone-800">
+                <SelectItem value="tutte">Tutte le città</SelectItem>
+                {cittaOptions.map((citta) => (
+                  <SelectItem key={citta} value={citta}>{citta}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -540,9 +640,9 @@ export default function BoutiquePage() {
               key={boutique.id}
               boutique={boutique}
               onEdit={openEdit}
-              onToggleFatture={handleToggleFatture}
+              onToggleServizio={handleToggleServizio}
               onRequestStato={setStatoBoutique}
-              toggling={togglingId === boutique.id}
+              togglingKey={togglingKey}
             />
           ))}
         </div>

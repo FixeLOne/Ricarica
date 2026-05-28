@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.negozio.dto.BoutiqueResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
+import lx.gestionale.negozio.dto.ModificaServizioBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaStatoBoutiqueRequest;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
@@ -56,11 +57,29 @@ public class BoutiqueController {
         return ResponseEntity.ok(boutiqueService.modificaStatoBoutique(id, request.isAttiva(), principal.getUtenteId()));
     }
 
+    @PatchMapping("/{id}/servizi")
+    public ResponseEntity<BoutiqueResponse> modificaServizioBoutique(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificaServizioBoutiqueRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueService.modificaServizioBoutique(
+                id,
+                request.getServizio(),
+                request.isAbilitato(),
+                principal.getUtenteId()
+        ));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<BoutiqueResponse> getBoutiqueById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(boutiqueService.getBoutiqueById(id, principal.getUtenteId(), principal.getRuolo()));
+        return ResponseEntity.ok(boutiqueService.getBoutiqueById(
+                id,
+                principal.getUtenteId(),
+                principal.getRuolo(),
+                principal.getBoutiqueId()
+        ));
     }
 
     @PutMapping("/{id}")

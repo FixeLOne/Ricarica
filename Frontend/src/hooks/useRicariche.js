@@ -5,16 +5,25 @@ import {
   eliminaRicarica, getStatsOggi,
 } from "@/api/ricaricheApi";
 import { getTariffe }                      from "@/api/tariffaApi";
-import { getBoutique, getTutteLeBoutique } from "@/api/boutiqueApi";
+import { getBoutique, getBoutiqueById, getTutteLeBoutique } from "@/api/boutiqueApi";
 
 export const MANUALE_VALUE = "MANUALE";
 export const BOUTIQUE_KEY  = "ricariche-boutique-id";
 export const VISTA_BOUTIQUE_KEY = "ricariche-vista-boutique-id";
 
 function normalizeBoutique(boutique) {
+  const servizi = boutique.servizi ?? {};
+  const ricaricheAbilitate = servizi.ricariche ?? boutique.ricaricheAbilitate ?? true;
+  const fattureAbilitate = servizi.fatture ?? boutique.fattureAbilitate ?? false;
   return {
     ...boutique,
+    ricaricheAbilitate: Boolean(ricaricheAbilitate),
+    fattureAbilitate: Boolean(fattureAbilitate),
     attiva: boutique.attiva !== false,
+    servizi: {
+      ricariche: Boolean(ricaricheAbilitate),
+      fatture: Boolean(fattureAbilitate),
+    },
   };
 }
 
@@ -94,7 +103,7 @@ export default function useRicariche() {
           getStatsOggi(bid),
           isAdmin
             ? (ruolo === "SUPER_ADMIN" ? getTutteLeBoutique() : getBoutique())
-            : Promise.resolve(null),
+            : (utente?.boutiqueId ? getBoutiqueById(utente.boutiqueId) : Promise.resolve(null)),
         ]);
         if (tarP.status === "fulfilled") setTariffe(tarP.value.data);
         if (rigP.status === "fulfilled") {
@@ -106,7 +115,11 @@ export default function useRicariche() {
           setCountN(stP.value.data.countOggi);
         }
         if (bouP.status === "fulfilled" && bouP.value?.data) {
-          const lista = Array.isArray(bouP.value.data) ? bouP.value.data.map(normalizeBoutique) : [];
+          const lista = Array.isArray(bouP.value.data)
+            ? bouP.value.data.map(normalizeBoutique)
+            : bouP.value.data
+              ? [normalizeBoutique(bouP.value.data)]
+              : [];
           setBoutiques(lista);
           if (!isAdmin && utente?.boutiqueId) {
             const found = lista.find(b => b.id === utente.boutiqueId);

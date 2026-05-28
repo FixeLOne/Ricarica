@@ -12,7 +12,6 @@ import { Switch } from "@/components/ui/switch";
 const baseSchema = {
   nome: z.string().trim().min(2, "Inserisci almeno 2 caratteri").max(100, "Massimo 100 caratteri"),
   citta: z.string().trim().min(2, "Inserisci almeno 2 caratteri").max(100, "Massimo 100 caratteri"),
-  fattureAbilitate: z.boolean(),
 };
 
 const creaSchema = z.object({
@@ -20,6 +19,7 @@ const creaSchema = z.object({
   nomeAccount: z.string().trim().min(2, "Inserisci il nome dell'account"),
   usernameAccount: z.string().trim().min(3, "Minimo 3 caratteri").max(50, "Massimo 50 caratteri"),
   passwordAccount: z.string().min(8, "Minimo 8 caratteri"),
+  fattureAbilitate: z.boolean(),
 });
 
 const modificaSchema = z.object(baseSchema);
@@ -94,8 +94,8 @@ export default function BoutiqueFormModal({
             nomeAccount: values.nomeAccount.trim(),
             usernameAccount: values.usernameAccount.trim(),
             passwordAccount: values.passwordAccount,
+            fattureAbilitate: values.fattureAbilitate,
           }),
-      fattureAbilitate: values.fattureAbilitate,
     });
   };
 
@@ -156,82 +156,84 @@ export default function BoutiqueFormModal({
             </div>
           </div>
 
-          <Controller
-            name="fattureAbilitate"
-            control={control}
-            render={({ field }) => (
-              <div className="flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-stone-50/70 px-4 py-3 dark:border-stone-800 dark:bg-stone-950/35">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">Fatture abilitate</p>
-                  <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
-                    Permette alla boutique di usare i dati azienda per le fatture.
-                  </p>
-                </div>
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
-                />
-              </div>
-            )}
-          />
-
           {!isEdit && (
-            <div className="rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-soft)] p-4">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[var(--brand-text)] shadow-sm dark:bg-stone-900/60">
-                  <Building2 className="h-4 w-4" />
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">Account dipendente</p>
-                  <p className="text-xs text-stone-500 dark:text-stone-400">Creato insieme alla boutique.</p>
+            <>
+              <Controller
+                name="fattureAbilitate"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex items-center justify-between gap-4 rounded-xl border border-stone-200 bg-stone-50/70 px-4 py-3 dark:border-stone-800 dark:bg-stone-950/35">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">Fatture abilitate</p>
+                      <p className="mt-0.5 text-xs text-stone-500 dark:text-stone-400">
+                        Permette alla boutique di usare i dati azienda per le fatture.
+                      </p>
+                    </div>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
+                    />
+                  </div>
+                )}
+              />
+
+              <div className="rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-soft)] p-4">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white text-[var(--brand-text)] shadow-sm dark:bg-stone-900/60">
+                    <Building2 className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">Account dipendente</p>
+                    <p className="text-xs text-stone-500 dark:text-stone-400">Creato insieme alla boutique.</p>
+                  </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <Label className={`${labelCn} mb-1.5 block`}>Nome account</Label>
+                    <div className="relative">
+                      <FieldIcon icon={User} />
+                      <Input
+                        className={`${inputCn} bg-white/85 ${errors.nomeAccount ? "border-red-400" : ""}`}
+                        placeholder="Operatore A1"
+                        {...register("nomeAccount")}
+                      />
+                    </div>
+                    {fieldError(errors.nomeAccount)}
+                  </div>
+
+                  <div>
+                    <Label className={`${labelCn} mb-1.5 block`}>Username</Label>
+                    <div className="relative">
+                      <FieldIcon icon={User} />
+                      <Input
+                        className={`${inputCn} bg-white/85 ${errors.usernameAccount ? "border-red-400" : ""}`}
+                        placeholder="boutique.a1"
+                        autoComplete="username"
+                        {...register("usernameAccount")}
+                      />
+                    </div>
+                    {fieldError(errors.usernameAccount)}
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <Label className={`${labelCn} mb-1.5 block`}>Password temporanea</Label>
+                    <div className="relative">
+                      <FieldIcon icon={KeyRound} />
+                      <Input
+                        type="password"
+                        className={`${inputCn} bg-white/85 ${errors.passwordAccount ? "border-red-400" : ""}`}
+                        placeholder="Minimo 8 caratteri"
+                        autoComplete="new-password"
+                        {...register("passwordAccount")}
+                      />
+                    </div>
+                    {fieldError(errors.passwordAccount)}
+                  </div>
                 </div>
               </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <Label className={`${labelCn} mb-1.5 block`}>Nome account</Label>
-                  <div className="relative">
-                    <FieldIcon icon={User} />
-                    <Input
-                      className={`${inputCn} bg-white/85 ${errors.nomeAccount ? "border-red-400" : ""}`}
-                      placeholder="Operatore A1"
-                      {...register("nomeAccount")}
-                    />
-                  </div>
-                  {fieldError(errors.nomeAccount)}
-                </div>
-
-                <div>
-                  <Label className={`${labelCn} mb-1.5 block`}>Username</Label>
-                  <div className="relative">
-                    <FieldIcon icon={User} />
-                    <Input
-                      className={`${inputCn} bg-white/85 ${errors.usernameAccount ? "border-red-400" : ""}`}
-                      placeholder="boutique.a1"
-                      autoComplete="username"
-                      {...register("usernameAccount")}
-                    />
-                  </div>
-                  {fieldError(errors.usernameAccount)}
-                </div>
-
-                <div className="sm:col-span-2">
-                  <Label className={`${labelCn} mb-1.5 block`}>Password temporanea</Label>
-                  <div className="relative">
-                    <FieldIcon icon={KeyRound} />
-                    <Input
-                      type="password"
-                      className={`${inputCn} bg-white/85 ${errors.passwordAccount ? "border-red-400" : ""}`}
-                      placeholder="Minimo 8 caratteri"
-                      autoComplete="new-password"
-                      {...register("passwordAccount")}
-                    />
-                  </div>
-                  {fieldError(errors.passwordAccount)}
-                </div>
-              </div>
-            </div>
+            </>
           )}
 
           {serverError && (

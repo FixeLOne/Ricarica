@@ -2,6 +2,7 @@ package lx.gestionale.negozio;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.negozio.dto.BoutiqueResponse;
+import lx.gestionale.negozio.dto.BoutiqueServiziResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
 import lx.gestionale.utente.Ruolo;
@@ -58,8 +59,8 @@ public class BoutiqueService {
     }
 
     @Transactional(readOnly = true)
-    public BoutiqueResponse getBoutiqueById(Long boutiqueId, Long utenteId, String ruolo) {
-        return toResponse(boutiqueAccessService.richiediBoutiqueAccessibile(boutiqueId, utenteId, null, ruolo));
+    public BoutiqueResponse getBoutiqueById(Long boutiqueId, Long utenteId, String ruolo, Long boutiqueIdJwt) {
+        return toResponse(boutiqueAccessService.richiediBoutiqueAccessibile(boutiqueId, utenteId, boutiqueIdJwt, ruolo));
     }
 
     @Transactional
@@ -72,7 +73,6 @@ public class BoutiqueService {
 
         boutique.setNome(nome);
         boutique.setCittà(città);
-        boutique.setFattureAbilitate(request.isFattureAbilitate());
         return toResponse(boutique);
     }
 
@@ -84,6 +84,13 @@ public class BoutiqueService {
     }
 
     // ── Privati ───────────────────────────────────────────────────────────────
+
+    @Transactional
+    public BoutiqueResponse modificaServizioBoutique(Long boutiqueId, BoutiqueServizio servizio, boolean abilitato, Long adminId) {
+        Boutique boutique = boutiqueAccessService.richiediBoutiqueDellAdmin(boutiqueId, adminId);
+        boutique.impostaServizioAbilitato(servizio, abilitato);
+        return toResponse(boutique);
+    }
 
     private Utente trovaAdmin(String username) {
         return utenteRepository.findByUsername(username)
@@ -120,8 +127,7 @@ public class BoutiqueService {
 
     @Transactional
     public void impostaFattureAbilitate(Long boutiqueId, boolean abilitato, Long adminId) {
-        Boutique boutique = boutiqueAccessService.richiediBoutiqueDellAdmin(boutiqueId, adminId);
-        boutique.setFattureAbilitate(abilitato);
+        modificaServizioBoutique(boutiqueId, BoutiqueServizio.FATTURE, abilitato, adminId);
     }
 
     private String normalizza(String valore) {
@@ -133,8 +139,13 @@ public class BoutiqueService {
                 b.getId(),
                 b.getNome(),
                 b.getCittà(),
+                b.isRicaricheAbilitate(),
                 b.isFattureAbilitate(),
-                b.isAttiva()
+                b.isAttiva(),
+                new BoutiqueServiziResponse(
+                        b.isRicaricheAbilitate(),
+                        b.isFattureAbilitate()
+                )
         );
     }
 }

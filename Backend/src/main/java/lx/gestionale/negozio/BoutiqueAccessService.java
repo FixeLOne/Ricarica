@@ -47,6 +47,18 @@ public class BoutiqueAccessService {
         return boutique;
     }
 
+    public Boutique richiediBoutiqueConServizioAttivo(
+            Long boutiqueId,
+            Long utenteId,
+            Long boutiqueIdJwt,
+            String ruolo,
+            BoutiqueServizio servizio
+    ) {
+        Boutique boutique = richiediBoutiqueOperativa(boutiqueId, utenteId, boutiqueIdJwt, ruolo);
+        verificaServizioAbilitato(boutique, servizio);
+        return boutique;
+    }
+
     public Boutique richiediBoutiqueDellAdmin(Long boutiqueId, Long adminId) {
         Boutique boutique = richiediBoutique(boutiqueId);
         verificaBoutiqueDellAdmin(boutique, adminId);
@@ -70,5 +82,18 @@ public class BoutiqueAccessService {
         if (!boutique.isAttiva()) {
             throw new IllegalArgumentException("Boutique disattivata: non può ricevere nuove operazioni");
         }
+    }
+
+    public void verificaServizioAbilitato(Boutique boutique, BoutiqueServizio servizio) {
+        if (!boutique.isServizioAbilitato(servizio)) {
+            throw new IllegalArgumentException(messaggioServizioDisabilitato(servizio));
+        }
+    }
+
+    private String messaggioServizioDisabilitato(BoutiqueServizio servizio) {
+        return switch (servizio) {
+            case RICARICHE -> "Le ricariche non sono abilitate per questa boutique";
+            case FATTURE -> "Le fatture non sono abilitate per questa boutique";
+        };
     }
 }

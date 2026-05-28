@@ -104,19 +104,22 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 ## Moduli Funzionali
 
 ### 1. Boutique (Negozi)
-**Entity:** `Boutique` — ha `nome`, `città`, `fattureAbilitate`, `attiva`, riferimento all'`admin` proprietario.
+**Entity:** `Boutique` — ha `nome`, `città`, `ricaricheAbilitate`, `fattureAbilitate`, `attiva`, riferimento all'`admin` proprietario.
 
 **Operazioni:**
 - `POST /api/v2/boutique` — crea una boutique **e** contestualmente crea l'account `DIPENDENTE` associato (username/password configurabili nella request). Transazionale: o tutto va a buon fine o niente.
 - `GET /api/v2/boutique` — lista delle boutique dell'admin loggato
 - `GET /api/v2/boutique/tutte` — tutte le boutique del sistema (solo SUPER_ADMIN)
-- `PUT /api/v2/boutique/{id}` — modifica `nome`, `città`, `fattureAbilitate` con controllo ownership condiviso
+- `PUT /api/v2/boutique/{id}` — modifica solo i dati base `nome`, `città` con controllo ownership condiviso
 - `PATCH /api/v2/boutique/{id}/stato` — attiva/disattiva operativamente la boutique tramite body `{ "attiva": true|false }`
+- `PATCH /api/v2/boutique/{id}/servizi` — abilita/disabilita un servizio (`RICARICHE`, `FATTURE`) tramite body `{ "servizio": "...", "abilitato": true|false }`
+- `PATCH /api/v2/boutique/{id}/fatture` — endpoint legacy che delega al servizio `FATTURE`
 
 **Vincoli:**
 - Un Admin non può avere due boutique con lo stesso nome
 - Lo username dell'account dipendente deve essere unico nel sistema
 - Una boutique disattivata resta consultabile nello storico, ma non può ricevere nuove ricariche o nuove fatture
+- Un servizio spento blocca solo il relativo flusso operativo, senza modificare i dati anagrafici della boutique
 - Il login del dipendente associato a una boutique disattivata viene bloccato
 
 ---
@@ -203,11 +206,17 @@ Questi dati sono considerati pubblici per la produzione dei documenti fiscali/co
 
 **Logica chiave:**
 - Numerazione automatica annuale per Admin: `FAC-YYYY-NNNN` — gestita da `ContatoreFatturaService` con `@Lock(PESSIMISTIC_WRITE)` per evitare race condition
-- Il calcolo dei totali (HT, TVA, Timbre, Netto) avviene nel service, mai nell'entity
+- Il calcolo dei totali (HT, TVA, Timbre, Netto) avviene in `FatturaCalcoloService`, mai nell'entity
 - Un AVOIR creato tramite `POST /api/v2/fatture` o `POST /api/v2/fatture/{id}/avoir` viene emesso direttamente in stato `EMESSA` e la fattura origine passa in `ANNULLATA`
 - Non è possibile emettere un AVOIR su un documento che è già un AVOIR
 - `emettiFattura` blocca l'emissione se `totaleNet < 0` (protezione contro remise globale eccessiva)
-- Ownership verificata su ogni operazione; SUPER_ADMIN bypassa il check
+- Ownership verificata da `FatturaAccessService` su ogni operazione; SUPER_ADMIN bypassa il check
+
+**Struttura interna:**
+- `FatturaService` orchestra i casi d'uso: crea, modifica, emetti, crea AVOIR, lista, dettaglio, elimina
+- `FatturaAccessService` centralizza lookup fattura, lista per ruolo, ownership e controllo boutique/fatture abilitate in creazione
+- `FatturaCalcoloService` centralizza creazione/copia righe e calcolo totali
+- `FatturaMapper` centralizza il mapping `Fattura -> FatturaResponse`
 
 **Operazioni:**
 - `POST /api/v2/fatture` — crea fattura (BOZZA) o AVOIR (EMESSA immediata)
@@ -224,7 +233,8 @@ Questi dati sono considerati pubblici per la produzione dei documenti fiscali/co
 - Solo fatture in stato `BOZZA` possono essere modificate o eliminate
 - Solo fatture in stato `EMESSA` possono generare un AVOIR
 - `attiva` su Boutique: se `false`, la creazione di nuove fatture e nuove ricariche viene bloccata
-- `fattureAbilitate` su Boutique: se `false`, la creazione lancia eccezione (controllo solo in scrittura — vedi TODO)
+- `servizi.fatture` su Boutique: se `false`, la creazione di nuove fatture viene bloccata
+- `servizi.ricariche` su Boutique: se `false`, la creazione di nuove ricariche viene bloccata
 
 ---
 
@@ -339,7 +349,7 @@ dataEmissione forzata a LocalDate.now() per coerenza con creaAvoir dedicato
 [ ] Export PDF — valutare Apache PDFBox (licenza libera) vs iText (licenza da verificare)
 [ ] Watermark/logo aziendale nell'anteprima PDF
 [ ] Validare che la somma delle righe sia > 0 prima di emettere
-[ ] Flag fattureAbilitate su Boutique controllato anche in lettura (oggi solo in scrittura)
+[x] Flag servizi Boutique controllati nei flussi di scrittura; `GET /azienda` resta leggibile ai dipendenti per dati fiscali pubblici e fatture abilitate
 
 
 ---
