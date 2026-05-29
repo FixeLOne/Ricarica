@@ -31,6 +31,21 @@ import axiosClient from "./axiosClient";
  * PATCH /api/v2/boutique/{id}/stato
  *   Attiva/disattiva operativamente una boutique.
  *   ModificaStatoBoutiqueRequest: { attiva }
+ *
+ * GET /api/v2/boutique/{id}/account
+ *   Restituisce l'account operativo singolo della boutique.
+ *
+ * PATCH /api/v2/boutique/{id}/account/password
+ *   Reset password account boutique.
+ *   ResetPasswordAccountRequest: { nuovaPassword }
+ *
+ * PATCH /api/v2/boutique/{id}/account/credentials
+ *   Sostituisce username e password account boutique.
+ *   ModificaAccountCredenzialiRequest: { username, password }
+ *
+ * PATCH /api/v2/boutique/{id}/account/stato
+ *   Abilita/disabilita solo l'account della boutique.
+ *   ModificaAccountStatoRequest: { attivo }
  */
 export const getBoutique = () =>
     axiosClient.get("/boutique");
@@ -57,3 +72,15 @@ export const impostaFattureAbilitate = (id, abilitato) =>
     axiosClient.patch(`/boutique/${id}/fatture`, null, {
         params: { abilitato },
     });
+
+export const getAccountBoutique = (id) =>
+    axiosClient.get(`/boutique/${id}/account`);
+
+export const resetPasswordAccountBoutique = (id, nuovaPassword) =>
+    axiosClient.patch(`/boutique/${id}/account/password`, { nuovaPassword });
+
+export const modificaCredenzialiAccountBoutique = (id, data) =>
+    axiosClient.patch(`/boutique/${id}/account/credentials`, data);
+
+export const modificaStatoAccountBoutique = (id, attivo) =>
+    axiosClient.patch(`/boutique/${id}/account/stato`, { attivo });

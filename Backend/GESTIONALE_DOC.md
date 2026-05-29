@@ -67,18 +67,20 @@ lx.gestionale
 ### Flusso Login
 1. Il client manda `POST /api/v2/auth/login` con `{ username, password }`
 2. `AuthService` autentica via `AuthenticationManager` (nessuna query extra)
-3. `JwtService` genera un token firmato HS256 contenente: `username`, `ruolo`, `boutiqueId`
+3. `JwtService` genera un token firmato HS256 contenente: `username`, `utenteId`, `ruolo`, `boutiqueId`, `tokenVersion`
 4. Il client riceve `{ token, username, ruolo, boutiqueId }`
 
 ### JWT Token
 - Scadenza: **8 ore** (configurabile via `jwt.expiration` in properties)
-- Payload claims: `subject` (username), `ruolo` (es. `"ADMIN"`), `utenteId` (presente per tutti i ruoli), `boutiqueId` (presente solo per DIPENDENTE, null per ADMIN e SUPER_ADMIN)
-- Validazione: `JwtFilter` intercetta ogni richiesta, valida il token e popola il `SecurityContext`
+- Payload claims: `subject` (username), `ruolo` (es. `"ADMIN"`), `utenteId` (presente per tutti i ruoli), `boutiqueId` (presente solo per DIPENDENTE, null per ADMIN e SUPER_ADMIN), `tokenVersion`
+- Validazione: `JwtFilter` intercetta ogni richiesta, valida il token, controlla `tokenVersion` contro il DB e popola il `SecurityContext`
 
 ### UserPrincipal
-Estende `User` di Spring Security con due campi aggiuntivi:
+Estende `User` di Spring Security con campi applicativi aggiuntivi:
 - `utenteId` — ID dell'utente nel DB
 - `boutiqueId` — ID della boutique associata (null per ADMIN e SUPER_ADMIN)
+
+- `tokenVersion` — versione credenziali usata per invalidare i JWT dopo reset password, cambio username/password o disattivazione account
 
 Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipal` e passa solo gli ID necessari al service, **senza query aggiuntive**.
 
@@ -90,7 +92,9 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 | `POST /api/v2/utenti/admin` | SUPER_ADMIN |
 | `POST /api/v2/boutique` | ADMIN |
 | `GET /api/v2/boutique/tutte` | SUPER_ADMIN |
-| `GET /api/v2/boutique/**` | SUPER_ADMIN, ADMIN |
+| `GET /api/v2/boutique/{id}/account` | ADMIN |
+| `PATCH /api/v2/boutique/{id}/account/**` | ADMIN |
+| `GET /api/v2/boutique/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `GET/POST/PUT/DELETE /api/v2/tariffe/**` | SUPER_ADMIN, ADMIN |
 | `GET /api/v2/dashboard/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
 | `GET /api/v2/export/**` | SUPER_ADMIN, ADMIN, DIPENDENTE |
@@ -114,13 +118,19 @@ Ogni controller riceve il `principal` via `@AuthenticationPrincipal UserPrincipa
 - `PATCH /api/v2/boutique/{id}/stato` — attiva/disattiva operativamente la boutique tramite body `{ "attiva": true|false }`
 - `PATCH /api/v2/boutique/{id}/servizi` — abilita/disabilita un servizio (`RICARICHE`, `FATTURE`) tramite body `{ "servizio": "...", "abilitato": true|false }`
 - `PATCH /api/v2/boutique/{id}/fatture` — endpoint legacy che delega al servizio `FATTURE`
+- `GET /api/v2/boutique/{id}/account` — dettaglio dell'unico account operativo della boutique
+- `PATCH /api/v2/boutique/{id}/account/password` — reset password account boutique tramite body `{ "nuovaPassword": "..." }`
+- `PATCH /api/v2/boutique/{id}/account/credentials` — sostituisce username e password dell'account boutique
+- `PATCH /api/v2/boutique/{id}/account/stato` — abilita/disabilita solo le credenziali dell'account, senza disattivare la boutique
 
 **Vincoli:**
 - Un Admin non può avere due boutique con lo stesso nome
 - Lo username dell'account dipendente deve essere unico nel sistema
+- Per ora ogni boutique deve avere un solo account `DIPENDENTE` operativo; se il DB contiene piu account per la stessa boutique il service segnala una configurazione invalida
 - Una boutique disattivata resta consultabile nello storico, ma non può ricevere nuove ricariche o nuove fatture
 - Un servizio spento blocca solo il relativo flusso operativo, senza modificare i dati anagrafici della boutique
 - Il login del dipendente associato a una boutique disattivata viene bloccato
+- Reset password, cambio credenziali e disattivazione account incrementano `tokenVersion`, invalidando i JWT gia emessi per quell'account
 
 ---
 
@@ -291,7 +301,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | ALTA | Coerenza | FatturaRepository.existsByNumero non scoped per admin (numeri collidono tra admin) | ✅ risolto |
 | ALTA | Coerenza | FatturaController — modificaFattura/emettiFattura/eliminaFattura non passano ruolo al service | ✅ risolto |
 | ALTA | Coerenza | SecurityConfig fatture — SUPER_ADMIN escluso da POST/PUT/DELETE/PATCH | ✅ risolto (tutti gli endpoint /fatture/** aperti a SUPER_ADMIN, ADMIN, DIPENDENTE) |
-| MEDIA | Security | SecurityConfig — Ritorna 403 invece di 401 su token scaduti/invalidi | da fare |
+| MEDIA | Security | SecurityConfig — Ritorna 403 invece di 401 su token scaduti/invalidi | ✅ risolto con `AuthenticationEntryPoint` dedicato |
 | BASSA | Backlog | SUPER_ADMIN — contratto FE/BE non completo su tariffe e creazione ricariche | non urgente |
 | MEDIA | Logica | DashboardService — entita Utente detached in getRiepilogoAdmin | ✅ risolto |
 | MEDIA | Logica | ExportService — entita Utente detached in generaReport | ✅ risolto |
@@ -305,7 +315,7 @@ I dettagli operativi (causa + soluzione) sono nelle sezioni TODO sotto.
 | MEDIA | Security | CorsConfig.allowedOrigins(*) in produzione | da fare |
 | MEDIA | Coerenza | Tariffe — frontend accetta `0`, backend usa `@Positive`; decidere se zero è lecito e allineare | da fare |
 | MEDIA | Config | application.properties — jwt.expiration 86400000 (24h) invece di 28800000 (8h) | ✅ risolto |
-| BASSA | Security | JwtService senza meccanismo invalidazione token (no blacklist) | da fare |
+| BASSA | Security | JwtService senza meccanismo invalidazione token (no blacklist) | risolto per cambio credenziali account tramite `tokenVersion`; logout globale ancora da valutare |
 | BASSA | Logica | Ricarica.note presente ma mai valorizzato | ✅ risolto |
 | BASSA | Logica | RicaricaService.eliminaRicaricaSuperAdmin — doppia query inutile | ✅ risolto |
 | BASSA | Logica | BoutiqueController crea boutique senza defense-in-depth nel service | da fare |
@@ -357,10 +367,11 @@ dataEmissione forzata a LocalDate.now() per coerenza con creaAvoir dedicato
 ### 👤 Profilo & Anagrafica
 
 [ ] Aggiungere campi a Boutique: indirizzo completo, telefono
-[ ] Endpoint profilo Boutique — restituisce boutique + lista dipendenti associati
+[x] Endpoint account Boutique — restituisce l'unico account operativo associato alla boutique
 [ ] Endpoint profilo Admin — dati personali + lista boutique + dati azienda
 [ ] Endpoint cambio password — disponibile a tutti i ruoli per la propria utenza
-nota: non prioritario, l'Admin può reimpostare la password del dipendente
+nota: non prioritario, l'Admin puo reimpostare password e credenziali dell'account boutique
+[x] Endpoint reset/cambio credenziali account boutique — `PATCH /boutique/{id}/account/password`, `/credentials`, `/stato`
 [ ] Gestione multi-dipendente per Boutique — rimandato, ora 1 account per boutique
 
 
@@ -395,7 +406,8 @@ endpoint: GET /api/v2/ricariche?page=0&size=20
 
 [ ] Sostituire allowedOrigins("*") con URL frontend in produzione
 nota: con allowCredentials true il wildcard è invalido per spec CORS
-[ ] Valutare blacklist token JWT per invalidazione anticipata (es. cambio password, logout)
+[x] Invalidazione JWT su reset password/cambio credenziali account boutique tramite `tokenVersion`
+[ ] Valutare blacklist token JWT solo per logout globale o revoca amministrativa massiva
 [x] Aggiungere @NotBlank / @Positive / @Valid sui DTO — fatto sui DTO principali
 - CreaRicaricaRequest: numero, giga, costoEffettivo/costoCliente ✅
 - CreaFatturaRequest: nomeCliente, righe (@Valid + @NotEmpty), remiseGlobale (@PositiveOrZero) ✅
@@ -423,7 +435,7 @@ Soluzione: `BoutiqueAccessService.risolviFiltroBoutiqueId(...)` carica la boutiq
 
 [ ] Bug Gestione Eccezioni/IDOR: le risposte di ownership dovrebbero restare coerenti tra 400/403/404. Per ora gli errori business usano `IllegalArgumentException` → 400.
 
-[ ] Incoerenza Status Code Auth: I test su token scaduti o firme manipolate restituiscono 403 Forbidden invece del più corretto 401 Unauthorized. È necessario configurare un AuthenticationEntryPoint personalizzato in SecurityConfig.
+[x] Incoerenza Status Code Auth: configurato `AuthenticationEntryPoint` per 401 su richieste non autenticate/token invalidi e `AccessDeniedHandler` per 403 su ruolo insufficiente.
 
 [ ] DatiAzienda — GET per DIPENDENTE è voluto, non è un problema di sicurezza: i dati sono pubblici e servono alla generazione fatture. Se il dipendente chiama l'endpoint, il service deve restituire i dati dell'Admin proprietario della sua boutique.
 
@@ -513,9 +525,8 @@ soluzione: query JPQL con doppio filtro boutique_id + utente associato
 [ ] JwtFilter — eccezioni JWT senza correlazione con la request
 soluzione: includere request URI / IP nel log, usare MDC per tracciabilità
 
-[ ] JwtService — nessuna invalidazione token
-effetto: dopo cambio password o logout il vecchio token resta valido fino a scadenza
-soluzione: blacklist in Redis o riduzione durata + refresh token
+[x] JwtService — invalidazione token su cambio credenziali account tramite `tokenVersion`
+nota: per logout globale o revoca massiva resta valutabile una blacklist esterna (es. Redis) o refresh token
 
 [x] DataInitializer — non attivo in produzione: protetto da `@Profile("dev")`
 

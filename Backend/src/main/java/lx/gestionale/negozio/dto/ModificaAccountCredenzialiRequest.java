@@ -1,14 +1,11 @@
-package lx.gestionale.utente.dto;
+package lx.gestionale.negozio.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class CreaAdminRequest {
-
-    @NotBlank
-    private String nome;
+public class ModificaAccountCredenzialiRequest {
 
     @NotBlank
     @Size(min = 3, max = 50)

@@ -21,7 +21,7 @@ public class CreaBoutiqueRequest {
     private String usernameAccount;
 
     @NotBlank
-    @Size(min = 8)
+    @Size(min = 8, max = 72)
     private String passwordAccount;
 
     private boolean fattureAbilitate=false; // default false

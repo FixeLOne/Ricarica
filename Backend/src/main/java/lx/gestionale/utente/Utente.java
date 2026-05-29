@@ -25,6 +25,10 @@ public class Utente {
 
     private String password;
 
+    private boolean attivo = true;
+
+    private long tokenVersion = 0L;
+
     @Enumerated(EnumType.STRING)
     private Ruolo ruolo;
 

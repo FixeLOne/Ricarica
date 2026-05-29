@@ -2,6 +2,7 @@ package lx.gestionale.utente;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.contatore.ContatoreFatturaService;
+import lx.gestionale.security.PasswordPolicy;
 import lx.gestionale.utente.dto.CreaAdminRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ public class UtenteService {
     private final UtenteRepository utenteRepository;
     private final PasswordEncoder passwordEncoder;
     private final ContatoreFatturaService contatoreFatturaService;
+    private final PasswordPolicy passwordPolicy;
 
     // ── SUPER_ADMIN ───────────────────────────────────────────────────────────
 
@@ -25,6 +27,7 @@ public class UtenteService {
     // ── Privati ───────────────────────────────────────────────────────────────
 
     private Utente buildUtente(String nome, String username, String password) {
+        passwordPolicy.validaNuovaPassword(password);
         Utente utente = new Utente();
         utente.setNome(nome);
         utente.setUsername(username);

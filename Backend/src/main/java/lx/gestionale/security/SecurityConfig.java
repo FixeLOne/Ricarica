@@ -1,5 +1,6 @@
 package lx.gestionale.security;
 
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,12 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())                  // ← FIX 1: attiva CorsConfig
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptions -> exceptions
+                        .authenticationEntryPoint((request, response, authException) ->
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Autenticazione richiesta"))
+                        .accessDeniedHandler((request, response, accessDeniedException) ->
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Accesso negato"))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ← FIX 2: preflight libero
 
@@ -48,6 +55,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/boutique").hasRole("ADMIN")
                         // Endpoint per vedere tutte le boutique del sistema.
                         .requestMatchers(HttpMethod.GET, "/api/v2/boutique/tutte").hasRole("SUPER_ADMIN")
+                        // Account operativo della boutique: gestione riservata all'admin proprietario.
+                        .requestMatchers(HttpMethod.GET, "/api/v2/boutique/*/account").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v2/boutique/*/account/**").hasRole("ADMIN")
                         // Dettaglio boutique: il DIPENDENTE legge solo la propria, verificata nel service.
                         .requestMatchers(HttpMethod.GET, "/api/v2/boutique/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "DIPENDENTE")
                         // Altri accessi per entrambi.

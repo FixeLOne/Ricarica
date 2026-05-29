@@ -57,18 +57,16 @@ class DataInitializerService {
         Boutique boutiqueB2 = creaBoutique("Boutique B2", "Monastir",  adminB, false);  // id: 4 — fatture DISABLED
 
         // ═══════════════════════════════════════════════════════════════
-        // 3. DIPENDENTI (2 per ogni boutique attiva)
+        // 3. ACCOUNT BOUTIQUE (1 dipendente operativo per boutique)
         // ═══════════════════════════════════════════════════════════════
-        // Boutique A1 (fatture ON) — 2 dipendenti
+        // Boutique A1 (fatture ON)
         creaUtente("Dipendente A1", "dipA1", "dipA1123", Ruolo.DIPENDENTE, boutiqueA1);
-        creaUtente("Dipendente A1b", "dipA1b", "dipA1b123", Ruolo.DIPENDENTE, boutiqueA1);
 
         // Boutique A2 (fatture OFF) — 1 dipendente
         creaUtente("Dipendente A2", "dipA2", "dipA2123", Ruolo.DIPENDENTE, boutiqueA2);
 
-        // Boutique B1 (fatture ON) — 2 dipendenti
+        // Boutique B1 (fatture ON)
         creaUtente("Dipendente B1", "dipB1", "dipB1123", Ruolo.DIPENDENTE, boutiqueB1);
-        creaUtente("Dipendente B1b", "dipB1b", "dipB1b123", Ruolo.DIPENDENTE, boutiqueB1);
 
         // Boutique B2 (fatture OFF) — 1 dipendente
         creaUtente("Dipendente B2", "dipB2", "dipB2123", Ruolo.DIPENDENTE, boutiqueB2);
@@ -134,7 +132,7 @@ class DataInitializerService {
         // (nessuna tariffa volutamente)
 
         log.info("[DEV] ✔ Database inizializzato — MAESTRO AUDIT.");
-        log.info("[DEV]   Utenti   : superadmin | adminA | adminB | adminC | dipA1 | dipA1b | dipA2 | dipB1 | dipB1b | dipB2");
+        log.info("[DEV]   Utenti   : superadmin | adminA | adminB | adminC | dipA1 | dipA2 | dipB1 | dipB2");
         log.info("[DEV]   Boutique : A1(id=1,fatture=ON) | A2(id=2,fatture=OFF) | B1(id=3,fatture=ON) | B2(id=4,fatture=OFF)");
         log.info("[DEV]   Tariffe  : AdminA=15 | AdminB=6 | AdminC=0");
     }

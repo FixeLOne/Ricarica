@@ -5,6 +5,7 @@ import lx.gestionale.negozio.dto.BoutiqueResponse;
 import lx.gestionale.negozio.dto.BoutiqueServiziResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
+import lx.gestionale.security.PasswordPolicy;
 import lx.gestionale.utente.Ruolo;
 import lx.gestionale.utente.Utente;
 import lx.gestionale.utente.UtenteRepository;
@@ -23,6 +24,7 @@ public class BoutiqueService {
     private final UtenteRepository utenteRepository;
     private final PasswordEncoder passwordEncoder;
     private final BoutiqueAccessService boutiqueAccessService;
+    private final PasswordPolicy passwordPolicy;
 
     // ── ADMIN ─────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,7 @@ public class BoutiqueService {
     }
 
     private Utente buildAccount(CreaBoutiqueRequest request, Boutique boutique) {
+        passwordPolicy.validaNuovaPassword(request.getPasswordAccount());
         Utente account = new Utente();
         account.setNome(request.getNomeAccount());
         account.setUsername(request.getUsernameAccount());

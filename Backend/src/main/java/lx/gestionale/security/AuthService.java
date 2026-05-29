@@ -26,10 +26,16 @@ public class AuthService {
                     .findFirst()
                     .map(a -> a.getAuthority().replace("ROLE_", ""))
                     .orElseThrow(() -> new IllegalStateException("Ruolo mancante"));
-            String token = jwtService.generaToken(principal.getUsername(), principal.getUtenteId(), principal.getBoutiqueId(), ruolo);
+            String token = jwtService.generaToken(
+                    principal.getUsername(),
+                    principal.getUtenteId(),
+                    principal.getBoutiqueId(),
+                    ruolo,
+                    principal.getTokenVersion()
+            );
             return new LoginResponse(token, principal.getUsername(), ruolo, principal.getBoutiqueId());
         } catch (DisabledException e) {
-            throw new IllegalArgumentException("Boutique disattivata");
+            throw new IllegalArgumentException("Account o boutique disattivati");
         } catch (AuthenticationException e) {
             throw new IllegalArgumentException("Credenziali non valide");
         }

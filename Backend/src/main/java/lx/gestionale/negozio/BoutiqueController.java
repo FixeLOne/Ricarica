@@ -2,11 +2,15 @@ package lx.gestionale.negozio;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lx.gestionale.negozio.dto.BoutiqueAccountResponse;
 import lx.gestionale.negozio.dto.BoutiqueResponse;
 import lx.gestionale.negozio.dto.CreaBoutiqueRequest;
+import lx.gestionale.negozio.dto.ModificaAccountCredenzialiRequest;
+import lx.gestionale.negozio.dto.ModificaAccountStatoRequest;
 import lx.gestionale.negozio.dto.ModificaBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaServizioBoutiqueRequest;
 import lx.gestionale.negozio.dto.ModificaStatoBoutiqueRequest;
+import lx.gestionale.negozio.dto.ResetPasswordAccountRequest;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +24,7 @@ import java.util.List;
 public class BoutiqueController {
 
     private final BoutiqueService boutiqueService;
+    private final BoutiqueAccountService boutiqueAccountService;
 
     @PostMapping
     public ResponseEntity<String> creaBoutique(
@@ -66,6 +71,50 @@ public class BoutiqueController {
                 id,
                 request.getServizio(),
                 request.isAbilitato(),
+                principal.getUtenteId()
+        ));
+    }
+
+    @GetMapping("/{id}/account")
+    public ResponseEntity<BoutiqueAccountResponse> getAccountBoutique(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueAccountService.getAccount(id, principal.getUtenteId()));
+    }
+
+    @PatchMapping("/{id}/account/password")
+    public ResponseEntity<BoutiqueAccountResponse> resetPasswordAccount(
+            @PathVariable Long id,
+            @Valid @RequestBody ResetPasswordAccountRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueAccountService.resetPassword(
+                id,
+                request.getNuovaPassword(),
+                principal.getUtenteId()
+        ));
+    }
+
+    @PatchMapping("/{id}/account/credentials")
+    public ResponseEntity<BoutiqueAccountResponse> modificaCredenzialiAccount(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificaAccountCredenzialiRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueAccountService.modificaCredenziali(
+                id,
+                request.getUsername(),
+                request.getPassword(),
+                principal.getUtenteId()
+        ));
+    }
+
+    @PatchMapping("/{id}/account/stato")
+    public ResponseEntity<BoutiqueAccountResponse> modificaStatoAccount(
+            @PathVariable Long id,
+            @Valid @RequestBody ModificaAccountStatoRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(boutiqueAccountService.modificaStato(
+                id,
+                request.getAttivo(),
                 principal.getUtenteId()
         ));
     }

@@ -14,11 +14,16 @@ const baseSchema = {
   citta: z.string().trim().min(2, "Inserisci almeno 2 caratteri").max(100, "Massimo 100 caratteri"),
 };
 
+const passwordField = z
+  .string()
+  .min(8, "Minimo 8 caratteri")
+  .refine((value) => new TextEncoder().encode(value).length <= 72, "Massimo 72 byte");
+
 const creaSchema = z.object({
   ...baseSchema,
   nomeAccount: z.string().trim().min(2, "Inserisci il nome dell'account"),
   usernameAccount: z.string().trim().min(3, "Minimo 3 caratteri").max(50, "Massimo 50 caratteri"),
-  passwordAccount: z.string().min(8, "Minimo 8 caratteri"),
+  passwordAccount: passwordField,
   fattureAbilitate: z.boolean(),
 });
 

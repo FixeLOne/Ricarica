@@ -20,12 +20,13 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long expiration;
 
-    public String generaToken(String username, Long utenteId, Long boutiqueId, String ruolo) {
+    public String generaToken(String username, Long utenteId, Long boutiqueId, String ruolo, long tokenVersion) {
         return Jwts.builder()
                 .subject(username)
                 .claim("ruolo", ruolo)
                 .claim("boutiqueId", boutiqueId)
                 .claim("utenteId", utenteId)
+                .claim("tokenVersion", tokenVersion)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(getChiave())
@@ -36,8 +37,21 @@ public class JwtService {
         return estraiClaim(token, Claims::getSubject);
     }
 
-    public boolean isTokenValido(String token, String username) {
-        return estraiUsername(token).equals(username) && !isTokenScaduto(token);
+    public boolean isTokenValido(String token, String username, long tokenVersion) {
+        return estraiUsername(token).equals(username)
+                && estraiTokenVersion(token) == tokenVersion
+                && !isTokenScaduto(token);
+    }
+
+    private long estraiTokenVersion(String token) {
+        Object value = estraiTuttiClaims(token).get("tokenVersion");
+        if (value == null) {
+            return -1L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(value.toString());
     }
 
     private boolean isTokenScaduto(String token) {

@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -52,9 +53,21 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            UserDetails userDetails;
+            try {
+                userDetails = userDetailsService.loadUserByUsername(username);
+            } catch (UsernameNotFoundException e) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token non valido");
+                return;
+            }
 
-            if (jwtService.isTokenValido(token, userDetails.getUsername())) {
+            if (!userDetails.isEnabled()) {
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Account disattivato");
+                return;
+            }
+
+            if (userDetails instanceof UserPrincipal principal
+                    && jwtService.isTokenValido(token, principal.getUsername(), principal.getTokenVersion())) {
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities()
                 );
