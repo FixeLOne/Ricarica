@@ -3,16 +3,18 @@ package lx.gestionale.fattura;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
+import lx.gestionale.fattura.dto.FiltroFatture;
 import lx.gestionale.fattura.dto.FatturaResponse;
 import lx.gestionale.security.UserPrincipal;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.time.LocalDate;
 
 @RestController
 @RequestMapping("/api/v2/fatture")
@@ -55,9 +57,20 @@ public class FatturaController {
     @GetMapping
     public ResponseEntity<Page<FatturaResponse>> getFatture(
             Pageable pageable,
+            @RequestParam(required = false) StatoFattura stato,
+            @RequestParam(required = false) TipoDocumento tipo,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dal,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate al,
+            @RequestParam(required = false) Long boutiqueId,
+            @RequestParam(required = false) String search,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(fatturaService.getFatture(
-                principal.getUtenteId(), principal.getBoutiqueId(), principal.getRuolo(), pageable));
+                principal.getUtenteId(),
+                principal.getBoutiqueId(),
+                principal.getRuolo(),
+                pageable,
+                new FiltroFatture(stato, tipo, dal, al, boutiqueId, search)
+        ));
     }
 
     @GetMapping("/{id}")

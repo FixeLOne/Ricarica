@@ -27,6 +27,10 @@ public class DatiAziendaController {
     @GetMapping
     public ResponseEntity<DatiAziendaResponse> getDati(
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(datiAziendaService.getDatiByAdmin(principal.getUtenteId()));
+        return ResponseEntity.ok(datiAziendaService.getDatiAccessibili(
+                principal.getUtenteId(),
+                principal.getBoutiqueId(),
+                principal.getRuolo()
+        ));
     }
 }

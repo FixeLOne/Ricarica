@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(uniqueConstraints = @UniqueConstraint(name = "uk_fattura_admin_numero", columnNames = {"admin_id", "numero"}))
 @Getter
 @Setter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -23,7 +24,7 @@ public class Fattura {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String numero;
 
     @Enumerated(EnumType.STRING)
@@ -40,6 +41,9 @@ public class Fattura {
     private String nomeCliente;
 
     private boolean timbreFiscal = false;
+
+    @Column(nullable = false)
+    private BigDecimal timbreFiscalMontant = BigDecimal.ZERO;
 
     private BigDecimal remiseGlobale = BigDecimal.ZERO;
 

@@ -10,9 +10,11 @@ import java.math.BigDecimal;
 public class RigaFatturaResponse {
 
     private Long id;
+    private String reference;
     private String descrizione;
     private BigDecimal quantita;
     private BigDecimal prezzoUnitarioHT;
     private BigDecimal aliquotaTVA;
+    private BigDecimal scontoPercentuale;
     private BigDecimal montanteHT;
 }

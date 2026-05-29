@@ -14,10 +14,12 @@ public class FatturaMapper {
         List<RigaFatturaResponse> righeResponse = fattura.getRighe().stream()
                 .map(r -> new RigaFatturaResponse(
                         r.getId(),
+                        r.getReference(),
                         r.getDescrizione(),
                         r.getQuantita(),
                         r.getPrezzoUnitarioHT(),
                         r.getAliquotaTVA(),
+                        r.getScontoPercentuale(),
                         r.getMontanteHT()
                 ))
                 .collect(Collectors.toList());
@@ -30,12 +32,15 @@ public class FatturaMapper {
                 fattura.getDataEmissione(),
                 fattura.getNomeCliente(),
                 fattura.isTimbreFiscal(),
+                fattura.getTimbreFiscalMontant(),
                 fattura.getRemiseGlobale(),
                 fattura.getTotaleHT(),
                 fattura.getTotaleTVA(),
                 fattura.getTotaleNet(),
+                fattura.getBoutique() != null ? fattura.getBoutique().getId() : null,
                 fattura.getBoutique() != null ? fattura.getBoutique().getNome() : null,
                 righeResponse,
+                fattura.getFatturaOrigine() != null ? fattura.getFatturaOrigine().getId() : null,
                 fattura.getFatturaOrigine() != null ? fattura.getFatturaOrigine().getNumero() : null
         );
     }

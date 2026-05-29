@@ -18,6 +18,9 @@ public class RigaFattura {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(length = 50)
+    private String reference;
+
     private String descrizione;
 
     @Column(nullable = false)
@@ -28,6 +31,9 @@ public class RigaFattura {
 
     @Column(nullable = false)
     private BigDecimal aliquotaTVA; // es. 19.00
+
+    @Column(nullable = false)
+    private BigDecimal scontoPercentuale = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private BigDecimal montanteHT; // calcolato nel service: quantita * prezzoUnitarioHT

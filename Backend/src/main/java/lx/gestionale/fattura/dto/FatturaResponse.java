@@ -21,11 +21,14 @@ public class FatturaResponse {
     private LocalDate dataEmissione;
     private String nomeCliente;
     private boolean timbreFiscal;
+    private BigDecimal timbreFiscalMontant;
     private BigDecimal remiseGlobale;
     private BigDecimal totaleHT;
     private BigDecimal totaleTVA;
     private BigDecimal totaleNet;
+    private Long boutiqueId;
     private String nomeBoutique;
     private List<RigaFatturaResponse> righe;
+    private Long fatturaOrigineId;
     private String fatturaOrigineNumero; // nullable
 }

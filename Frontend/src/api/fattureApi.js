@@ -2,14 +2,16 @@ import axiosClient from "./axiosClient";
 
 /**
  * GET /api/v2/fatture?page=0&size=20&sort=dataEmissione,desc
- *   Stessa logica di filtraggio per ruolo delle ricariche.
+ *
+ * Filtri opzionali:
+ *   { stato, tipo, dal, al, boutiqueId, search }
  *
  * Risposta Spring Page:
  *   { content: FatturaResponse[], totalElements, totalPages, number, size }
  */
-export const getFatture = (page = 0, size = 20) =>
+export const getFatture = (page = 0, size = 20, filters = {}) =>
     axiosClient.get("/fatture", {
-        params: { page, size, sort: "dataEmissione,desc" },
+        params: { page, size, sort: "dataEmissione,desc", ...filters },
     });
 
 export const getFatturaById = (id) =>

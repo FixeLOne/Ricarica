@@ -2,6 +2,7 @@ package lx.gestionale.fattura;
 
 import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
+import lx.gestionale.fattura.dto.FiltroFatture;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.negozio.BoutiqueAccessService;
 import lx.gestionale.negozio.BoutiqueRepository;
@@ -50,11 +51,38 @@ public class FatturaAccessService {
         return fattura;
     }
 
-    public Page<Fattura> trovaFattureAccessibili(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable) {
+    public Page<Fattura> trovaFattureAccessibili(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable, FiltroFatture filtro) {
         return switch (ruolo) {
-            case "SUPER_ADMIN" -> fatturaRepository.findAll(pageable);
-            case "ADMIN" -> fatturaRepository.findByAdminId(utenteId, pageable);
-            case "DIPENDENTE" -> fatturaRepository.findByBoutiqueId(boutiqueId, pageable);
+            case "SUPER_ADMIN" -> fatturaRepository.cerca(
+                    null,
+                    risolviBoutiqueFiltroSuperAdmin(filtro.boutiqueId()),
+                    filtro.stato(),
+                    filtro.tipo(),
+                    filtro.dal(),
+                    filtro.al(),
+                    filtro.searchNormalizzata(),
+                    pageable
+            );
+            case "ADMIN" -> fatturaRepository.cerca(
+                    utenteId,
+                    risolviBoutiqueFiltroAdmin(filtro.boutiqueId(), utenteId),
+                    filtro.stato(),
+                    filtro.tipo(),
+                    filtro.dal(),
+                    filtro.al(),
+                    filtro.searchNormalizzata(),
+                    pageable
+            );
+            case "DIPENDENTE" -> fatturaRepository.cerca(
+                    null,
+                    risolviBoutiqueFiltroDipendente(filtro.boutiqueId(), boutiqueId),
+                    filtro.stato(),
+                    filtro.tipo(),
+                    filtro.dal(),
+                    filtro.al(),
+                    filtro.searchNormalizzata(),
+                    pageable
+            );
             default -> throw new IllegalArgumentException("Ruolo non riconosciuto");
         };
     }
@@ -72,6 +100,24 @@ public class FatturaAccessService {
                 .orElseThrow(() -> new IllegalArgumentException("Fattura con ID " + id + " non trovata"));
     }
 
+    private Long risolviBoutiqueFiltroSuperAdmin(Long boutiqueId) {
+        return boutiqueId == null ? null : boutiqueAccessService.richiediBoutique(boutiqueId).getId();
+    }
+
+    private Long risolviBoutiqueFiltroAdmin(Long boutiqueId, Long adminId) {
+        return boutiqueId == null ? null : boutiqueAccessService.richiediBoutiqueDellAdmin(boutiqueId, adminId).getId();
+    }
+
+    private Long risolviBoutiqueFiltroDipendente(Long filtroBoutiqueId, Long boutiqueIdJwt) {
+        if (boutiqueIdJwt == null) {
+            throw new IllegalArgumentException("Boutique obbligatoria");
+        }
+        if (filtroBoutiqueId != null && !filtroBoutiqueId.equals(boutiqueIdJwt)) {
+            throw new IllegalArgumentException("Non hai i permessi su questa boutique");
+        }
+        return boutiqueIdJwt;
+    }
+
     private void verificaOwnership(Fattura fattura, Long utenteId, Long boutiqueId, String ruolo) {
         if ("SUPER_ADMIN".equals(ruolo)) {
             return;
@@ -83,10 +129,8 @@ public class FatturaAccessService {
             if (!fattura.getBoutique().getAdmin().getId().equals(fattura.getAdmin().getId())) {
                 throw new IllegalStateException("Incongruenza tra boutique e admin sulla fattura: ID " + fattura.getId());
             }
-        } else {
-            if (!fattura.getAdmin().getId().equals(utenteId)) {
-                throw new IllegalArgumentException("Non hai i permessi per accedere a questa fattura");
-            }
+        } else if (!fattura.getAdmin().getId().equals(utenteId)) {
+            throw new IllegalArgumentException("Non hai i permessi per accedere a questa fattura");
         }
     }
 

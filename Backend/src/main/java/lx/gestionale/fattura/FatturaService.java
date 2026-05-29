@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lx.gestionale.fattura.contatore.ContatoreFatturaService;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
 import lx.gestionale.fattura.dto.FatturaResponse;
+import lx.gestionale.fattura.dto.FiltroFatture;
 import lx.gestionale.fattura.riga.RigaFattura;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.utente.Utente;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -29,44 +31,34 @@ public class FatturaService {
 
     @Transactional
     public FatturaResponse creaFattura(CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        validaDocumento(request);
+        validaCreazioneDiretta(request);
+
         FatturaAccessService.ContestoCreazione contesto =
                 fatturaAccessService.risolviContestoCreazione(request, utenteId, boutiqueId);
-
-        Fattura fatturaOrigine = gestisciAvoirOrigine(request, utenteId, boutiqueId, ruolo);
 
         List<RigaFattura> righe = request.getRighe().stream()
                 .map(r -> fatturaCalcoloService.creaRiga(r, null))
                 .collect(Collectors.toList());
 
-        StatoFattura stato = request.getTipo() == TipoDocumento.AVOIR
-                ? StatoFattura.EMESSA
-                : StatoFattura.BOZZA;
-
-        String numero = stato == StatoFattura.EMESSA
-                ? contatoreFatturaService.generaNumero(contesto.admin(), request.getTipo())
-                : "BOZZA-" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-
-        LocalDate dataEmissione = request.getTipo() == TipoDocumento.AVOIR
-                ? LocalDate.now()
-                : request.getDataEmissione();
-
         return assemblaSalvaErispondi(
-                numero,
+                numeroBozza(),
                 request.getTipo(),
-                stato,
-                dataEmissione,
+                StatoFattura.BOZZA,
+                request.getDataEmissione(),
                 request.getNomeCliente(),
                 request.isTimbreFiscal(),
                 request.getRemiseGlobale(),
                 contesto.admin(),
                 contesto.boutique(),
-                fatturaOrigine,
+                null,
                 righe
         );
     }
 
     @Transactional
     public FatturaResponse modificaFattura(Long id, CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
+        validaDocumento(request);
         Fattura fattura = fatturaAccessService.richiediFatturaAccessibile(id, utenteId, boutiqueId, ruolo);
 
         if (fattura.getStato() != StatoFattura.BOZZA) {
@@ -134,8 +126,9 @@ public class FatturaService {
     }
 
     @Transactional(readOnly = true)
-    public Page<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable) {
-        return fatturaAccessService.trovaFattureAccessibili(utenteId, boutiqueId, ruolo, pageable)
+    public Page<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable, FiltroFatture filtro) {
+        validaFiltro(filtro);
+        return fatturaAccessService.trovaFattureAccessibili(utenteId, boutiqueId, ruolo, pageable, filtro)
                 .map(fatturaMapper::toResponse);
     }
 
@@ -154,25 +147,42 @@ public class FatturaService {
         fatturaRepository.deleteById(id);
     }
 
-    private Fattura gestisciAvoirOrigine(CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
-        if (request.getTipo() != TipoDocumento.AVOIR || request.getFatturaOrigineId() == null) {
-            return null;
-        }
-
-        Fattura origine = fatturaAccessService.richiediFatturaAccessibile(request.getFatturaOrigineId(), utenteId, boutiqueId, ruolo);
-        validaOrigineAvoir(origine);
-
-        origine.setStato(StatoFattura.ANNULLATA);
-        fatturaRepository.save(origine);
-        return origine;
-    }
-
     private void validaOrigineAvoir(Fattura origine) {
         if (origine.getStato() != StatoFattura.EMESSA) {
-            throw new IllegalArgumentException("Si può emettere un Avoir solo su fatture EMESSE");
+            throw new IllegalArgumentException("Si puo emettere un Avoir solo su fatture EMESSE");
         }
         if (origine.getTipo() == TipoDocumento.AVOIR) {
-            throw new IllegalArgumentException("Non è possibile emettere un Avoir su un altro Avoir");
+            throw new IllegalArgumentException("Non e possibile emettere un Avoir su un altro Avoir");
+        }
+    }
+
+    private void validaCreazioneDiretta(CreaFatturaRequest request) {
+        if (request.getTipo() == TipoDocumento.AVOIR) {
+            throw new IllegalArgumentException("Un Avoir va creato da una fattura emessa usando l'endpoint /fatture/{id}/avoir");
+        }
+    }
+
+    private void validaDocumento(CreaFatturaRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Documento obbligatorio");
+        }
+        if (request.getTipo() == null) {
+            throw new IllegalArgumentException("Il tipo documento e obbligatorio");
+        }
+        if (request.getDataEmissione() == null) {
+            throw new IllegalArgumentException("La data documento e obbligatoria");
+        }
+        if (request.getRemiseGlobale() == null) {
+            throw new IllegalArgumentException("La remise globale e obbligatoria");
+        }
+        if (request.getRighe() == null || request.getRighe().isEmpty()) {
+            throw new IllegalArgumentException("La fattura deve avere almeno una riga");
+        }
+    }
+
+    private void validaFiltro(FiltroFatture filtro) {
+        if (filtro.dal() != null && filtro.al() != null && filtro.dal().isAfter(filtro.al())) {
+            throw new IllegalArgumentException("La data iniziale non puo essere successiva alla data finale");
         }
     }
 
@@ -209,5 +219,9 @@ public class FatturaService {
         fatturaCalcoloService.calcolaTotali(fattura);
         fatturaRepository.save(fattura);
         return fatturaMapper.toResponse(fattura);
+    }
+
+    private String numeroBozza() {
+        return "BOZZA-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 }
