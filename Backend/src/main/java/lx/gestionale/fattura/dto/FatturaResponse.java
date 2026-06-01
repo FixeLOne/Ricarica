@@ -22,6 +22,8 @@ public class FatturaResponse {
     private String nomeCliente;
     private boolean timbreFiscal;
     private BigDecimal timbreFiscalMontant;
+    private boolean logoIntestazioneVisibile;
+    private boolean logoWatermarkVisibile;
     private BigDecimal remiseGlobale;
     private BigDecimal totaleHT;
     private BigDecimal totaleTVA;

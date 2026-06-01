@@ -7,6 +7,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class FatturaCalcoloService {
@@ -56,18 +58,15 @@ public class FatturaCalcoloService {
                 .map(RigaFattura::getMontanteHT)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totaleTVA = fattura.getRighe().stream()
-                .map(this::calcolaTvaRiga)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
         BigDecimal remiseGlobale = valoreOrZero(fattura.getRemiseGlobale());
         if (remiseGlobale.compareTo(totaleHT) > 0) {
             throw new IllegalArgumentException("La remise globale non puo superare il totale HT.");
         }
 
+        BigDecimal totaleHTNet = totaleHT.subtract(remiseGlobale);
+        BigDecimal totaleTVA = calcolaTvaSuBaseNetta(fattura, totaleHT, remiseGlobale);
         BigDecimal timbreApplicato = fattura.isTimbreFiscal() ? timbreValore : BigDecimal.ZERO;
-        BigDecimal totaleNet = totaleHT
-                .subtract(remiseGlobale)
+        BigDecimal totaleNet = totaleHTNet
                 .add(totaleTVA)
                 .add(timbreApplicato);
 
@@ -86,9 +85,30 @@ public class FatturaCalcoloService {
         return scalaImporto(montanteLordo.multiply(moltiplicatore));
     }
 
-    private BigDecimal calcolaTvaRiga(RigaFattura riga) {
-        return riga.getMontanteHT()
-                .multiply(riga.getAliquotaTVA())
+    private BigDecimal calcolaTvaSuBaseNetta(Fattura fattura, BigDecimal totaleHT, BigDecimal remiseGlobale) {
+        if (totaleHT.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+
+        Map<BigDecimal, BigDecimal> basiPerAliquota = fattura.getRighe().stream()
+                .collect(Collectors.groupingBy(
+                        riga -> riga.getAliquotaTVA().stripTrailingZeros(),
+                        Collectors.mapping(RigaFattura::getMontanteHT, Collectors.reducing(BigDecimal.ZERO, BigDecimal::add))
+                ));
+
+        return basiPerAliquota.entrySet().stream()
+                .map(entry -> calcolaTvaAliquota(entry.getValue(), entry.getKey(), totaleHT, remiseGlobale))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal calcolaTvaAliquota(BigDecimal baseHT, BigDecimal aliquotaTVA, BigDecimal totaleHT, BigDecimal remiseGlobale) {
+        BigDecimal quotaRemise = remiseGlobale
+                .multiply(baseHT)
+                .divide(totaleHT, 6, RoundingMode.HALF_UP);
+        BigDecimal baseNetta = baseHT.subtract(quotaRemise);
+
+        return baseNetta
+                .multiply(aliquotaTVA)
                 .divide(CENTO, SCALA_IMPORTI, RoundingMode.HALF_UP);
     }
 

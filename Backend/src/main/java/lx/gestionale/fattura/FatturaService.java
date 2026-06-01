@@ -48,6 +48,8 @@ public class FatturaService {
                 request.getDataEmissione(),
                 request.getNomeCliente(),
                 request.isTimbreFiscal(),
+                request.isLogoIntestazioneVisibile(),
+                request.isLogoWatermarkVisibile(),
                 request.getRemiseGlobale(),
                 contesto.admin(),
                 contesto.boutique(),
@@ -68,6 +70,8 @@ public class FatturaService {
         fattura.setDataEmissione(request.getDataEmissione());
         fattura.setNomeCliente(request.getNomeCliente());
         fattura.setTimbreFiscal(request.isTimbreFiscal());
+        fattura.setLogoIntestazioneVisibile(request.isLogoIntestazioneVisibile());
+        fattura.setLogoWatermarkVisibile(request.isLogoWatermarkVisibile());
         fattura.setRemiseGlobale(request.getRemiseGlobale());
 
         fattura.getRighe().clear();
@@ -117,6 +121,8 @@ public class FatturaService {
                 LocalDate.now(),
                 origine.getNomeCliente(),
                 origine.isTimbreFiscal(),
+                origine.isLogoIntestazioneVisibile(),
+                origine.isLogoWatermarkVisibile(),
                 origine.getRemiseGlobale(),
                 origine.getAdmin(),
                 origine.getBoutique(),
@@ -193,6 +199,8 @@ public class FatturaService {
             LocalDate dataEmissione,
             String nomeCliente,
             boolean timbreFiscal,
+            boolean logoIntestazioneVisibile,
+            boolean logoWatermarkVisibile,
             BigDecimal remiseGlobale,
             Utente admin,
             Boutique boutique,
@@ -206,6 +214,8 @@ public class FatturaService {
         fattura.setDataEmissione(dataEmissione);
         fattura.setNomeCliente(nomeCliente);
         fattura.setTimbreFiscal(timbreFiscal);
+        fattura.setLogoIntestazioneVisibile(logoIntestazioneVisibile);
+        fattura.setLogoWatermarkVisibile(logoWatermarkVisibile);
         fattura.setRemiseGlobale(remiseGlobale);
         fattura.setAdmin(admin);
         fattura.setBoutique(boutique);

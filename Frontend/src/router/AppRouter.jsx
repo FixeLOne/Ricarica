@@ -65,6 +65,7 @@ export default function AppRouter() {
           <Route path="/dashboard" element={<DashboardRouter />} />
           <Route path="/ricariche" element={<RicarichePage />} />
           <Route path="/fatture" element={<FattureListPage />} />
+          <Route path="/fatture/nuova" element={<FatturaEditorPage />} />
           <Route path="/fatture/:id" element={<FatturaEditorPage />} />
 
           {/* ADMIN + SUPER_ADMIN */}

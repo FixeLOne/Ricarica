@@ -11,6 +11,7 @@ import {
   FilePenLine,
   FileText,
   Pencil,
+  Plus,
   Printer,
   ReceiptText,
   RefreshCw,
@@ -48,6 +49,7 @@ import {
   getFatture,
 } from "@/api/fattureApi";
 import { useAuth } from "@/context/AuthContext";
+import FatturaDocumentPreview from "./FatturaDocumentPreview";
 
 const PAGE_SIZE = 12;
 const ALL_VALUE = "__ALL__";
@@ -108,24 +110,12 @@ function formatMoney(value) {
   })} DT`;
 }
 
-function formatPercent(value) {
-  return `${Number(value ?? 0).toLocaleString("it-IT", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}%`;
-}
-
 function getTipoLabel(tipo) {
   return TIPO_OPTIONS.find((item) => item.value === tipo)?.label ?? tipo ?? "-";
 }
 
 function getStatoLabel(stato) {
   return STATO_OPTIONS.find((item) => item.value === stato)?.label?.replace(/e$/, "a") ?? stato ?? "-";
-}
-
-function getLogoSrc(logo) {
-  if (!logo) return null;
-  return logo.startsWith("data:") ? logo : `data:image/png;base64,${logo}`;
 }
 
 function normalizeBoutique(boutique) {
@@ -385,7 +375,6 @@ function FatturaCards({ fatture, workingId, onPreview, onEdit, onAskAction }) {
 }
 
 function InvoicePreviewDialog({ fattura, azienda, open, onOpenChange, onAskAction, working }) {
-  const logoSrc = getLogoSrc(azienda?.logo);
   const isBozza = fattura?.stato === "BOZZA";
   const canAvoir = fattura?.stato === "EMESSA" && fattura?.tipo !== "AVOIR";
 
@@ -440,99 +429,7 @@ function InvoicePreviewDialog({ fattura, azienda, open, onOpenChange, onAskActio
         </div>
 
         <div className="p-4 sm:p-6">
-          <div className="invoice-print-area mx-auto min-h-[980px] max-w-[794px] rounded-2xl border border-stone-200 bg-white p-8 shadow-[0_24px_80px_-48px_rgba(15,23,42,0.55)] dark:border-stone-800 dark:bg-white dark:text-stone-950 sm:p-10">
-            <div className="flex items-start justify-between gap-8 border-b border-stone-200 pb-8">
-              <div className="min-w-0">
-                {logoSrc ? (
-                  <img src={logoSrc} alt="Logo azienda" className="mb-5 h-14 max-w-44 object-contain object-left" />
-                ) : (
-                  <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--brand-soft)] text-[var(--brand-text)]">
-                    <ReceiptText className="h-6 w-6" />
-                  </div>
-                )}
-                <h2 className="text-lg font-semibold text-stone-950">{azienda?.ragioneSociale || "Dati azienda non configurati"}</h2>
-                <p className="mt-1 max-w-sm text-sm text-stone-500">{azienda?.indirizzo || "Indirizzo non disponibile"}</p>
-                {azienda?.matriculeFiscale && (
-                  <p className="mt-1 text-sm text-stone-500">MF {azienda.matriculeFiscale}</p>
-                )}
-              </div>
-              <div className="shrink-0 text-right">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-text)]">{getTipoLabel(fattura.tipo)}</p>
-                <p className="mt-2 text-xl font-semibold tabular-nums text-stone-950">{fattura.numero}</p>
-                <p className="mt-1 text-sm text-stone-500">{formatDate(fattura.dataEmissione)}</p>
-                <div className="mt-4 flex justify-end">
-                  <StatusPill stato={fattura.stato} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-5 border-b border-stone-200 py-7 sm:grid-cols-2">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Cliente</p>
-                <p className="mt-2 text-base font-semibold text-stone-950">{fattura.nomeCliente || "Cliente non indicato"}</p>
-              </div>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">Origine</p>
-                <p className="mt-2 text-base font-semibold text-stone-950">
-                  {fattura.fatturaOrigineNumero || fattura.nomeBoutique || "Admin"}
-                </p>
-              </div>
-            </div>
-
-            <div className="py-7">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-stone-200 text-left text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
-                    <th className="py-3">Ref</th>
-                    <th className="py-3">Descrizione</th>
-                    <th className="py-3 text-right">Qta</th>
-                    <th className="py-3 text-right">Prezzo HT</th>
-                    <th className="py-3 text-right">Remise</th>
-                    <th className="py-3 text-right">TVA</th>
-                    <th className="py-3 text-right">Totale HT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(fattura.righe ?? []).map((riga) => (
-                    <tr key={riga.id ?? riga.descrizione} className="border-b border-stone-100 text-sm">
-                      <td className="py-4 pr-4 tabular-nums text-stone-500">{riga.reference || "-"}</td>
-                      <td className="py-4 pr-4 text-stone-800">{riga.descrizione}</td>
-                      <td className="py-4 text-right tabular-nums text-stone-600">{Number(riga.quantita ?? 0).toLocaleString("it-IT")}</td>
-                      <td className="py-4 text-right tabular-nums text-stone-600">{formatMoney(riga.prezzoUnitarioHT)}</td>
-                      <td className="py-4 text-right tabular-nums text-stone-600">{formatPercent(riga.scontoPercentuale)}</td>
-                      <td className="py-4 text-right tabular-nums text-stone-600">{formatPercent(riga.aliquotaTVA)}</td>
-                      <td className="py-4 text-right tabular-nums font-medium text-stone-950">{formatMoney(riga.montanteHT)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="ml-auto w-full max-w-sm space-y-3 border-t border-stone-200 pt-5">
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-stone-500">Totale HT</span>
-                <span className="font-medium tabular-nums text-stone-950">{formatMoney(fattura.totaleHT)}</span>
-              </div>
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-stone-500">Totale TVA</span>
-                <span className="font-medium tabular-nums text-stone-950">{formatMoney(fattura.totaleTVA)}</span>
-              </div>
-              <div className="flex justify-between gap-4 text-sm">
-                <span className="text-stone-500">Remise</span>
-                <span className="font-medium tabular-nums text-stone-950">{formatMoney(fattura.remiseGlobale)}</span>
-              </div>
-              {fattura.timbreFiscal && (
-                <div className="flex justify-between gap-4 text-sm">
-                  <span className="text-stone-500">Timbre fiscal</span>
-                  <span className="font-medium tabular-nums text-stone-950">{formatMoney(fattura.timbreFiscalMontant)}</span>
-                </div>
-              )}
-              <div className="flex justify-between gap-4 rounded-2xl bg-[var(--brand-soft)] px-4 py-3">
-                <span className="font-semibold text-[var(--brand-text)]">Net a payer</span>
-                <span className="font-semibold tabular-nums text-stone-950">{formatMoney(fattura.totaleNet)}</span>
-              </div>
-            </div>
-          </div>
+          <FatturaDocumentPreview documento={fattura} azienda={azienda} />
         </div>
       </DialogContent>
     </Dialog>
@@ -799,6 +696,14 @@ export default function FattureListPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            onClick={() => navigate("/fatture/nuova")}
+            className="brand-primary h-9 rounded-xl font-semibold"
+          >
+            <Plus className="h-4 w-4" />
+            Nuova bozza
+          </Button>
           <Button
             type="button"
             variant="outline"

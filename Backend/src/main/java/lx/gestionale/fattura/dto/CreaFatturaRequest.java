@@ -30,6 +30,10 @@ public class CreaFatturaRequest {
 
     private boolean timbreFiscal = false;
 
+    private boolean logoIntestazioneVisibile = true;
+
+    private boolean logoWatermarkVisibile = false;
+
     @NotNull(message = "La remise globale e obbligatoria (usa 0 se assente)")
     @DecimalMin(value = "0.00", message = "La remise non puo essere negativa")
     @Digits(integer = 12, fraction = 3, message = "La remise puo avere massimo 12 cifre intere e 3 decimali")

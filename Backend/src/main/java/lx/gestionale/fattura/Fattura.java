@@ -45,6 +45,10 @@ public class Fattura {
     @Column(nullable = false)
     private BigDecimal timbreFiscalMontant = BigDecimal.ZERO;
 
+    private boolean logoIntestazioneVisibile = true;
+
+    private boolean logoWatermarkVisibile = false;
+
     private BigDecimal remiseGlobale = BigDecimal.ZERO;
 
     // ── Totali (calcolati nel service) ────────────────────────

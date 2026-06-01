@@ -33,6 +33,8 @@ public class FatturaMapper {
                 fattura.getNomeCliente(),
                 fattura.isTimbreFiscal(),
                 fattura.getTimbreFiscalMontant(),
+                fattura.isLogoIntestazioneVisibile(),
+                fattura.isLogoWatermarkVisibile(),
                 fattura.getRemiseGlobale(),
                 fattura.getTotaleHT(),
                 fattura.getTotaleTVA(),

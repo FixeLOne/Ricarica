@@ -51,6 +51,36 @@ class FatturaCalcoloServiceTest {
     }
 
     @Test
+    void calcolaTvaDopoRemiseGlobaleSullaBaseImponibileNetta() {
+        Fattura fattura = new Fattura();
+        fattura.setTimbreFiscal(true);
+        fattura.setRemiseGlobale(new BigDecimal("3283.500"));
+        fattura.getRighe().add(service.creaRiga(riga(null, "1", "25250.000", "13", "0.00"), fattura));
+
+        service.calcolaTotali(fattura);
+
+        assertThat(fattura.getTotaleHT()).isEqualByComparingTo("25250.000");
+        assertThat(fattura.getRemiseGlobale()).isEqualByComparingTo("3283.500");
+        assertThat(fattura.getTotaleTVA()).isEqualByComparingTo("2855.645");
+        assertThat(fattura.getTimbreFiscalMontant()).isEqualByComparingTo("1.000");
+        assertThat(fattura.getTotaleNet()).isEqualByComparingTo("24823.145");
+    }
+
+    @Test
+    void ripartisceRemiseGlobaleProporzionalmenteTraAliquoteDiverse() {
+        Fattura fattura = new Fattura();
+        fattura.setRemiseGlobale(new BigDecimal("30.000"));
+        fattura.getRighe().add(service.creaRiga(riga(null, "1", "100.000", "19", "0.00"), fattura));
+        fattura.getRighe().add(service.creaRiga(riga(null, "1", "200.000", "7", "0.00"), fattura));
+
+        service.calcolaTotali(fattura);
+
+        assertThat(fattura.getTotaleHT()).isEqualByComparingTo("300.000");
+        assertThat(fattura.getTotaleTVA()).isEqualByComparingTo("29.700");
+        assertThat(fattura.getTotaleNet()).isEqualByComparingTo("299.700");
+    }
+
+    @Test
     void rifiutaRemiseGlobaleMaggioreDelTotaleHt() {
         Fattura fattura = new Fattura();
         fattura.setRemiseGlobale(new BigDecimal("101.000"));
