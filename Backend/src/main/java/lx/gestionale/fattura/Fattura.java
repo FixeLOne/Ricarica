@@ -42,24 +42,26 @@ public class Fattura {
 
     private boolean timbreFiscal = false;
 
-    @Column(nullable = false)
+    // Scala 3: il dinaro tunisino ha 3 decimali (millimes)
+    @Column(nullable = false, precision = 15, scale = 3)
     private BigDecimal timbreFiscalMontant = BigDecimal.ZERO;
 
     private boolean logoIntestazioneVisibile = true;
 
     private boolean logoWatermarkVisibile = false;
 
+    @Column(precision = 15, scale = 3)
     private BigDecimal remiseGlobale = BigDecimal.ZERO;
 
     // ── Totali (calcolati nel service) ────────────────────────
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 15, scale = 3)
     private BigDecimal totaleHT = BigDecimal.ZERO;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 15, scale = 3)
     private BigDecimal totaleTVA = BigDecimal.ZERO;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 15, scale = 3)
     private BigDecimal totaleNet = BigDecimal.ZERO;
 
     // ── Relazioni ─────────────────────────────────────────────

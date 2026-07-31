@@ -1,23 +1,24 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
   ArrowLeft,
   Building2,
   CalendarDays,
+  CheckCircle2,
   FileText,
   Image,
   Layers,
+  Loader2,
   Plus,
   Printer,
   ReceiptText,
-  Save,
-  Trash2,
+  Send,
+  Undo2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,278 +26,96 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import axiosClient from "@/api/axiosClient";
+import { getApiError } from "@/api/apiError";
 import { getDatiAzienda } from "@/api/aziendaApi";
-import { getBoutique, getTutteLeBoutique } from "@/api/boutiqueApi";
-import { creaFattura, getFatturaById, modificaFattura } from "@/api/fattureApi";
+import { getBoutique } from "@/api/boutiqueApi";
+import { creaAvoir, creaFattura, emettiFattura, getFatturaById, modificaFattura } from "@/api/fattureApi";
 import { useAuth } from "@/context/AuthContext";
+import { formatMoney } from "@/lib/format";
+import ConfirmActionDialog from "./ConfirmActionDialog";
 import FatturaDocumentPreview from "./FatturaDocumentPreview";
+import { FieldLabel, RowEditor, SoftSection, ToggleRow } from "./FatturaEditorFields";
+import { createDocumento, createRow, responseToDocumento, validaDocumento } from "./fatturaEditorHelpers";
 import {
-  calcolaRiga,
   calcolaTotaliDocumento,
-  formatMoney,
   normalizzaDocumentoPerApi,
   TIMBRE_FISCAL_DEFAULT,
   TIPO_DOCUMENTO_OPTIONS,
-  TVA_OPTIONS,
 } from "./fatturaHelpers";
 
-const ADMIN_DOC_VALUE = "__ADMIN__";
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function createRow() {
-  return {
-    localId: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-    reference: "",
-    descrizione: "",
-    quantita: "1",
-    prezzoUnitarioHT: "0.000",
-    scontoPercentuale: "0",
-    aliquotaTVA: "19",
-  };
-}
-
-function createDocumento() {
-  return {
-    tipo: "FACTURE",
-    stato: "BOZZA",
-    numero: "Automatico",
-    dataEmissione: todayIso(),
-    nomeCliente: "",
-    boutiqueId: "",
-    nomeBoutique: "",
-    timbreFiscal: false,
-    logoIntestazioneVisibile: true,
-    logoWatermarkVisibile: false,
-    remiseGlobale: "0.000",
-    righe: [createRow()],
-  };
-}
-
-function getApiError(error) {
-  return (
-    error?.response?.data?.errore ||
-    error?.response?.data?.message ||
-    (typeof error?.response?.data === "string" ? error.response.data : null) ||
-    "Operazione non riuscita"
-  );
-}
-
-function normalizeBoutique(boutique) {
-  return {
-    id: boutique.id,
-    nome: boutique.nome,
-    citta: boutique.citta ?? boutique["città"] ?? boutique["cittÃ "] ?? "",
-    attiva: boutique.attiva !== false,
-    fattureAbilitate: boutique.servizi?.fatture ?? boutique.fattureAbilitate ?? false,
-  };
-}
-
-function responseToDocumento(fattura) {
-  return {
-    ...createDocumento(),
-    ...fattura,
-    boutiqueId: fattura.boutiqueId ? String(fattura.boutiqueId) : "",
-    remiseGlobale: String(fattura.remiseGlobale ?? "0.000"),
-    logoIntestazioneVisibile: fattura.logoIntestazioneVisibile !== false,
-    logoWatermarkVisibile: Boolean(fattura.logoWatermarkVisibile),
-    righe: (fattura.righe ?? []).map((riga) => ({
-      localId: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-      id: riga.id,
-      reference: riga.reference ?? "",
-      descrizione: riga.descrizione ?? "",
-      quantita: String(riga.quantita ?? "1"),
-      prezzoUnitarioHT: String(riga.prezzoUnitarioHT ?? "0.000"),
-      scontoPercentuale: String(riga.scontoPercentuale ?? "0"),
-      aliquotaTVA: String(riga.aliquotaTVA ?? "19"),
-    })),
-  };
-}
-
-function FieldLabel({ children, right }) {
-  return (
-    <div className="mb-1.5 flex items-center justify-between gap-2">
-      <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
-        {children}
-      </label>
-      {right}
-    </div>
-  );
-}
-
-function SoftSection({ title, icon: Icon, children }) {
-  return (
-    <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-[0_18px_45px_-40px_rgba(15,23,42,0.5)] dark:border-stone-800 dark:bg-stone-900">
-      <div className="flex items-center gap-2 border-b border-stone-100 bg-stone-50/70 px-4 py-3 dark:border-stone-800 dark:bg-stone-950/30">
-        <Icon className="h-4 w-4 text-[var(--brand-text)]" />
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 dark:text-stone-400">{title}</p>
-      </div>
-      <div className="space-y-4 p-4">{children}</div>
-    </section>
-  );
-}
-
-function ToggleRow({ icon: Icon, title, description, checked, onChange, disabled }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-stone-50/80 px-3 py-3 dark:border-stone-800 dark:bg-stone-950/35">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-soft)] text-[var(--brand-text)]">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-stone-900 dark:text-stone-100">{title}</p>
-          <p className="truncate text-xs text-stone-500 dark:text-stone-400">{description}</p>
-        </div>
-      </div>
-      <Switch
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onChange}
-        className="data-[state=checked]:bg-[var(--brand-primary)] data-[state=unchecked]:bg-stone-200 dark:data-[state=unchecked]:bg-stone-700"
-      />
-    </div>
-  );
-}
-
-function RowEditor({ riga, index, readOnly, onChange, onRemove, canRemove }) {
-  const totals = calcolaRiga(riga);
-
-  return (
-    <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3 dark:border-stone-800 dark:bg-stone-950/35">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
-          Ligne {index + 1}
-        </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled={readOnly || !canRemove}
-          onClick={onRemove}
-          className="h-8 w-8 rounded-xl text-stone-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-500/10 dark:hover:text-red-300"
-          aria-label={`Rimuovi riga ${index + 1}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-[96px_1fr]">
-        <div>
-          <FieldLabel>Ref</FieldLabel>
-          <Input
-            value={riga.reference}
-            disabled={readOnly}
-            onChange={(event) => onChange({ reference: event.target.value })}
-            className="h-10 rounded-xl border-stone-200 bg-white shadow-none dark:border-stone-800 dark:bg-stone-900"
-            maxLength={50}
-          />
-        </div>
-        <div>
-          <FieldLabel>Designation</FieldLabel>
-          <Input
-            value={riga.descrizione}
-            disabled={readOnly}
-            onChange={(event) => onChange({ descrizione: event.target.value })}
-            placeholder="Article"
-            className="h-10 rounded-xl border-stone-200 bg-white shadow-none dark:border-stone-800 dark:bg-stone-900"
-            maxLength={255}
-          />
-        </div>
-      </div>
-
-      <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
-        <div>
-          <FieldLabel>Qte</FieldLabel>
-          <Input
-            type="number"
-            min="0.001"
-            step="0.001"
-            value={riga.quantita}
-            disabled={readOnly}
-            onChange={(event) => onChange({ quantita: event.target.value })}
-            className="h-10 rounded-xl border-stone-200 bg-white text-right shadow-none dark:border-stone-800 dark:bg-stone-900"
-          />
-        </div>
-        <div>
-          <FieldLabel>Prix HT</FieldLabel>
-          <Input
-            type="number"
-            min="0"
-            step="0.001"
-            value={riga.prezzoUnitarioHT}
-            disabled={readOnly}
-            onChange={(event) => onChange({ prezzoUnitarioHT: event.target.value })}
-            className="h-10 rounded-xl border-stone-200 bg-white text-right shadow-none dark:border-stone-800 dark:bg-stone-900"
-          />
-        </div>
-        <div>
-          <FieldLabel>Remise %</FieldLabel>
-          <Input
-            type="number"
-            min="0"
-            max="100"
-            step="0.01"
-            value={riga.scontoPercentuale}
-            disabled={readOnly}
-            onChange={(event) => onChange({ scontoPercentuale: event.target.value })}
-            className="h-10 rounded-xl border-stone-200 bg-white text-right shadow-none dark:border-stone-800 dark:bg-stone-900"
-          />
-        </div>
-        <div>
-          <FieldLabel>TVA</FieldLabel>
-          <Select
-            value={String(riga.aliquotaTVA)}
-            disabled={readOnly}
-            onValueChange={(value) => onChange({ aliquotaTVA: value })}
-          >
-            <SelectTrigger className="h-10 rounded-xl border-stone-200 bg-white shadow-none dark:border-stone-800 dark:bg-stone-900">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
-              {TVA_OPTIONS.map((option) => (
-                <SelectItem key={option} value={option} className="rounded-lg">
-                  {option}%
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <FieldLabel>Total HT</FieldLabel>
-          <div className="flex h-10 items-center justify-end rounded-xl border border-[var(--brand-border)] bg-[var(--brand-soft)] px-3 text-sm font-semibold tabular-nums text-stone-950 dark:text-stone-100">
-            {formatMoney(totals.montanteHT)}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const NESSUNA_BOUTIQUE = "__nessuna__";
+const AUTOSAVE_DEBOUNCE_MS = 1500;
 
 export default function FatturaEditorPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { utente } = useAuth();
   const isNew = !id || id === "nuova";
-  const canChooseBoutique = utente?.ruolo === "ADMIN" || utente?.ruolo === "SUPER_ADMIN";
-
+  const isAdmin = utente?.ruolo === "ADMIN";
   const [documento, setDocumento] = useState(createDocumento);
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(normalizzaDocumentoPerApi(createDocumento())));
   const [azienda, setAzienda] = useState(null);
   const [boutiques, setBoutiques] = useState([]);
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState("idle"); // idle | saving | saved | error
   const [apiError, setApiError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [attemptedEmit, setAttemptedEmit] = useState(false);
+  const [activeRowId, setActiveRowId] = useState(null);
+  const [focusRowId, setFocusRowId] = useState(null);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [actionWorking, setActionWorking] = useState(false);
 
   const readOnly = documento.stato && documento.stato !== "BOZZA";
   const totals = useMemo(() => calcolaTotaliDocumento(documento, TIMBRE_FISCAL_DEFAULT), [documento]);
+  const validation = useMemo(() => validaDocumento(documento, totals.totaleHT), [documento, totals.totaleHT]);
+  const isDirty = useMemo(
+    () => JSON.stringify(normalizzaDocumentoPerApi(documento)) !== savedSnapshot,
+    [documento, savedSnapshot],
+  );
+  const activeRowIndex = useMemo(
+    () => (activeRowId == null ? null : documento.righe.findIndex((riga) => riga.localId === activeRowId)),
+    [activeRowId, documento.righe],
+  );
+  // L'errore di validazione e derivato dallo stato corrente (non fissato al
+  // momento del tentativo): si aggiorna o sparisce da solo mentre l'utente
+  // corregge. apiError resta invece per gli errori del server, che restano
+  // finche l'utente non modifica. Mostrato solo dopo un'azione esplicita
+  // (Emetti, Ctrl+S, Stampa) — l'autosave in background fallisce in silenzio.
+  const displayError = apiError || (attemptedEmit ? validation.messaggio : null);
+
+  // Refs "sempre aggiornate": permettono a performSave e al flush di uscita
+  // di leggere lo stato piu recente anche quando vengono invocati da un
+  // timer/listener registrato molti render fa, senza richiudere su valori
+  // stantii e senza dover elencare "documento" tra le dipendenze di ogni
+  // effect (si aggiornano loro stesse via effect, mai durante il render).
+  const documentoRef = useRef(documento);
+  const savedSnapshotRef = useRef(savedSnapshot);
+  const savingRef = useRef(false);
+  const pendingAutosaveRef = useRef(false);
+
+  useEffect(() => {
+    documentoRef.current = documento;
+  }, [documento]);
+  useEffect(() => {
+    savedSnapshotRef.current = savedSnapshot;
+  }, [savedSnapshot]);
+
+  const applyDocumento = (next) => {
+    setDocumento(next);
+    setSavedSnapshot(JSON.stringify(normalizzaDocumentoPerApi(next)));
+    setAttemptedEmit(false);
+  };
 
   const updateDocumento = (patch) => {
+    setApiError(null);
     setDocumento((current) => ({ ...current, ...patch }));
   };
 
   const updateRow = (localId, patch) => {
+    setApiError(null);
     setDocumento((current) => ({
       ...current,
       righe: current.righe.map((riga) => (riga.localId === localId ? { ...riga, ...patch } : riga)),
@@ -304,7 +123,22 @@ export default function FatturaEditorPage() {
   };
 
   const addRow = () => {
-    setDocumento((current) => ({ ...current, righe: [...current.righe, createRow()] }));
+    const riga = createRow();
+    setDocumento((current) => ({ ...current, righe: [...current.righe, riga] }));
+    setFocusRowId(riga.localId);
+  };
+
+  const duplicateRow = (localId) => {
+    const nuovoId = createRow().localId;
+    setDocumento((current) => {
+      const index = current.righe.findIndex((riga) => riga.localId === localId);
+      if (index < 0) return current;
+      const copia = { ...current.righe[index], localId: nuovoId, id: undefined };
+      const righe = [...current.righe];
+      righe.splice(index + 1, 0, copia);
+      return { ...current, righe };
+    });
+    setFocusRowId(nuovoId);
   };
 
   const removeRow = (localId) => {
@@ -314,40 +148,137 @@ export default function FatturaEditorPage() {
     }));
   };
 
-  const validate = useCallback(() => {
-    if (!documento.tipo) return "Tipo documento obbligatorio.";
-    if (!documento.dataEmissione) return "Data documento obbligatoria.";
-    if (!documento.righe.length) return "Inserisci almeno una riga.";
-    const invalidRow = documento.righe.find((riga) => !riga.descrizione?.trim() || Number(riga.quantita) <= 0 || Number(riga.prezzoUnitarioHT) < 0);
-    if (invalidRow) return "Ogni riga deve avere designation, quantita positiva e prezzo valido.";
-    const invalidTva = documento.righe.find((riga) => !TVA_OPTIONS.includes(String(riga.aliquotaTVA)));
-    if (invalidTva) return "Aliquota TVA non ammessa. Usa 0, 7, 13 o 19.";
-    const invalidDiscount = documento.righe.find((riga) => Number(riga.scontoPercentuale) < 0 || Number(riga.scontoPercentuale) > 100);
-    if (invalidDiscount) return "La remise riga deve essere tra 0 e 100.";
-    if (Number(documento.remiseGlobale) > totals.totaleHT) return "La remise globale non puo superare il totale HT.";
-    return null;
-  }, [documento, totals.totaleHT]);
+  /**
+   * Unico punto di salvataggio, usato sia dall'autosave silenzioso sia dalle
+   * azioni esplicite (Ctrl+S, Emetti, Stampa/PDF). Legge sempre da
+   * documentoRef (mai da una closure) cosi funziona correttamente anche se
+   * invocato da un timer schedulato render fa. { silent: true } sopprime gli
+   * errori (l'autosave in background non deve interrompere chi sta scrivendo
+   * una riga non ancora valida) e non tocca "attemptedEmit".
+   */
+  const performSave = useCallback(async ({ silent = false } = {}) => {
+    const doc = documentoRef.current;
+    const totaleHT = calcolaTotaliDocumento(doc, TIMBRE_FISCAL_DEFAULT).totaleHT;
+    const currentValidation = validaDocumento(doc, totaleHT);
+
+    if (currentValidation.messaggio) {
+      if (!silent) setAttemptedEmit(true);
+      return null;
+    }
+
+    if (savingRef.current) {
+      pendingAutosaveRef.current = true;
+      return null;
+    }
+
+    savingRef.current = true;
+    setSaving(true);
+    setSaveStatus("saving");
+    if (!silent) setApiError(null);
+
+    try {
+      const payload = normalizzaDocumentoPerApi(doc);
+      const existingId = doc.id;
+      const response = existingId ? await modificaFattura(existingId, payload) : await creaFattura(payload);
+      const saved = responseToDocumento(response.data);
+      applyDocumento(saved);
+      setSaveStatus("saved");
+      if (!existingId) navigate(`/fatture/${saved.id}`, { replace: true });
+      return saved;
+    } catch (error) {
+      setSaveStatus("error");
+      if (!silent) setApiError(getApiError(error));
+      return null;
+    } finally {
+      setSaving(false);
+      savingRef.current = false;
+      if (pendingAutosaveRef.current) {
+        pendingAutosaveRef.current = false;
+        void performSave({ silent: true });
+      }
+    }
+  }, [navigate]);
+
+  const saveAndPrint = async () => {
+    const saved = readOnly ? documento : await performSave();
+    if (saved) window.setTimeout(() => window.print(), 120);
+  };
+
+  const askEmit = () => setPendingAction({ type: "emit", fattura: documento });
+  const askAvoir = () => setPendingAction({ type: "avoir", fattura: documento });
+  const askLeave = () => setPendingAction({ type: "leave" });
+
+  const goToList = async () => {
+    if (!isDirty) {
+      navigate("/fatture");
+      return;
+    }
+    if (validation.messaggio) {
+      // Contenuto non valido: non c'e nulla da salvare automaticamente,
+      // chiediamo conferma prima di scartarlo (come prima).
+      askLeave();
+      return;
+    }
+    const saved = await performSave({ silent: true });
+    if (!saved) {
+      // Il salvataggio e fallito (es. rete): chiediamo conferma prima di
+      // uscire perdendo le modifiche, invece di scartarle in silenzio.
+      askLeave();
+      return;
+    }
+    navigate("/fatture");
+  };
+
+  const confirmPendingAction = async () => {
+    if (pendingAction?.type === "leave") {
+      navigate("/fatture");
+      return;
+    }
+
+    setActionWorking(true);
+    setApiError(null);
+    try {
+      if (pendingAction.type === "emit") {
+        let fatturaId = documento.id;
+        if (isDirty) {
+          const saved = await performSave();
+          if (!saved) return;
+          fatturaId = saved.id;
+        }
+        const response = await emettiFattura(fatturaId);
+        applyDocumento(responseToDocumento(response.data));
+        setSuccess("Documento emesso correttamente.");
+        setPendingAction(null);
+      }
+      if (pendingAction.type === "avoir") {
+        const response = await creaAvoir(documento.id);
+        const avoir = responseToDocumento(response.data);
+        setPendingAction(null);
+        navigate(`/fatture/${avoir.id}`, { replace: true });
+      }
+    } catch (error) {
+      setApiError(getApiError(error));
+    } finally {
+      setActionWorking(false);
+    }
+  };
 
   useEffect(() => {
     let ignore = false;
     const timeoutId = window.setTimeout(async () => {
       setApiError(null);
       try {
-        const [aziendaRes, boutiqueRes, fatturaRes] = await Promise.all([
+        const [aziendaRes, fatturaRes] = await Promise.all([
           getDatiAzienda().catch(() => ({ data: null })),
-          canChooseBoutique
-            ? (utente?.ruolo === "SUPER_ADMIN" ? getTutteLeBoutique() : getBoutique()).catch(() => ({ data: [] }))
-            : Promise.resolve({ data: [] }),
           isNew ? Promise.resolve(null) : getFatturaById(id),
         ]);
 
         if (ignore) return;
 
         setAzienda(aziendaRes.data);
-        setBoutiques((boutiqueRes.data ?? []).map(normalizeBoutique).filter((boutique) => boutique.attiva && boutique.fattureAbilitate));
 
         if (fatturaRes?.data) {
-          setDocumento(responseToDocumento(fatturaRes.data));
+          applyDocumento(responseToDocumento(fatturaRes.data));
         }
       } catch (error) {
         if (!ignore) setApiError(getApiError(error));
@@ -360,41 +291,109 @@ export default function FatturaEditorPage() {
       ignore = true;
       window.clearTimeout(timeoutId);
     };
-  }, [canChooseBoutique, id, isNew, utente?.ruolo]);
+  }, [id, isNew]);
 
-  const save = async () => {
-    const validationError = validate();
-    if (validationError) {
-      setApiError(validationError);
-      return null;
-    }
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    let ignore = false;
 
-    setSaving(true);
-    setApiError(null);
-    setSuccess(null);
+    getBoutique()
+      .then((response) => {
+        if (!ignore) setBoutiques((response.data ?? []).filter((b) => b.fattureAbilitate && b.attiva));
+      })
+      .catch(() => {
+        if (!ignore) setBoutiques([]);
+      });
 
-    try {
-      const payload = normalizzaDocumentoPerApi(documento);
-      const response = isNew ? await creaFattura(payload) : await modificaFattura(id, payload);
-      const saved = responseToDocumento(response.data);
-      setDocumento(saved);
-      setSuccess("Bozza salvata correttamente.");
-      if (isNew) navigate(`/fatture/${saved.id}`, { replace: true });
-      return saved;
-    } catch (error) {
-      setApiError(getApiError(error));
-      return null;
-    } finally {
-      setSaving(false);
-    }
-  };
+    return () => {
+      ignore = true;
+    };
+  }, [isAdmin]);
 
-  const saveAndPrint = async () => {
-    const saved = readOnly ? documento : await save();
-    if (saved) window.setTimeout(() => window.print(), 120);
-  };
+  // Autosave: salva da solo 1.5s dopo l'ultima modifica, senza interrompere
+  // chi sta scrivendo. Se il documento non e ancora valido (es. una riga
+  // nuova senza descrizione) non tenta nulla e non lo segnala: fallisce in
+  // silenzio finche l'utente non lo completa.
+  useEffect(() => {
+    if (readOnly || !isDirty || validation.messaggio) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      void performSave({ silent: true });
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [readOnly, isDirty, validation.messaggio, documento, performSave]);
 
-  const boutiqueValue = documento.boutiqueId ? String(documento.boutiqueId) : ADMIN_DOC_VALUE;
+  // Salvataggio "best effort" quando l'utente chiude la scheda o cambia
+  // pagina/app: niente piu dialog nativo che blocca l'uscita, si tenta solo
+  // di spedire le modifiche prima che il browser scarichi la pagina.
+  // fetch(...,{keepalive:true}) e usato al posto di navigator.sendBeacon
+  // perche sendBeacon accetta solo POST senza header custom, mentre qui
+  // serve l'header Authorization per autenticare la richiesta.
+  useEffect(() => {
+    const flush = () => {
+      if (savingRef.current) return;
+      const doc = documentoRef.current;
+      const snapshot = JSON.stringify(normalizzaDocumentoPerApi(doc));
+      if (snapshot === savedSnapshotRef.current) return;
+      const totaleHT = calcolaTotaliDocumento(doc, TIMBRE_FISCAL_DEFAULT).totaleHT;
+      if (validaDocumento(doc, totaleHT).messaggio) return;
+
+      const token = localStorage.getItem("token");
+      const baseURL = axiosClient.defaults.baseURL;
+      const url = doc.id ? `${baseURL}/fatture/${doc.id}` : `${baseURL}/fatture`;
+      try {
+        fetch(url, {
+          method: doc.id ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(normalizzaDocumentoPerApi(doc)),
+          keepalive: true,
+        });
+      } catch {
+        // Best effort: se il browser rifiuta la richiesta in uscita non
+        // c'e altro da fare, i dati restano solo lato client.
+      }
+    };
+
+    const visibilityHandler = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", visibilityHandler);
+    window.addEventListener("pagehide", flush);
+    return () => {
+      document.removeEventListener("visibilitychange", visibilityHandler);
+      window.removeEventListener("pagehide", flush);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+        event.preventDefault();
+        if (!readOnly && !saving) void performSave();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [readOnly, saving, performSave]);
+
+  // Dopo "Aggiungi articolo" o "Duplica riga" porta subito la nuova riga in
+  // vista con uno scorrimento animato e mette il focus sulla descrizione: si
+  // scrive senza dover ricliccare un pulsante lontano ogni volta.
+  // focus({preventScroll:true}) evita che il focus riattivi un secondo scroll
+  // nativo del browser che romperebbe l'animazione di scrollIntoView.
+  // Non serve "consumare" focusRowId: ogni riga ha un localId univoco, quindi
+  // l'effect scatta di nuovo ad ogni nuova aggiunta/duplicazione comunque.
+  useEffect(() => {
+    if (!focusRowId) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      const field = document.getElementById(`riga-${focusRowId}-descrizione`);
+      field?.scrollIntoView({ behavior: "smooth", block: "center" });
+      field?.focus({ preventScroll: true });
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [focusRowId]);
 
   if (loading) {
     return (
@@ -404,30 +403,47 @@ export default function FatturaEditorPage() {
     );
   }
 
+  const canEmit = !isNew && !readOnly;
+  const canAvoir = readOnly && documento.stato === "EMESSA" && documento.tipo !== "AVOIR";
+
+  const autosaveLabel = readOnly
+    ? null
+    : saveStatus === "saving"
+      ? { text: "Salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2, spin: true }
+      : saveStatus === "error"
+        ? { text: "Salvataggio non riuscito", tone: "text-red-600 dark:text-red-400", icon: AlertCircle }
+        : !isDirty && documento.id
+          ? { text: "Salvato", tone: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 }
+          : isDirty && !validation.messaggio
+            ? { text: "Modifiche in attesa di salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2 }
+            : null;
+
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex min-h-0 flex-col gap-4 xl:h-full">
       <div className="flex flex-col gap-3 border-b border-stone-200 pb-4 dark:border-stone-800 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <Button
             type="button"
             variant="outline"
             size="icon"
-            onClick={() => navigate("/fatture")}
+            onClick={goToList}
             className="mt-0.5 h-9 w-9 rounded-xl border-stone-200 text-stone-600 dark:border-stone-800 dark:text-stone-300"
             aria-label="Torna alle fatture"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--brand-primary)] shadow-[0_0_0_4px_var(--brand-soft)]" />
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--brand-text)]">
-                Editeur de facture
-              </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
+                {isNew ? "Nuova bozza" : documento.numero}
+              </h1>
+              {autosaveLabel && (
+                <span className={`inline-flex items-center gap-1 text-xs font-medium ${autosaveLabel.tone}`}>
+                  <autosaveLabel.icon className={`h-3.5 w-3.5 ${autosaveLabel.spin ? "animate-spin" : ""}`} />
+                  {autosaveLabel.text}
+                </span>
+              )}
             </div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
-              {isNew ? "Nuova bozza" : documento.numero}
-            </h1>
             <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
               Modifica righe, timbre, remise e resa grafica del documento.
             </p>
@@ -450,10 +466,10 @@ export default function FatturaEditorPage() {
         </div>
       </div>
 
-      {apiError && (
+      {displayError && (
         <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:border-red-800/70 dark:bg-red-500/10 dark:text-red-300">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{apiError}</span>
+          <span>{displayError}</span>
         </div>
       )}
       {success && (
@@ -467,33 +483,83 @@ export default function FatturaEditorPage() {
         </div>
       )}
 
-      <div className="grid min-h-0 flex-1 gap-5 xl:grid-cols-[460px_1fr]">
-        <aside className="min-h-0 flex flex-col">
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-2 pr-1">
-            <SoftSection title="Emetteur" icon={Building2}>
-            <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 dark:border-stone-800 dark:bg-stone-950/35">
-              <p className="text-sm font-semibold text-stone-950 dark:text-stone-50">{azienda?.ragioneSociale || "Azienda non configurata"}</p>
-              <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{azienda?.matriculeFiscale || "Matricule fiscale mancante"}</p>
-            </div>
-            {canChooseBoutique && (
+      <div className="grid gap-5 xl:min-h-0 xl:flex-1 xl:grid-cols-[460px_1fr]">
+        <aside className="flex flex-col xl:min-h-0">
+          <div className="space-y-4 pb-2 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+            <SoftSection title="Mittente" icon={Building2}>
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 dark:border-stone-800 dark:bg-stone-950/35">
+                <p className="text-sm font-semibold text-stone-950 dark:text-stone-50">{azienda?.ragioneSociale || "Azienda non configurata"}</p>
+                <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{azienda?.matriculeFiscale || "Matricule fiscale mancante"}</p>
+              </div>
+            </SoftSection>
+
+          <SoftSection title="Documento" icon={FileText}>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <FieldLabel>Boutique</FieldLabel>
+                <FieldLabel htmlFor="doc-tipo">Tipo</FieldLabel>
+                {documento.tipo === "AVOIR" ? (
+                  <Input
+                    id="doc-tipo"
+                    value="Avoir"
+                    disabled
+                    className="h-10 rounded-xl border-stone-200 bg-stone-100 font-medium text-stone-500 shadow-none dark:border-stone-800 dark:bg-stone-950/50"
+                  />
+                ) : (
+                  <Select
+                    value={documento.tipo}
+                    disabled={readOnly}
+                    onValueChange={(value) => updateDocumento({ tipo: value })}
+                  >
+                    <SelectTrigger id="doc-tipo" className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
+                      {TIPO_DOCUMENTO_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value} className="rounded-lg">
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+              <div>
+                <FieldLabel htmlFor="doc-data">Data</FieldLabel>
+                <div className="relative">
+                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                  <Input
+                    id="doc-data"
+                    type="date"
+                    value={documento.dataEmissione}
+                    disabled={readOnly}
+                    onChange={(event) => updateDocumento({ dataEmissione: event.target.value })}
+                    className="h-10 rounded-xl border-stone-200 bg-stone-50 pl-9 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
+                  />
+                </div>
+              </div>
+            </div>
+            <div>
+              <FieldLabel htmlFor="doc-numero" right={<span className="text-[10px] text-stone-400">Automatico</span>}>Numero</FieldLabel>
+              <Input
+                id="doc-numero"
+                value={documento.numero || "Automatico"}
+                disabled
+                className="h-10 rounded-xl border-stone-200 bg-stone-100 font-medium text-stone-500 shadow-none dark:border-stone-800 dark:bg-stone-950/50"
+              />
+            </div>
+            {isAdmin && boutiques.length > 0 && (
+              <div>
+                <FieldLabel htmlFor="doc-boutique">Boutique</FieldLabel>
                 <Select
-                  value={boutiqueValue}
-                  disabled={readOnly}
-                  onValueChange={(value) => {
-                    const selected = boutiques.find((boutique) => String(boutique.id) === value);
-                    updateDocumento({
-                      boutiqueId: value === ADMIN_DOC_VALUE ? "" : value,
-                      nomeBoutique: selected?.nome ?? "",
-                    });
-                  }}
+                  value={documento.boutiqueId || NESSUNA_BOUTIQUE}
+                  disabled={readOnly || !isNew}
+                  onValueChange={(value) => updateDocumento({ boutiqueId: value === NESSUNA_BOUTIQUE ? "" : value })}
                 >
-                  <SelectTrigger className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40">
+                  <SelectTrigger id="doc-boutique" className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
-                    <SelectItem value={ADMIN_DOC_VALUE} className="rounded-lg">Admin / sede</SelectItem>
+                    <SelectItem value={NESSUNA_BOUTIQUE} className="rounded-lg">Nessuna (fattura diretta)</SelectItem>
                     {boutiques.map((boutique) => (
                       <SelectItem key={boutique.id} value={String(boutique.id)} className="rounded-lg">
                         {boutique.nome}
@@ -505,55 +571,11 @@ export default function FatturaEditorPage() {
             )}
           </SoftSection>
 
-          <SoftSection title="Document" icon={FileText}>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel>Type</FieldLabel>
-                <Select
-                  value={documento.tipo}
-                  disabled={readOnly}
-                  onValueChange={(value) => updateDocumento({ tipo: value })}
-                >
-                  <SelectTrigger className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
-                    {TIPO_DOCUMENTO_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="rounded-lg">
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <FieldLabel>Date</FieldLabel>
-                <div className="relative">
-                  <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-                  <Input
-                    type="date"
-                    value={documento.dataEmissione}
-                    disabled={readOnly}
-                    onChange={(event) => updateDocumento({ dataEmissione: event.target.value })}
-                    className="h-10 rounded-xl border-stone-200 bg-stone-50 pl-9 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
-                  />
-                </div>
-              </div>
-            </div>
+          <SoftSection title="Cliente e finanze" icon={ReceiptText}>
             <div>
-              <FieldLabel right={<span className="text-[10px] text-stone-400">Automatico</span>}>Numero</FieldLabel>
+              <FieldLabel htmlFor="doc-cliente" right={<span className="text-[10px] text-stone-400">{documento.nomeCliente?.length ?? 0} / 150</span>}>Nome cliente</FieldLabel>
               <Input
-                value={documento.numero || "Automatico"}
-                disabled
-                className="h-10 rounded-xl border-stone-200 bg-stone-100 font-medium text-stone-500 shadow-none dark:border-stone-800 dark:bg-stone-950/50"
-              />
-            </div>
-          </SoftSection>
-
-          <SoftSection title="Client & finances" icon={ReceiptText}>
-            <div>
-              <FieldLabel right={<span className="text-[10px] text-stone-400">{documento.nomeCliente?.length ?? 0} / 150</span>}>Nom du client</FieldLabel>
-              <Input
+                id="doc-cliente"
                 value={documento.nomeCliente}
                 disabled={readOnly}
                 onChange={(event) => updateDocumento({ nomeCliente: event.target.value })}
@@ -565,14 +587,15 @@ export default function FatturaEditorPage() {
             <ToggleRow
               icon={ReceiptText}
               title="Timbre fiscal"
-              description={documento.timbreFiscal ? "Applique au total" : "Non applique"}
+              description={documento.timbreFiscal ? "Applicato al totale" : "Non applicato"}
               checked={documento.timbreFiscal}
               disabled={readOnly}
               onChange={(checked) => updateDocumento({ timbreFiscal: checked })}
             />
             <div>
-              <FieldLabel>Remise globale (DT)</FieldLabel>
+              <FieldLabel htmlFor="doc-remise">Remise globale (DT)</FieldLabel>
               <Input
+                id="doc-remise"
                 type="number"
                 min="0"
                 step="0.001"
@@ -584,46 +607,31 @@ export default function FatturaEditorPage() {
             </div>
           </SoftSection>
 
-          <SoftSection title="Logo & watermark" icon={Image}>
-            <ToggleRow
-              icon={Image}
-              title="Logo in alto a sinistra"
-              description="Mostra il logo nell'intestazione"
-              checked={documento.logoIntestazioneVisibile}
-              disabled={readOnly}
-              onChange={(checked) => updateDocumento({ logoIntestazioneVisibile: checked })}
-            />
-            <ToggleRow
-              icon={Layers}
-              title="Watermark centrale"
-              description="Usa il logo come sfondo leggero"
-              checked={documento.logoWatermarkVisibile}
-              disabled={readOnly}
-              onChange={(checked) => updateDocumento({ logoWatermarkVisibile: checked })}
-            />
-            {!azienda?.logo && (
-              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-200">
-                Nessun logo caricato nella pagina Azienda.
-              </p>
-            )}
-          </SoftSection>
+          {azienda?.logo && (
+            <SoftSection title="Logo e watermark" icon={Image}>
+              <ToggleRow
+                icon={Image}
+                title="Logo in alto a sinistra"
+                description="Mostra il logo nell'intestazione"
+                checked={documento.logoIntestazioneVisibile}
+                disabled={readOnly}
+                onChange={(checked) => updateDocumento({ logoIntestazioneVisibile: checked })}
+              />
+              <ToggleRow
+                icon={Layers}
+                title="Watermark centrale"
+                description="Usa il logo come sfondo leggero"
+                checked={documento.logoWatermarkVisibile}
+                disabled={readOnly}
+                onChange={(checked) => updateDocumento({ logoWatermarkVisibile: checked })}
+              />
+            </SoftSection>
+          )}
 
           <section className="space-y-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
-                Articles <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[var(--brand-on-primary)]">{documento.righe.length}</span>
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={readOnly}
-                onClick={addRow}
-                className="h-8 rounded-xl border-[var(--brand-border)] bg-[var(--brand-soft)] px-3 text-xs font-semibold text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Riga
-              </Button>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
+              Articoli <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[var(--brand-on-primary)]">{documento.righe.length}</span>
+            </p>
             {documento.righe.map((riga, index) => (
               <RowEditor
                 key={riga.localId}
@@ -633,27 +641,59 @@ export default function FatturaEditorPage() {
                 canRemove={documento.righe.length > 1}
                 onChange={(patch) => updateRow(riga.localId, patch)}
                 onRemove={() => removeRow(riga.localId)}
+                onDuplicate={() => duplicateRow(riga.localId)}
+                onFieldFocus={() => setActiveRowId(riga.localId)}
+                invalidFields={attemptedEmit ? (validation.righeInvalide.get(riga.localId) ?? []) : []}
               />
             ))}
+            {!readOnly && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addRow}
+                className="h-11 w-full rounded-2xl border-dashed border-stone-300 bg-transparent text-sm font-semibold text-stone-500 hover:border-[var(--brand-border)] hover:bg-[var(--brand-soft)] hover:text-[var(--brand-text)] dark:border-stone-700 dark:text-stone-400"
+              >
+                <Plus className="h-4 w-4" />
+                Aggiungi articolo
+              </Button>
+            )}
             </section>
           </div>
 
-          <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95 sm:grid-cols-2">
+          <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95">
+            {!readOnly && canEmit && (
+              <Button
+                type="button"
+                disabled={saving || actionWorking}
+                onClick={askEmit}
+                className="brand-primary h-11 rounded-xl font-semibold"
+              >
+                <Send className="h-4 w-4" />
+                Emetti
+              </Button>
+            )}
+            {canAvoir && (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={actionWorking}
+                onClick={askAvoir}
+                className="h-11 rounded-xl border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]"
+              >
+                <Undo2 className="h-4 w-4" />
+                Crea Avoir
+              </Button>
+            )}
             <Button
               type="button"
-              disabled={saving || readOnly}
-              onClick={save}
-              className="brand-primary h-11 rounded-xl font-semibold"
-            >
-              <Save className="h-4 w-4" />
-              {saving ? "Salvo..." : "Salva bozza"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
+              variant={readOnly ? "default" : "outline"}
               disabled={saving}
               onClick={saveAndPrint}
-              className="h-11 rounded-xl border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800"
+              className={
+                readOnly
+                  ? "brand-primary h-11 rounded-xl font-semibold"
+                  : "h-11 rounded-xl border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800"
+              }
             >
               <Printer className="h-4 w-4" />
               Stampa/PDF
@@ -661,10 +701,27 @@ export default function FatturaEditorPage() {
           </div>
         </aside>
 
-        <section className="min-h-0 overflow-auto rounded-2xl border border-stone-200 bg-stone-100/60 p-4 dark:border-stone-800 dark:bg-stone-950/35">
-          <FatturaDocumentPreview documento={{ ...documento, ...totals }} azienda={azienda} />
+        <section
+          className="min-h-0 overflow-auto rounded-2xl border border-stone-200 bg-stone-100/60 p-4 dark:border-stone-800 dark:bg-stone-950/35"
+          style={{ scrollbarGutter: "stable both-edges" }}
+        >
+          <FatturaDocumentPreview
+            documento={{ ...documento, ...totals }}
+            azienda={azienda}
+            fitPageToViewport
+            activeRowIndex={activeRowIndex}
+            editable={!readOnly}
+          />
         </section>
       </div>
+
+      <ConfirmActionDialog
+        action={pendingAction}
+        open={Boolean(pendingAction)}
+        onOpenChange={(open) => !open && !actionWorking && setPendingAction(null)}
+        onConfirm={confirmPendingAction}
+        working={actionWorking}
+      />
     </div>
   );
 }

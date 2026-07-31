@@ -8,7 +8,7 @@ import lombok.Data;
 public class BoutiqueResponse {
     private Long id;
     private String nome;
-    private String città;
+    private String citta;
     private boolean ricaricheAbilitate;
     private boolean fattureAbilitate;
     private boolean attiva;

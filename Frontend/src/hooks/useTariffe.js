@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getTariffe, creaTariffa, modificaTariffa, eliminaTariffa } from "@/api/tariffaApi";
 
 export default function useTariffe() {
@@ -6,20 +6,24 @@ export default function useTariffe() {
   const [loading,  setLoading]  = useState(true);
   const [apiError, setApiError] = useState(null);
 
-  const carica = useCallback(async () => {
-    setLoading(true);
-    setApiError(null);
-    try {
-      const { data } = await getTariffe();
-      setTariffe(data);
-    } catch {
-      setApiError("Errore nel caricamento delle tariffe.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    let ignore = false;
 
-  useEffect(() => { carica(); }, [carica]);
+    (async () => {
+      try {
+        const { data } = await getTariffe();
+        if (!ignore) setTariffe(data);
+      } catch {
+        if (!ignore) setApiError("Errore nel caricamento delle tariffe.");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    })();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   const handleCrea = async (formData) => {
     try {

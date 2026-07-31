@@ -61,12 +61,14 @@ public class FatturaService {
     @Transactional
     public FatturaResponse modificaFattura(Long id, CreaFatturaRequest request, Long utenteId, Long boutiqueId, String ruolo) {
         validaDocumento(request);
+        validaCreazioneDiretta(request);
         Fattura fattura = fatturaAccessService.richiediFatturaAccessibile(id, utenteId, boutiqueId, ruolo);
 
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere modificate");
         }
 
+        fattura.setTipo(request.getTipo());
         fattura.setDataEmissione(request.getDataEmissione());
         fattura.setNomeCliente(request.getNomeCliente());
         fattura.setTimbreFiscal(request.isTimbreFiscal());

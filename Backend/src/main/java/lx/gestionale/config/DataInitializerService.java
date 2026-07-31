@@ -212,7 +212,7 @@ class DataInitializerService {
     private Boutique creaBoutique(String nome, String citta, Utente admin, boolean fattureAbilitate) {
         Boutique boutique = new Boutique();
         boutique.setNome(nome);
-        boutique.setCittà(citta);
+        boutique.setCitta(citta);
         boutique.setAdmin(admin);
         boutique.setFattureAbilitate(fattureAbilitate);
         return boutiqueRepository.save(boutique);

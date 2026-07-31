@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { getApiError } from "@/api/apiError";
 import {
   getAccountBoutique,
   modificaCredenzialiAccountBoutique,
@@ -52,15 +53,6 @@ const credentialsSchema = z
     path: ["confermaPassword"],
     message: "Le password non coincidono",
   });
-
-function getApiError(error) {
-  return (
-    error?.response?.data?.errore ||
-    error?.response?.data?.message ||
-    (typeof error?.response?.data === "string" ? error.response.data : null) ||
-    "Operazione non riuscita"
-  );
-}
 
 function createPassword() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!#?_-";

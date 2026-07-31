@@ -41,10 +41,14 @@ public class Ricarica {
 
     // ----------------------Dati Finanziari (Contabilità)----------------------
 
+    // Scala 3: il dinaro tunisino ha 3 decimali (millimes)
+    @Column(precision = 15, scale = 3)
     private BigDecimal costoEffettivo;
 
+    @Column(precision = 15, scale = 3)
     private BigDecimal costoCliente;
 
+    @Column(precision = 15, scale = 3)
     private BigDecimal profitto;
 
     //------------------------  EXTRA -------------------------------------------

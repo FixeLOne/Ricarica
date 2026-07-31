@@ -27,7 +27,11 @@ public class Tariffa {
 
     private BigDecimal giga;
 
+    // Scala 3: il dinaro tunisino ha 3 decimali (millimes)
+    @Column(precision = 15, scale = 3)
     private BigDecimal costoAcquisto;
+
+    @Column(precision = 15, scale = 3)
     private BigDecimal prezzoVendita;
 
     @ManyToOne

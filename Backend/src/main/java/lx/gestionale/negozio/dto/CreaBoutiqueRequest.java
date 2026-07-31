@@ -11,7 +11,7 @@ public class CreaBoutiqueRequest {
     private String nome;
 
     @NotBlank
-    private String città;
+    private String citta;
 
     @NotBlank
     private String nomeAccount;

@@ -32,14 +32,14 @@ public class BoutiqueService {
     public void creaBoutique(CreaBoutiqueRequest request, String usernameAdmin) {
         Utente admin = trovaAdmin(usernameAdmin);
         String nome = normalizza(request.getNome());
-        String città = normalizza(request.getCittà());
+        String citta = normalizza(request.getCitta());
 
         verificaNomeDisponibile(nome, admin);
         verificaUsernameDisponibile(request.getUsernameAccount());
 
         Boutique boutique = new Boutique();
         boutique.setNome(nome);
-        boutique.setCittà(città);
+        boutique.setCitta(citta);
         boutique.setAdmin(admin);
         boutique.setFattureAbilitate(request.isFattureAbilitate());
         boutiqueRepository.save(boutique);
@@ -69,12 +69,12 @@ public class BoutiqueService {
     public BoutiqueResponse modificaBoutique(Long boutiqueId, ModificaBoutiqueRequest request, Long utenteId, String ruolo) {
         Boutique boutique = boutiqueAccessService.richiediBoutiqueAccessibile(boutiqueId, utenteId, null, ruolo);
         String nome = normalizza(request.getNome());
-        String città = normalizza(request.getCittà());
+        String citta = normalizza(request.getCitta());
 
         verificaNomeDisponibilePerModifica(nome, boutique);
 
         boutique.setNome(nome);
-        boutique.setCittà(città);
+        boutique.setCitta(citta);
         return toResponse(boutique);
     }
 
@@ -141,7 +141,7 @@ public class BoutiqueService {
         return new BoutiqueResponse(
                 b.getId(),
                 b.getNome(),
-                b.getCittà(),
+                b.getCitta(),
                 b.isRicaricheAbilitate(),
                 b.isFattureAbilitate(),
                 b.isAttiva(),

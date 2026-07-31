@@ -1,3 +1,5 @@
+import { toNumber } from "@/lib/format";
+
 export const TVA_OPTIONS = ["0", "7", "13", "19"];
 
 export const TIPO_DOCUMENTO_OPTIONS = [
@@ -8,11 +10,6 @@ export const TIPO_DOCUMENTO_OPTIONS = [
 
 export const TIMBRE_FISCAL_DEFAULT = 1;
 
-export function toNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 export function toMoneyString(value) {
   return toNumber(value).toFixed(3);
 }
@@ -21,30 +18,8 @@ function roundMoney(value) {
   return Math.round((toNumber(value) + Number.EPSILON) * 1000) / 1000;
 }
 
-export function formatMoney(value) {
-  return `${toNumber(value).toLocaleString("it-IT", {
-    minimumFractionDigits: 3,
-    maximumFractionDigits: 3,
-  })} DT`;
-}
-
-export function formatPercent(value) {
-  return `${toNumber(value).toLocaleString("it-IT", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  })}%`;
-}
-
-export function formatDate(value) {
-  if (!value) return "-";
-  return new Intl.DateTimeFormat("it-IT", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(value));
-}
-
 export function getTipoLabel(tipo) {
+  if (tipo === "AVOIR") return "Avoir";
   return TIPO_DOCUMENTO_OPTIONS.find((item) => item.value === tipo)?.label ?? tipo ?? "-";
 }
 

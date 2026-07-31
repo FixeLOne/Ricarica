@@ -42,7 +42,7 @@ function toFormValues(boutique) {
   return {
     ...emptyValues,
     nome: boutique?.nome ?? "",
-    citta: boutique?.citta ?? boutique?.["città"] ?? "",
+    citta: boutique?.citta ?? "",
     fattureAbilitate: Boolean(boutique?.fattureAbilitate),
   };
 }
@@ -92,7 +92,7 @@ export default function BoutiqueFormModal({
   const submit = (values) => {
     onSave({
       nome: values.nome.trim(),
-      "città": values.citta.trim(),
+      citta: values.citta.trim(),
       ...(isEdit
         ? {}
         : {

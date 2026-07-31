@@ -18,4 +18,13 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // I componenti shadcn/ui esportano anche le varianti cva e i context
+    // esportano i loro hook: pattern voluti, incompatibili solo con il
+    // fast-refresh granulare, non con la build.
+    files: ['src/components/ui/**/*.jsx', 'src/context/**/*.jsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

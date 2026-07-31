@@ -242,6 +242,7 @@
       position: absolute !important;
       inset: 0 !important;
       width: 100% !important;
+      height: auto !important;
       max-width: none !important;
       min-height: auto !important;
       display: block !important;
@@ -253,18 +254,28 @@
       background: white !important;
     }
 
+    .invoice-page-slot,
+    .invoice-page-scale {
+      width: auto !important;
+      height: auto !important;
+      transform: none !important;
+    }
+
+    /* La pagina resta a 640x905 (stesso rapporto dell'A4) e viene scalata
+       con zoom a 210mm: cosi il testo va a capo esattamente come in anteprima
+       e la paginazione calcolata a schermo coincide con quella stampata. */
     .invoice-print-page {
-      width: 210mm !important;
-      height: 297mm !important;
-      min-height: 297mm !important;
+      width: 640px !important;
+      height: 905px !important;
+      min-height: 905px !important;
       max-width: none !important;
       margin: 0 auto !important;
+      zoom: 1.2402;
       break-after: page;
       page-break-after: always;
       border: 0 !important;
       border-radius: 0 !important;
       box-shadow: none !important;
-      padding: 16mm !important;
     }
 
     .invoice-print-page:last-child {

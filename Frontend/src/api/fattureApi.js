@@ -6,8 +6,8 @@ import axiosClient from "./axiosClient";
  * Filtri opzionali:
  *   { stato, tipo, dal, al, boutiqueId, search }
  *
- * Risposta Spring Page:
- *   { content: FatturaResponse[], totalElements, totalPages, number, size }
+ * Risposta Spring Page (Boot 4 annida i metadati sotto "page"):
+ *   { content: FatturaResponse[], page: { totalElements, totalPages, number, size } }
  */
 export const getFatture = (page = 0, size = 20, filters = {}) =>
     axiosClient.get("/fatture", {

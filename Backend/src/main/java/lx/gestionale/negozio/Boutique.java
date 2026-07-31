@@ -21,7 +21,7 @@ public class Boutique {
 
     private String nome;
 
-    private String città;
+    private String citta;
 
     private boolean ricaricheAbilitate = true;
 
