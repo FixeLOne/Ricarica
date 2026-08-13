@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import lx.gestionale.fattura.FatturaService;
 import lx.gestionale.fattura.TipoDocumento;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
+import lx.gestionale.fattura.datiazienda.DatiAzienda;
+import lx.gestionale.fattura.datiazienda.DatiAziendaRepository;
 import lx.gestionale.fattura.dto.FatturaResponse;
 import lx.gestionale.fattura.riga.dto.RigaFatturaRequest;
 import lx.gestionale.negozio.Boutique;
@@ -33,6 +35,7 @@ class DataInitializerService {
     private final BoutiqueRepository boutiqueRepository;
     private final PasswordEncoder passwordEncoder;
     private final FatturaService fatturaService;
+    private final DatiAziendaRepository datiAziendaRepository;
 
     @Transactional
     public void eseguiInizializzazione() {
@@ -58,6 +61,14 @@ class DataInitializerService {
         creaUtente("Dipendente B1", "dipB1", "dipB1123", Ruolo.DIPENDENTE, boutiqueB1);
         creaUtente("Dipendente B2", "dipB2", "dipB2123", Ruolo.DIPENDENTE, boutiqueB2);
 
+        // AdminA ha i contatti facoltativi compilati, AdminB no: sono i due modi
+        // in cui puo presentarsi il piede della fattura. AdminC resta senza dati
+        // azienda, ed e il caso "primo accesso" da configurare.
+        salvaDatiAzienda(adminA, "Sahara Telecom SARL", "12 Avenue Habib Bourguiba, 1000 Tunis",
+                "1234567/A/M/000", "+216 71 123 456", "contact@saharatelecom.tn", "www.saharatelecom.tn");
+        salvaDatiAzienda(adminB, "Medina Mobile SUARL", "45 Rue de la Kasbah, 4000 Sousse",
+                "7654321/B/M/000", null, null, null);
+
         salvaTariffeAdminA(adminA);
         salvaTariffeAdminB(adminB);
         salvaFattureDemo(adminA, adminB, boutiqueA1, boutiqueB1);
@@ -67,7 +78,21 @@ class DataInitializerService {
         log.info("[DEV]   Boutique : A1(id={},fatture=ON) | A2(id={},fatture=OFF) | B1(id={},fatture=ON) | B2(id={},fatture=OFF)",
                 boutiqueA1.getId(), boutiqueA2.getId(), boutiqueB1.getId(), boutiqueB2.getId());
         log.info("[DEV]   Tariffe  : AdminA=21 | AdminB=6 | AdminC=0");
+        log.info("[DEV]   Azienda  : AdminA=completa | AdminB=senza contatti | AdminC=da configurare");
         log.info("[DEV]   Fatture  : AdminA=5 documenti | AdminB=1 documento");
+    }
+
+    private void salvaDatiAzienda(Utente admin, String ragioneSociale, String indirizzo, String matriculeFiscale,
+                                  String telefono, String email, String sitoWeb) {
+        DatiAzienda dati = new DatiAzienda();
+        dati.setAdmin(admin);
+        dati.setRagioneSociale(ragioneSociale);
+        dati.setIndirizzo(indirizzo);
+        dati.setMatriculeFiscale(matriculeFiscale);
+        dati.setTelefono(telefono);
+        dati.setEmail(email);
+        dati.setSitoWeb(sitoWeb);
+        datiAziendaRepository.save(dati);
     }
 
     private void salvaTariffeAdminA(Utente admin) {
