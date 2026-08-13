@@ -36,7 +36,13 @@ import { formatMoney } from "@/lib/format";
 import ConfirmActionDialog from "./ConfirmActionDialog";
 import FatturaDocumentPreview from "./FatturaDocumentPreview";
 import { FieldLabel, RowEditor, SoftSection, ToggleRow } from "./FatturaEditorFields";
-import { createDocumento, createRow, responseToDocumento, validaDocumento } from "./fatturaEditorHelpers";
+import {
+  createDocumento,
+  createRow,
+  mergeDocumentoSalvato,
+  responseToDocumento,
+  validaDocumento,
+} from "./fatturaEditorHelpers";
 import {
   calcolaTotaliDocumento,
   normalizzaDocumentoPerApi,
@@ -94,7 +100,10 @@ export default function FatturaEditorPage() {
   const documentoRef = useRef(documento);
   const savedSnapshotRef = useRef(savedSnapshot);
   const savingRef = useRef(false);
-  const pendingAutosaveRef = useRef(false);
+  // Id creato da noi con il primo salvataggio: dopo la navigazione verso
+  // /fatture/:id il loader non deve riscaricare il documento (lo abbiamo gia
+  // in memoria, ricaricarlo rimonterebbe il form sotto le dita dell'utente).
+  const skipReloadIdRef = useRef(null);
 
   useEffect(() => {
     documentoRef.current = documento;
@@ -166,24 +175,37 @@ export default function FatturaEditorPage() {
       return null;
     }
 
-    if (savingRef.current) {
-      pendingAutosaveRef.current = true;
-      return null;
-    }
+    // Un salvataggio alla volta: se ce n'e gia uno in volo lasciamo perdere,
+    // ci ripensa l'effect di autosave appena "saving" torna false (il
+    // documento e ancora dirty, quindi riparte da solo).
+    if (savingRef.current) return null;
 
     savingRef.current = true;
     setSaving(true);
     setSaveStatus("saving");
     if (!silent) setApiError(null);
 
+    const payload = normalizzaDocumentoPerApi(doc);
+    const payloadSnapshot = JSON.stringify(payload);
+
     try {
-      const payload = normalizzaDocumentoPerApi(doc);
       const existingId = doc.id;
       const response = existingId ? await modificaFattura(existingId, payload) : await creaFattura(payload);
       const saved = responseToDocumento(response.data);
-      applyDocumento(saved);
+      // Lo snapshot e cio che il server ha effettivamente ricevuto, non cio
+      // che c'e a schermo adesso: se l'utente ha continuato a scrivere mentre
+      // la richiesta era in volo, isDirty resta true e parte un altro autosave
+      // per quelle modifiche, invece di darle per salvate.
+      setSavedSnapshot(payloadSnapshot);
+      // Merge (non sostituzione) per non rimontare i campi: vedi
+      // mergeDocumentoSalvato. L'updater funzionale parte sempre dallo stato
+      // piu recente, comprese le modifiche arrivate durante la richiesta.
+      setDocumento((current) => mergeDocumentoSalvato(current, saved));
       setSaveStatus("saved");
-      if (!existingId) navigate(`/fatture/${saved.id}`, { replace: true });
+      if (!existingId) {
+        skipReloadIdRef.current = String(saved.id);
+        navigate(`/fatture/${saved.id}`, { replace: true });
+      }
       return saved;
     } catch (error) {
       setSaveStatus("error");
@@ -192,10 +214,6 @@ export default function FatturaEditorPage() {
     } finally {
       setSaving(false);
       savingRef.current = false;
-      if (pendingAutosaveRef.current) {
-        pendingAutosaveRef.current = false;
-        void performSave({ silent: true });
-      }
     }
   }, [navigate]);
 
@@ -246,7 +264,9 @@ export default function FatturaEditorPage() {
           fatturaId = saved.id;
         }
         const response = await emettiFattura(fatturaId);
-        applyDocumento(responseToDocumento(response.data));
+        const emessa = mergeDocumentoSalvato(documentoRef.current, responseToDocumento(response.data));
+        setDocumento(emessa);
+        setSavedSnapshot(JSON.stringify(normalizzaDocumentoPerApi(emessa)));
         setSuccess("Documento emesso correttamente.");
         setPendingAction(null);
       }
@@ -264,6 +284,14 @@ export default function FatturaEditorPage() {
   };
 
   useEffect(() => {
+    // Il primo salvataggio di una bozza nuova ci porta da /fatture/nuova a
+    // /fatture/:id: il documento e gia quello in memoria, riscaricarlo
+    // rimonterebbe il form mentre l'utente sta scrivendo.
+    if (skipReloadIdRef.current && skipReloadIdRef.current === String(id)) {
+      skipReloadIdRef.current = null;
+      return undefined;
+    }
+
     let ignore = false;
     const timeoutId = window.setTimeout(async () => {
       setApiError(null);
@@ -314,13 +342,16 @@ export default function FatturaEditorPage() {
   // chi sta scrivendo. Se il documento non e ancora valido (es. una riga
   // nuova senza descrizione) non tenta nulla e non lo segnala: fallisce in
   // silenzio finche l'utente non lo completa.
+  // "saving" tra le dipendenze non e superfluo: e cio che fa ripartire il
+  // salvataggio delle modifiche scritte mentre la richiesta precedente era
+  // ancora in volo (a quel punto isDirty e ancora true).
   useEffect(() => {
-    if (readOnly || !isDirty || validation.messaggio) return undefined;
+    if (readOnly || saving || !isDirty || validation.messaggio) return undefined;
     const timeoutId = window.setTimeout(() => {
       void performSave({ silent: true });
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [readOnly, isDirty, validation.messaggio, documento, performSave]);
+  }, [readOnly, saving, isDirty, validation.messaggio, documento, performSave]);
 
   // Salvataggio "best effort" quando l'utente chiude la scheda o cambia
   // pagina/app: niente piu dialog nativo che blocca l'uscita, si tenta solo
@@ -403,20 +434,20 @@ export default function FatturaEditorPage() {
     );
   }
 
-  const canEmit = !isNew && !readOnly;
   const canAvoir = readOnly && documento.stato === "EMESSA" && documento.tipo !== "AVOIR";
 
+  // Un solo testo per "in coda" e "in corso": l'utente non deve vedere due
+  // cambi di etichetta di fila per un salvataggio che dura una frazione di
+  // secondo. L'icona gira solo mentre la richiesta e davvero in volo.
   const autosaveLabel = readOnly
     ? null
-    : saveStatus === "saving"
-      ? { text: "Salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2, spin: true }
-      : saveStatus === "error"
-        ? { text: "Salvataggio non riuscito", tone: "text-red-600 dark:text-red-400", icon: AlertCircle }
-        : !isDirty && documento.id
+    : saveStatus === "error"
+      ? { text: "Non salvato", tone: "text-red-600 dark:text-red-400", icon: AlertCircle }
+      : saving || (isDirty && !validation.messaggio)
+        ? { text: "Salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2, spin: saving }
+        : documento.id && !isDirty
           ? { text: "Salvato", tone: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 }
-          : isDirty && !validation.messaggio
-            ? { text: "Modifiche in attesa di salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2 }
-            : null;
+          : null;
 
   return (
     <div className="flex min-h-0 flex-col gap-4 xl:h-full">
@@ -438,7 +469,7 @@ export default function FatturaEditorPage() {
                 {isNew ? "Nuova bozza" : documento.numero}
               </h1>
               {autosaveLabel && (
-                <span className={`inline-flex items-center gap-1 text-xs font-medium ${autosaveLabel.tone}`}>
+                <span className={`inline-flex min-w-[7.5rem] items-center gap-1 text-xs font-medium ${autosaveLabel.tone}`}>
                   <autosaveLabel.icon className={`h-3.5 w-3.5 ${autosaveLabel.spin ? "animate-spin" : ""}`} />
                   {autosaveLabel.text}
                 </span>
@@ -487,10 +518,33 @@ export default function FatturaEditorPage() {
         <aside className="flex flex-col xl:min-h-0">
           <div className="space-y-4 pb-2 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
             <SoftSection title="Mittente" icon={Building2}>
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 dark:border-stone-800 dark:bg-stone-950/35">
-                <p className="text-sm font-semibold text-stone-950 dark:text-stone-50">{azienda?.ragioneSociale || "Azienda non configurata"}</p>
-                <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{azienda?.matriculeFiscale || "Matricule fiscale mancante"}</p>
-              </div>
+              {azienda?.ragioneSociale ? (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 dark:border-stone-800 dark:bg-stone-950/35">
+                  <p className="text-sm font-semibold text-stone-950 dark:text-stone-50">{azienda.ragioneSociale}</p>
+                  {azienda.matriculeFiscale && (
+                    <p className="mt-1 text-xs text-stone-500 dark:text-stone-400">{azienda.matriculeFiscale}</p>
+                  )}
+                </div>
+              ) : (
+                // Qui un invito ad agire e piu utile di un segnaposto: il
+                // documento resta senza intestazione finche non si compila.
+                <div className="rounded-2xl border border-dashed border-amber-300 bg-amber-50 p-3 dark:border-amber-400/30 dark:bg-amber-400/10">
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    Dati azienda da configurare
+                  </p>
+                  <p className="mt-1 text-xs text-amber-700/90 dark:text-amber-200/80">
+                    Senza intestazione il documento verra stampato senza i tuoi dati fiscali.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => navigate("/azienda")}
+                    className="mt-2.5 h-8 rounded-xl border-amber-300 bg-white px-3 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-400/30 dark:bg-transparent dark:text-amber-200"
+                  >
+                    Configura ora
+                  </Button>
+                </div>
+              )}
             </SoftSection>
 
           <SoftSection title="Documento" icon={FileText}>
@@ -584,6 +638,42 @@ export default function FatturaEditorPage() {
                 className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
               />
             </div>
+            {/* Dati B2B: servono al cliente azienda per detrarre la TVA.
+                Restano vuoti per le vendite al banco. */}
+            <div>
+              <FieldLabel
+                htmlFor="doc-cliente-indirizzo"
+                right={<span className="text-[10px] text-stone-400">Facoltativo</span>}
+              >
+                Indirizzo cliente
+              </FieldLabel>
+              <Input
+                id="doc-cliente-indirizzo"
+                value={documento.indirizzoCliente}
+                disabled={readOnly}
+                onChange={(event) => updateDocumento({ indirizzoCliente: event.target.value })}
+                placeholder="Via, citta"
+                maxLength={200}
+                className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
+              />
+            </div>
+            <div>
+              <FieldLabel
+                htmlFor="doc-cliente-mf"
+                right={<span className="text-[10px] text-stone-400">Facoltativo</span>}
+              >
+                Matricule fiscale cliente
+              </FieldLabel>
+              <Input
+                id="doc-cliente-mf"
+                value={documento.matriculeFiscaleCliente}
+                disabled={readOnly}
+                onChange={(event) => updateDocumento({ matriculeFiscaleCliente: event.target.value })}
+                placeholder="0000000/A/M/000"
+                maxLength={80}
+                className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
+              />
+            </div>
             <ToggleRow
               icon={ReceiptText}
               title="Timbre fiscal"
@@ -661,10 +751,13 @@ export default function FatturaEditorPage() {
           </div>
 
           <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95">
-            {!readOnly && canEmit && (
+            {!readOnly && (
+              // Sempre presente (non compare dal nulla al primo salvataggio,
+              // che sposterebbe tutta la colonna): resta disabilitato finche
+              // la bozza non e stata salvata almeno una volta ed e valida.
               <Button
                 type="button"
-                disabled={saving || actionWorking}
+                disabled={!documento.id || saving || actionWorking || Boolean(validation.messaggio)}
                 onClick={askEmit}
                 className="brand-primary h-11 rounded-xl font-semibold"
               >

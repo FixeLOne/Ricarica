@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import {
+  calcolaRiepilogoTva,
   calcolaRiga,
   calcolaTotaliDocumento,
   getLogoSrc,
   getTipoLabel,
+  importoInLettere,
   TIMBRE_FISCAL_DEFAULT,
 } from "./fatturaHelpers";
 import {
@@ -46,22 +48,40 @@ function getTotals(documento, timbreFiscalValue) {
 }
 
 function PageFooter({ azienda, pageNumber, pageCount, className = "" }) {
+  // Contatti facoltativi: compaiono solo se l'admin li ha compilati.
+  const contatti = [azienda?.telefono, azienda?.email, azienda?.sitoWeb].filter(Boolean);
+
   return (
-    <footer
-      className={[
-        "flex items-center justify-between border-t border-stone-200 pt-4 text-[10px] font-medium uppercase tracking-[0.14em] text-stone-400",
-        className,
-      ].join(" ")}
-    >
-      <span>{azienda?.ragioneSociale || "RechargeNet"}</span>
-      {pageNumber != null && pageCount != null && (
-        <span>
-          Page {pageNumber} / {pageCount}
-        </span>
-      )}
+    <footer className={["border-t border-stone-200/80 pt-3", className].join(" ")}>
+      <div className="flex items-end justify-between gap-4">
+        <div className="min-w-0">
+          {azienda?.ragioneSociale && (
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+              {azienda.ragioneSociale}
+            </p>
+          )}
+          {contatti.length > 0 && (
+            <p className="mt-0.5 truncate text-[10px] text-stone-400">
+              {contatti.join("  ·  ")}
+            </p>
+          )}
+        </div>
+        {pageNumber != null && pageCount != null && (
+          <span className="shrink-0 text-[10px] font-medium tabular-nums text-stone-400">
+            {pageNumber} / {pageCount}
+          </span>
+        )}
+      </div>
     </footer>
   );
 }
+
+// Nota: un documento stornato NON viene marcato sulla stampa (niente
+// filigrana, niente importi barrati). Una fattura emessa resta un documento
+// fiscale valido e archiviato: la sua ristampa deve essere identica a quanto
+// emesso e — con la fatturazione elettronica — a quanto registrato presso
+// TTN. E l'avoir a rettificarla. Lo stato di storno si comunica
+// nell'interfaccia (lista ed editor), mai alterando il documento.
 
 function PageFrame({
   children,
@@ -103,42 +123,79 @@ function PageFrame({
   );
 }
 
+/** Etichetta piccola in maiuscoletto: unico stile per tutte le didascalie. */
+function Eyebrow({ children, className = "" }) {
+  return (
+    <p className={`text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-400 ${className}`}>
+      {children}
+    </p>
+  );
+}
+
+function StatoBadge({ stato }) {
+  const annullata = stato === "ANNULLATA";
+  return (
+    <span
+      className={[
+        "inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]",
+        annullata
+          ? "bg-stone-100 text-stone-500"
+          : "bg-[var(--invoice-accent-soft)] text-[var(--invoice-accent)]",
+      ].join(" ")}
+    >
+      {stato || "BOZZA"}
+    </span>
+  );
+}
+
 function FullHeader({ documento, azienda, logoSrc, showHeaderLogo }) {
   return (
-    <div className="flex items-start justify-between gap-8 border-b border-stone-200 pb-8">
-      <div className="min-w-0">
-        {showHeaderLogo && logoSrc && (
-          <img
-            src={logoSrc}
-            alt="Logo azienda"
-            className="mb-5 h-14 max-w-44 object-contain object-left"
-          />
-        )}
-        <h2 className="text-lg font-semibold text-stone-950">
-          {azienda?.ragioneSociale || "Dati azienda non configurati"}
-        </h2>
-        <p className="mt-1 max-w-sm text-sm text-stone-500">
-          {azienda?.indirizzo || "Indirizzo non disponibile"}
-        </p>
-        {azienda?.matriculeFiscale && (
-          <p className="mt-1 text-sm text-stone-500">
-            MF {azienda.matriculeFiscale}
+    <div className="pb-6">
+      {/* Filetto d'accento in testa al foglio: da carattere al documento
+          senza aggiungere peso visivo alle informazioni. */}
+      <div className="mb-6 h-1 w-16 rounded-full bg-[var(--invoice-accent)]" />
+
+      <div className="flex items-start justify-between gap-8">
+        <div className="min-w-0">
+          {showHeaderLogo && logoSrc && (
+            <img
+              src={logoSrc}
+              alt="Logo azienda"
+              className="mb-4 h-12 max-w-40 object-contain object-left"
+            />
+          )}
+          {/* Nessun segnaposto inventato: finche l'azienda non e configurata
+              il documento resta semplicemente vuoto in queste righe, invece
+              di stampare testi finti che sembrano dati reali. */}
+          {azienda?.ragioneSociale && (
+            <h2 className="text-base font-bold leading-tight text-stone-900">
+              {azienda.ragioneSociale}
+            </h2>
+          )}
+          {azienda?.indirizzo && (
+            <p className="mt-1.5 max-w-[15rem] text-xs leading-relaxed text-stone-500">
+              {azienda.indirizzo}
+            </p>
+          )}
+          {azienda?.matriculeFiscale && (
+            <p className="mt-0.5 text-xs text-stone-500">MF {azienda.matriculeFiscale}</p>
+          )}
+        </div>
+
+        <div className="shrink-0 text-right">
+          <h1 className="text-2xl font-bold uppercase leading-none tracking-tight text-[var(--invoice-accent)]">
+            {getTipoLabel(documento?.tipo)}
+          </h1>
+          <p className="mt-2 text-sm font-semibold tabular-nums text-stone-900">
+            {documento?.numero || "Automatico"}
           </p>
-        )}
-      </div>
-      <div className="shrink-0 text-right">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-text)]">
-          {getTipoLabel(documento?.tipo)}
-        </p>
-        <p className="mt-2 text-xl font-semibold tabular-nums text-stone-950">
-          {documento?.numero || "Automatico"}
-        </p>
-        <p className="mt-1 text-sm text-stone-500">
-          {formatDate(documento?.dataEmissione)}
-        </p>
-        <p className="mt-4 inline-flex rounded-full border border-[var(--brand-border)] bg-[var(--brand-soft)] px-2.5 py-1 text-xs font-semibold text-[var(--brand-text)]">
-          {documento?.stato || "BOZZA"}
-        </p>
+          <p className="mt-0.5 text-xs tabular-nums text-stone-500">
+            {formatDate(documento?.dataEmissione)}
+          </p>
+          <div className="mt-3 flex justify-end">
+            <StatoBadge stato={documento?.stato} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -146,18 +203,21 @@ function FullHeader({ documento, azienda, logoSrc, showHeaderLogo }) {
 
 function CompactHeader({ documento, azienda }) {
   return (
-    <div className="flex items-center justify-between gap-6 border-b border-stone-200 pb-5">
-      <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-stone-950">
-          {azienda?.ragioneSociale || "Dati azienda non configurati"}
-        </p>
-        <p className="mt-1 text-xs text-stone-500">Suite du document</p>
+    <div className="flex items-center justify-between gap-6 border-b border-stone-200 pb-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="h-6 w-1 shrink-0 rounded-full bg-[var(--invoice-accent)]" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-bold text-stone-900">
+            {azienda?.ragioneSociale || ""}
+          </p>
+          <p className="text-[11px] text-stone-400">Suite du document</p>
+        </div>
       </div>
       <div className="shrink-0 text-right">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--brand-text)]">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--invoice-accent)]">
           {getTipoLabel(documento?.tipo)}
         </p>
-        <p className="mt-1 text-sm font-semibold tabular-nums text-stone-950">
+        <p className="mt-0.5 text-sm font-semibold tabular-nums text-stone-900">
           {documento?.numero || "Automatico"}
         </p>
       </div>
@@ -167,25 +227,31 @@ function CompactHeader({ documento, azienda }) {
 
 function ClientBlock({ documento }) {
   return (
-    <div className="border-b border-stone-200 py-7">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">
-          Cliente
-        </p>
-        <p className="mt-2 text-base font-semibold text-stone-950">
+    <div className="pb-6">
+      {/* Il destinatario e la prima cosa che si cerca: sta in un pannello
+          dedicato invece di essere una riga di testo come le altre. */}
+      <div className="rounded-xl border border-stone-200/80 bg-stone-50/60 px-4 py-3.5">
+        <Eyebrow>Facturé à</Eyebrow>
+        <p className="mt-1.5 text-sm font-bold text-stone-900">
           {documento?.nomeCliente || "Client passager"}
         </p>
+        {documento?.indirizzoCliente && (
+          <p className="mt-1 max-w-sm text-xs leading-relaxed text-stone-500">
+            {documento.indirizzoCliente}
+          </p>
+        )}
+        {documento?.matriculeFiscaleCliente && (
+          <p className="mt-0.5 text-xs text-stone-500">MF {documento.matriculeFiscaleCliente}</p>
+        )}
+        {documento?.fatturaOrigineNumero && (
+          <p className="mt-2.5 border-t border-stone-200/80 pt-2 text-[11px] text-stone-500">
+            Document d'origine{" "}
+            <span className="font-semibold tabular-nums text-stone-700">
+              {documento.fatturaOrigineNumero}
+            </span>
+          </p>
+        )}
       </div>
-      {documento?.fatturaOrigineNumero && (
-        <div className="mt-5 flex items-center justify-between gap-4 border-t border-stone-100 pt-4">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400">
-            Document d'origine
-          </span>
-          <span className="text-sm font-semibold tabular-nums text-stone-950">
-            {documento.fatturaOrigineNumero}
-          </span>
-        </div>
-      )}
     </div>
   );
 }
@@ -193,13 +259,14 @@ function ClientBlock({ documento }) {
 function TableColumns() {
   return (
     <colgroup>
-      <col className="w-[9%]" />
-      <col className="w-[28%]" />
-      <col className="w-[7%]" />
+      {/* Ref abbastanza larga da non spezzare codici tipo "SRV-01" */}
+      <col className="w-[11%]" />
+      <col className="w-[27%]" />
+      <col className="w-[6%]" />
       <col className="w-[15%]" />
-      <col className="w-[12%]" />
-      <col className="w-[9%]" />
-      <col className="w-[20%]" />
+      <col className="w-[10%]" />
+      <col className="w-[8%]" />
+      <col className="w-[23%]" />
     </colgroup>
   );
 }
@@ -207,14 +274,16 @@ function TableColumns() {
 function TableHeader() {
   return (
     <thead>
-      <tr className="border-b border-stone-200 text-left text-[10px] font-semibold uppercase tracking-[0.11em] text-stone-400">
-        <th className="py-3 pr-2">Ref</th>
-        <th className="py-3 pr-2">Designation</th>
-        <th className="py-3 text-right">Qte</th>
-        <th className="py-3 text-right">Prix HT</th>
-        <th className="py-3 text-right">Remise</th>
-        <th className="py-3 text-right">TVA</th>
-        <th className="py-3 text-right">Montant HT</th>
+      {/* Intestazione su fondo tenue: separa la tabella dal resto del foglio
+          senza bisogno di bordi pesanti su ogni cella. */}
+      <tr className="bg-stone-50 text-left text-[9px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+        <th className="rounded-l-lg py-2.5 pl-3 pr-2">Réf</th>
+        <th className="py-2.5 pr-2">Désignation</th>
+        <th className="py-2.5 pr-2 text-right">Qté</th>
+        <th className="py-2.5 pr-2 text-right">Prix HT</th>
+        <th className="py-2.5 pr-2 text-right">Remise</th>
+        <th className="py-2.5 pr-2 text-right">TVA</th>
+        <th className="rounded-r-lg py-2.5 pr-3 text-right">Montant HT</th>
       </tr>
     </thead>
   );
@@ -225,29 +294,29 @@ function InvoiceRow({ riga, measure = false, isActive = false }) {
     <tr
       data-invoice-row-measure={measure ? "" : undefined}
       className={[
-        "border-b border-stone-100 align-top text-sm transition-colors",
-        isActive ? "bg-[var(--brand-soft)]" : "",
+        "border-b border-stone-100 align-top text-[13px]",
+        isActive ? "bg-[var(--invoice-accent-soft)]" : "",
       ].join(" ")}
     >
-      <td className="break-words py-4 pr-2 tabular-nums text-stone-500">
-        {riga.reference || "-"}
+      <td className="break-words py-3 pl-3 pr-2 text-[11px] tabular-nums text-stone-400">
+        {riga.reference || "—"}
       </td>
-      <td className="break-words py-4 pr-2 leading-5 text-stone-800">
+      <td className="break-words py-3 pr-2 font-medium leading-5 text-stone-800">
         {riga.descrizione || "Article"}
       </td>
-      <td className="whitespace-nowrap py-4 text-right tabular-nums text-stone-600">
+      <td className="whitespace-nowrap py-3 pr-2 text-right tabular-nums text-stone-600">
         {Number(riga.quantita ?? 0).toLocaleString("it-IT")}
       </td>
-      <td className="whitespace-nowrap py-4 text-right tabular-nums text-stone-600">
+      <td className="whitespace-nowrap py-3 pr-2 text-right tabular-nums text-stone-600">
         {formatMoney(riga.prezzoUnitarioHT)}
       </td>
-      <td className="whitespace-nowrap py-4 text-right tabular-nums text-stone-600">
+      <td className="whitespace-nowrap py-3 pr-2 text-right tabular-nums text-stone-400">
         {formatPercent(riga.scontoPercentuale)}
       </td>
-      <td className="whitespace-nowrap py-4 text-right tabular-nums text-stone-600">
+      <td className="whitespace-nowrap py-3 pr-2 text-right tabular-nums text-stone-400">
         {formatPercent(riga.aliquotaTVA)}
       </td>
-      <td className="whitespace-nowrap py-4 text-right tabular-nums font-medium text-stone-950">
+      <td className="whitespace-nowrap py-3 pr-3 text-right font-semibold tabular-nums text-stone-900">
         {formatMoney(riga.montanteHT)}
       </td>
     </tr>
@@ -256,8 +325,8 @@ function InvoiceRow({ riga, measure = false, isActive = false }) {
 
 function RowsTable({ rows, activeRowIndex }) {
   return (
-    <div className="py-7">
-      <table className="w-full table-fixed">
+    <div className="pb-6">
+      <table className="w-full table-fixed border-separate border-spacing-0">
         <TableColumns />
         <TableHeader />
         <tbody>
@@ -270,52 +339,78 @@ function RowsTable({ rows, activeRowIndex }) {
   );
 }
 
-function TotalsBlock({ documento, totals }) {
+function TotalsBlock({ documento, totals, riepilogoTva = [] }) {
   const isAvoir = documento?.tipo === "AVOIR";
+  const conRemise = Number(totals.remiseGlobale ?? 0) > 0;
+  // Con piu aliquote il totale TVA aggregato non basta: si dettaglia base e
+  // imposta per ciascuna. Con una sola aliquota il dettaglio ripeterebbe il
+  // totale, quindi resta la riga singola.
+  const dettaglioTva = riepilogoTva.length > 1 ? riepilogoTva : [];
+
+  const riga = (etichetta, valore, opzioni = {}) => (
+    <div className="flex items-baseline justify-between gap-4 text-[13px]">
+      <span className={opzioni.muted ? "text-stone-400" : "text-stone-500"}>{etichetta}</span>
+      <span className="font-medium tabular-nums text-stone-700">{valore}</span>
+    </div>
+  );
 
   return (
-    <div className="mt-auto ml-auto w-full max-w-sm space-y-3 border-t border-stone-200 pb-5 pt-5">
-      <div className="flex justify-between gap-4 text-sm">
-        <span className="text-stone-500">Sous-total HT</span>
-        <span className="font-medium tabular-nums text-stone-950">
-          {formatMoney(totals.totaleHT)}
-        </span>
-      </div>
-      {Number(totals.remiseGlobale ?? 0) > 0 && (
-        <div className="flex justify-between gap-4 text-sm">
-          <span className="text-stone-500">Remise globale</span>
-          <span className="font-medium tabular-nums text-stone-950">
-            -{formatMoney(totals.remiseGlobale)}
+    <div className="mt-auto w-full pt-2">
+      {/* Formula in lettere affiancata ai totali invece che sotto: occupa lo
+          spazio altrimenti vuoto a sinistra e fa risparmiare ~50px di
+          altezza, che spesso decidono se il documento sta in una pagina. */}
+      <div className="flex items-end justify-between gap-6">
+        <p className="min-w-0 flex-1 border-l-2 border-[var(--invoice-accent-border)] pl-3 text-[11px] italic leading-snug text-stone-500">
+          {isAvoir ? "Arrêté le présent avoir" : "Arrêtée la présente facture"} à la somme de{" "}
+          <span className="font-semibold not-italic text-stone-700">
+            {importoInLettere(totals.totaleNet)}
           </span>
+          .
+        </p>
+
+        <div className="w-[17rem] shrink-0">
+          <div className="space-y-1.5 border-t border-stone-200 pt-3">
+            {/* Senza remise, "Sous-total HT" e "Total HT net" sarebbero lo
+                stesso numero due volte: si mostra un solo imponibile. */}
+            {conRemise ? (
+              <>
+                {riga("Sous-total HT", formatMoney(totals.totaleHT))}
+                {riga("Remise globale", `−${formatMoney(totals.remiseGlobale)}`)}
+                {riga("Total HT net", formatMoney(totals.totaleHTNet))}
+              </>
+            ) : (
+              riga("Total HT", formatMoney(totals.totaleHTNet))
+            )}
+
+            {dettaglioTva.map((voce) => (
+              <div
+                key={String(voce.aliquota)}
+                className="flex items-baseline justify-between gap-4 text-[12px]"
+              >
+                <span className="text-stone-400">
+                  TVA {formatPercent(voce.aliquota)} sur {formatMoney(voce.imponibile)}
+                </span>
+                <span className="tabular-nums text-stone-500">{formatMoney(voce.imposta)}</span>
+              </div>
+            ))}
+
+            {riga("Total TVA", formatMoney(totals.totaleTVA))}
+            {documento?.timbreFiscal && riga("Timbre fiscal", formatMoney(totals.timbreFiscalMontant))}
+          </div>
+
+          {/* L'importo dovuto e l'informazione che si cerca per prima:
+              blocco pieno d'accento, cifra grande, tutto il resto smorzato.
+              Resta identico anche se il documento e stato stornato: la
+              ristampa deve corrispondere a quanto emesso. */}
+          <div className="mt-3 rounded-xl bg-[var(--invoice-accent)] px-4 py-3 text-[var(--invoice-accent-contrast)]">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.18em] opacity-80">
+              {isAvoir ? "Net à créditer" : "Net à payer"}
+            </p>
+            <p className="mt-0.5 text-xl font-bold leading-none tabular-nums">
+              {formatMoney(totals.totaleNet)}
+            </p>
+          </div>
         </div>
-      )}
-      <div className="flex justify-between gap-4 text-sm">
-        <span className="text-stone-500">Total HT net</span>
-        <span className="font-medium tabular-nums text-stone-950">
-          {formatMoney(totals.totaleHTNet)}
-        </span>
-      </div>
-      <div className="flex justify-between gap-4 text-sm">
-        <span className="text-stone-500">Total TVA</span>
-        <span className="font-medium tabular-nums text-stone-950">
-          {formatMoney(totals.totaleTVA)}
-        </span>
-      </div>
-      {documento?.timbreFiscal && (
-        <div className="flex justify-between gap-4 text-sm">
-          <span className="text-stone-500">Timbre fiscal</span>
-          <span className="font-medium tabular-nums text-stone-950">
-            {formatMoney(totals.timbreFiscalMontant)}
-          </span>
-        </div>
-      )}
-      <div className="flex justify-between gap-4 rounded-2xl bg-[var(--brand-soft)] px-4 py-3">
-        <span className="font-semibold text-[var(--brand-text)]">
-          {isAvoir ? "Net a crediter" : "Net a payer"}
-        </span>
-        <span className="font-semibold tabular-nums text-stone-950">
-          {formatMoney(totals.totaleNet)}
-        </span>
       </div>
     </div>
   );
@@ -329,6 +424,7 @@ function MeasurementLayer({
   showHeaderLogo,
   rows,
   totals,
+  riepilogoTva,
 }) {
   return (
     <div
@@ -357,7 +453,7 @@ function MeasurementLayer({
         <RowsTable rows={[]} />
       </div>
       <div data-measure-totals>
-        <TotalsBlock documento={documento} totals={totals} />
+        <TotalsBlock documento={documento} totals={totals} riepilogoTva={riepilogoTva} />
       </div>
       <div data-measure-footer>
         <PageFooter azienda={azienda} pageNumber={1} pageCount={1} />
@@ -412,6 +508,7 @@ function FlowPage({
   showWatermark,
   rows,
   totals,
+  riepilogoTva,
   activeRowIndex,
   className = "",
 }) {
@@ -440,7 +537,7 @@ function FlowPage({
         />
         <ClientBlock documento={documento} />
         <RowsTable rows={rows} activeRowIndex={activeRowIndex} />
-        <TotalsBlock documento={documento} totals={totals} />
+        <TotalsBlock documento={documento} totals={totals} riepilogoTva={riepilogoTva} />
         <PageFooter azienda={azienda} />
       </div>
     </article>
@@ -463,6 +560,7 @@ export default function FatturaDocumentPreview({
     () => getTotals(documento, timbreFiscalValue),
     [documento, timbreFiscalValue],
   );
+  const riepilogoTva = useMemo(() => calcolaRiepilogoTva(documento), [documento]);
   const logoSrc = getLogoSrc(azienda?.logo);
   const showHeaderLogo = documento?.logoIntestazioneVisibile !== false;
   const showWatermark = Boolean(documento?.logoWatermarkVisibile);
@@ -534,6 +632,7 @@ export default function FatturaDocumentPreview({
         showHeaderLogo={showHeaderLogo}
         rows={rows}
         totals={totals}
+        riepilogoTva={riepilogoTva}
       />
 
       {editable && (
@@ -546,6 +645,7 @@ export default function FatturaDocumentPreview({
             showWatermark={showWatermark}
             rows={rows}
             totals={totals}
+            riepilogoTva={riepilogoTva}
             activeRowIndex={activeRowIndex}
             className={className}
           />
@@ -599,9 +699,13 @@ export default function FatturaDocumentPreview({
                   <CompactHeader documento={documento} azienda={azienda} />
                 )}
 
-                <RowsTable rows={pageRows} />
+                {/* Nell'ultima pagina puo non esserci nessuna riga (i totali
+                    non entravano sotto l'ultima): in quel caso si omette
+                    anche l'intestazione della tabella, che resterebbe a
+                    sovrastare il vuoto. */}
+                {pageRows.length > 0 && <RowsTable rows={pageRows} />}
                 {isLastPage && (
-                  <TotalsBlock documento={documento} totals={totals} />
+                  <TotalsBlock documento={documento} totals={totals} riepilogoTva={riepilogoTva} />
                 )}
               </PageFrame>
             </ScaledPage>

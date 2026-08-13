@@ -40,6 +40,13 @@ public class Fattura {
 
     private String nomeCliente;
 
+    // Dati B2B del cliente: facoltativi, restano vuoti per le vendite al
+    // banco ("client passager"), obbligatori di fatto perche il cliente
+    // azienda possa detrarre la TVA.
+    private String indirizzoCliente;
+
+    private String matriculeFiscaleCliente;
+
     private boolean timbreFiscal = false;
 
     // Scala 3: il dinaro tunisino ha 3 decimali (millimes)

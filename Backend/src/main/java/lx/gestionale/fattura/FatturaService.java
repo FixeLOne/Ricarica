@@ -47,6 +47,8 @@ public class FatturaService {
                 StatoFattura.BOZZA,
                 request.getDataEmissione(),
                 request.getNomeCliente(),
+                request.getIndirizzoCliente(),
+                request.getMatriculeFiscaleCliente(),
                 request.isTimbreFiscal(),
                 request.isLogoIntestazioneVisibile(),
                 request.isLogoWatermarkVisibile(),
@@ -71,6 +73,8 @@ public class FatturaService {
         fattura.setTipo(request.getTipo());
         fattura.setDataEmissione(request.getDataEmissione());
         fattura.setNomeCliente(request.getNomeCliente());
+        fattura.setIndirizzoCliente(request.getIndirizzoCliente());
+        fattura.setMatriculeFiscaleCliente(request.getMatriculeFiscaleCliente());
         fattura.setTimbreFiscal(request.isTimbreFiscal());
         fattura.setLogoIntestazioneVisibile(request.isLogoIntestazioneVisibile());
         fattura.setLogoWatermarkVisibile(request.isLogoWatermarkVisibile());
@@ -122,7 +126,13 @@ public class FatturaService {
                 StatoFattura.EMESSA,
                 LocalDate.now(),
                 origine.getNomeCliente(),
-                origine.isTimbreFiscal(),
+                origine.getIndirizzoCliente(),
+                origine.getMatriculeFiscaleCliente(),
+                // Nessun timbre fiscal sull'avoir: il timbro e dovuto sulla
+                // fattura, non sul documento che la rettifica. Ereditarlo
+                // dall'originale accrediterebbe al cliente 1 DT di imposta
+                // che non gli spetta.
+                false,
                 origine.isLogoIntestazioneVisibile(),
                 origine.isLogoWatermarkVisibile(),
                 origine.getRemiseGlobale(),
@@ -200,6 +210,8 @@ public class FatturaService {
             StatoFattura stato,
             LocalDate dataEmissione,
             String nomeCliente,
+            String indirizzoCliente,
+            String matriculeFiscaleCliente,
             boolean timbreFiscal,
             boolean logoIntestazioneVisibile,
             boolean logoWatermarkVisibile,
@@ -215,6 +227,8 @@ public class FatturaService {
         fattura.setStato(stato);
         fattura.setDataEmissione(dataEmissione);
         fattura.setNomeCliente(nomeCliente);
+        fattura.setIndirizzoCliente(indirizzoCliente);
+        fattura.setMatriculeFiscaleCliente(matriculeFiscaleCliente);
         fattura.setTimbreFiscal(timbreFiscal);
         fattura.setLogoIntestazioneVisibile(logoIntestazioneVisibile);
         fattura.setLogoWatermarkVisibile(logoWatermarkVisibile);

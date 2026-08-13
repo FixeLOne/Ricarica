@@ -108,10 +108,14 @@ class DataInitializerService {
     }
 
     private void salvaFattureDemo(Utente adminA, Utente adminB, Boutique boutiqueA1, Boutique boutiqueB1) {
-        creaDocumentoDemo(adminA, null, TipoDocumento.DEVIS, "Studio Medina", LocalDate.now().minusDays(9), false,
+        creaDocumentoDemo(adminA, null, TipoDocumento.DEVIS,
+                cliente("Studio Medina", "Rue Ibn Khaldoun 8, 1002 Tunis", "0912345/A/M/000"),
+                LocalDate.now().minusDays(9), false,
                 List.of(riga("Consulenza configurazione gestionale", "1", "180.000", "19")));
 
-        creaDocumentoDemo(adminA, boutiqueA1, TipoDocumento.FACTURE, "Clinique El Amal", LocalDate.now().minusDays(6), true,
+        creaDocumentoDemo(adminA, boutiqueA1, TipoDocumento.FACTURE,
+                cliente("Clinique El Amal", "Rue de la Sante 45, 3000 Sfax", "7654321/B/C/000"),
+                LocalDate.now().minusDays(6), true,
                 List.of(
                         riga("SRV-DATA", "Recharge data business", "2", "75.000", "19", "5.00"),
                         riga("Supporto punto vendita", "1", "35.000", "19")
@@ -121,17 +125,19 @@ class DataInitializerService {
                 adminA,
                 boutiqueA1,
                 TipoDocumento.FACTURE,
-                "Hotel Carthage",
+                cliente("Hotel Carthage", "Avenue de la Republique 120, 2016 Carthage", "4455667/D/E/000"),
                 LocalDate.now().minusDays(4),
                 true,
                 List.of(riga("Pacchetto ricariche corporate", "3", "120.000", "19"))
         ), adminA);
 
+        // Volutamente senza dati B2B: rappresenta la vendita al banco, dove
+        // il cliente non fornisce indirizzo e matricule fiscale.
         FatturaResponse annullataA = emettiDocumentoDemo(creaDocumentoDemo(
                 adminA,
                 boutiqueA1,
                 TipoDocumento.FACTURE,
-                "Client avoir demo",
+                cliente("Client avoir demo"),
                 LocalDate.now().minusDays(2),
                 true,
                 List.of(riga("Servizio annullato", "1", "95.000", "19"))
@@ -142,7 +148,7 @@ class DataInitializerService {
                 adminB,
                 boutiqueB1,
                 TipoDocumento.FACTURE,
-                "Sousse Market",
+                cliente("Sousse Market", "Avenue Habib Bourguiba 3, 4000 Sousse", "8899001/F/G/000"),
                 LocalDate.now().minusDays(1),
                 true,
                 List.of(riga("Fornitura SIM e servizi", "4", "42.000", "19"))
@@ -153,11 +159,23 @@ class DataInitializerService {
         }
     }
 
+    /** Cliente demo: solo nome (vendita al banco) oppure completo di dati B2B. */
+    private record ClienteDemo(String nome, String indirizzo, String matriculeFiscale) {
+    }
+
+    private ClienteDemo cliente(String nome) {
+        return new ClienteDemo(nome, null, null);
+    }
+
+    private ClienteDemo cliente(String nome, String indirizzo, String matriculeFiscale) {
+        return new ClienteDemo(nome, indirizzo, matriculeFiscale);
+    }
+
     private FatturaResponse creaDocumentoDemo(
             Utente admin,
             Boutique boutique,
             TipoDocumento tipo,
-            String cliente,
+            ClienteDemo cliente,
             LocalDate data,
             boolean timbreFiscal,
             List<RigaFatturaRequest> righe
@@ -165,7 +183,9 @@ class DataInitializerService {
         CreaFatturaRequest request = new CreaFatturaRequest();
         request.setTipo(tipo);
         request.setDataEmissione(data);
-        request.setNomeCliente(cliente);
+        request.setNomeCliente(cliente.nome());
+        request.setIndirizzoCliente(cliente.indirizzo());
+        request.setMatriculeFiscaleCliente(cliente.matriculeFiscale());
         request.setTimbreFiscal(timbreFiscal);
         request.setRemiseGlobale(BigDecimal.ZERO);
         request.setBoutiqueId(boutique != null ? boutique.getId() : null);

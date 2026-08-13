@@ -20,6 +20,8 @@ public class FatturaResponse {
     private StatoFattura stato;
     private LocalDate dataEmissione;
     private String nomeCliente;
+    private String indirizzoCliente;        // nullable (vendita al banco)
+    private String matriculeFiscaleCliente; // nullable (vendita al banco)
     private boolean timbreFiscal;
     private BigDecimal timbreFiscalMontant;
     private boolean logoIntestazioneVisibile;
@@ -31,6 +33,7 @@ public class FatturaResponse {
     private Long boutiqueId;
     private String nomeBoutique;
     private List<RigaFatturaResponse> righe;
+    private List<RiepilogoTvaResponse> riepilogoTva;
     private Long fatturaOrigineId;
     private String fatturaOrigineNumero; // nullable
 }

@@ -24,6 +24,8 @@ export function createDocumento() {
     numero: "Automatico",
     dataEmissione: todayIso(),
     nomeCliente: "",
+    indirizzoCliente: "",
+    matriculeFiscaleCliente: "",
     boutiqueId: "",
     nomeBoutique: "",
     timbreFiscal: false,
@@ -39,6 +41,8 @@ export function responseToDocumento(fattura) {
     ...createDocumento(),
     ...fattura,
     boutiqueId: fattura.boutiqueId ? String(fattura.boutiqueId) : "",
+    indirizzoCliente: fattura.indirizzoCliente ?? "",
+    matriculeFiscaleCliente: fattura.matriculeFiscaleCliente ?? "",
     remiseGlobale: String(fattura.remiseGlobale ?? "0.000"),
     logoIntestazioneVisibile: fattura.logoIntestazioneVisibile !== false,
     logoWatermarkVisibile: Boolean(fattura.logoWatermarkVisibile),
@@ -52,6 +56,32 @@ export function responseToDocumento(fattura) {
       scontoPercentuale: String(riga.scontoPercentuale ?? "0"),
       aliquotaTVA: String(riga.aliquotaTVA ?? "19"),
     })),
+  };
+}
+
+/**
+ * Applica al documento in modifica solo i campi che decide il server
+ * (id, numero, stato...), lasciando intatto tutto il resto — comprese le
+ * righe con i loro localId, che sono le key React dei campi del form.
+ *
+ * Sostituire l'intero documento con la risposta (responseToDocumento genera
+ * localId nuovi ad ogni chiamata) smonterebbe e rimonterebbe ogni input ad
+ * ogni salvataggio: chi sta scrivendo perderebbe focus e posizione del
+ * cursore, e la colonna scatterebbe visibilmente.
+ *
+ * Gli id delle singole righe non servono al client: il backend le ricrea ad
+ * ogni salvataggio e normalizzaDocumentoPerApi non li invia.
+ */
+export function mergeDocumentoSalvato(corrente, salvato) {
+  return {
+    ...corrente,
+    id: salvato.id,
+    numero: salvato.numero,
+    stato: salvato.stato,
+    boutiqueId: salvato.boutiqueId != null ? String(salvato.boutiqueId) : corrente.boutiqueId,
+    nomeBoutique: salvato.nomeBoutique ?? corrente.nomeBoutique,
+    fatturaOrigineId: salvato.fatturaOrigineId ?? corrente.fatturaOrigineId,
+    fatturaOrigineNumero: salvato.fatturaOrigineNumero ?? corrente.fatturaOrigineNumero,
   };
 }
 

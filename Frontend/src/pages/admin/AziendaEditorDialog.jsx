@@ -3,8 +3,11 @@ import { useWatch } from "react-hook-form";
 import {
   Building2,
   FileText,
+  Globe,
   Loader2,
+  Mail,
   MapPin,
+  Phone,
   Save,
   Trash2,
   Upload,
@@ -119,6 +122,48 @@ export default function AziendaEditorDialog({
                   />
                 </div>
                 {fieldError(errors.indirizzo)}
+              </div>
+
+              <div className="sm:col-span-2 grid gap-4 rounded-2xl border border-dashed border-stone-200 p-4 dark:border-stone-800 sm:grid-cols-3">
+                <p className="sm:col-span-3 -mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-400 dark:text-stone-500">
+                  Contatti (facoltativi, stampati a pie di fattura)
+                </p>
+                <div>
+                  <Label className={`${labelCn} mb-1.5 block`}>Telefono</Label>
+                  <div className="relative">
+                    <FieldIcon icon={Phone} />
+                    <Input
+                      className={`${inputCn} ${errors.telefono ? "border-red-400" : ""}`}
+                      placeholder="+216 00 000 000"
+                      {...register("telefono")}
+                    />
+                  </div>
+                  {fieldError(errors.telefono)}
+                </div>
+                <div>
+                  <Label className={`${labelCn} mb-1.5 block`}>Email</Label>
+                  <div className="relative">
+                    <FieldIcon icon={Mail} />
+                    <Input
+                      className={`${inputCn} ${errors.email ? "border-red-400" : ""}`}
+                      placeholder="contact@azienda.tn"
+                      {...register("email")}
+                    />
+                  </div>
+                  {fieldError(errors.email)}
+                </div>
+                <div>
+                  <Label className={`${labelCn} mb-1.5 block`}>Sito web</Label>
+                  <div className="relative">
+                    <FieldIcon icon={Globe} />
+                    <Input
+                      className={`${inputCn} ${errors.sitoWeb ? "border-red-400" : ""}`}
+                      placeholder="www.azienda.tn"
+                      {...register("sitoWeb")}
+                    />
+                  </div>
+                  {fieldError(errors.sitoWeb)}
+                </div>
               </div>
 
               <div className="sm:col-span-2 rounded-2xl border border-stone-200 bg-stone-50/70 p-4 dark:border-stone-800 dark:bg-stone-950/35">

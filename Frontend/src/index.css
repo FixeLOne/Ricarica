@@ -76,6 +76,17 @@
     --brand-on-primary: #332315;
     --brand-ring: rgb(229 173 69 / 24%);
     --brand-shadow: rgb(166 105 24 / 24%);
+
+    /* Palette del documento fattura. Il foglio e sempre bianco — anche in
+       tema scuro e in stampa — quindi non puo usare --brand-text, che nel
+       tema scuro schiarisce e diventa illeggibile su bianco. Questi valori
+       restano identici in ogni tema: sono deliberatamente definiti solo qui
+       e nei blocchi :root[data-brand], mai nei blocchi .dark. */
+    --invoice-accent: #b8862b;
+    --invoice-accent-soft: #fdf6e9;
+    --invoice-accent-border: #e9d3a4;
+    --invoice-accent-contrast: #ffffff;
+
     --sidebar: oklch(0.985 0 0);
     --sidebar-foreground: oklch(0.145 0 0);
     --sidebar-primary: oklch(0.205 0 0);
@@ -135,6 +146,11 @@
     --brand-on-primary: #102016;
     --brand-ring: rgb(127 183 150 / 24%);
     --brand-shadow: rgb(63 109 82 / 20%);
+
+    --invoice-accent: #3f6d52;
+    --invoice-accent-soft: #eef7f1;
+    --invoice-accent-border: #c3ddcd;
+    --invoice-accent-contrast: #ffffff;
   }
 
   :root.dark[data-brand="sage"] {
@@ -159,6 +175,11 @@
     --brand-on-primary: #102026;
     --brand-ring: rgb(120 170 187 / 24%);
     --brand-shadow: rgb(59 100 112 / 20%);
+
+    --invoice-accent: #3b6470;
+    --invoice-accent-soft: #edf6f8;
+    --invoice-accent-border: #bcd8e0;
+    --invoice-accent-contrast: #ffffff;
   }
 
   :root.dark[data-brand="petrol"] {
@@ -183,6 +204,11 @@
     --brand-on-primary: #2d1710;
     --brand-ring: rgb(213 139 111 / 24%);
     --brand-shadow: rgb(117 69 54 / 20%);
+
+    --invoice-accent: #8a4f3a;
+    --invoice-accent-soft: #fff1ec;
+    --invoice-accent-border: #eec7b6;
+    --invoice-accent-contrast: #ffffff;
   }
 
   :root.dark[data-brand="copper"] {

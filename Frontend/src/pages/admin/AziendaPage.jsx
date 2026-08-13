@@ -132,6 +132,10 @@ export default function AziendaPage() {
       ragioneSociale: formValues.ragioneSociale.trim(),
       indirizzo: formValues.indirizzo.trim(),
       matriculeFiscale: formValues.matriculeFiscale.trim(),
+      // I contatti facoltativi lasciati vuoti viaggiano come null, non "".
+      telefono: formValues.telefono?.trim() || null,
+      email: formValues.email?.trim() || null,
+      sitoWeb: formValues.sitoWeb?.trim() || null,
       logo: logoBase64,
     };
 

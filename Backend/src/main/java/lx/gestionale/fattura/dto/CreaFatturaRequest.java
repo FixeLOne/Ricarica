@@ -28,6 +28,14 @@ public class CreaFatturaRequest {
     @Pattern(regexp = "^[^<>]*$", message = "Caratteri < o > non ammessi per ragioni di sicurezza")
     private String nomeCliente;
 
+    @Size(max = 200, message = "L'indirizzo cliente non puo superare 200 caratteri")
+    @Pattern(regexp = "^[^<>]*$", message = "Caratteri < o > non ammessi per ragioni di sicurezza")
+    private String indirizzoCliente;
+
+    @Size(max = 80, message = "La matricule fiscale cliente non puo superare 80 caratteri")
+    @Pattern(regexp = "^[^<>]*$", message = "Caratteri < o > non ammessi per ragioni di sicurezza")
+    private String matriculeFiscaleCliente;
+
     private boolean timbreFiscal = false;
 
     private boolean logoIntestazioneVisibile = true;

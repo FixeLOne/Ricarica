@@ -29,6 +29,9 @@ public class DatiAziendaService {
         dati.setRagioneSociale(request.getRagioneSociale());
         dati.setIndirizzo(request.getIndirizzo());
         dati.setMatriculeFiscale(request.getMatriculeFiscale());
+        dati.setTelefono(normalizza(request.getTelefono()));
+        dati.setEmail(normalizza(request.getEmail()));
+        dati.setSitoWeb(normalizza(request.getSitoWeb()));
         dati.setLogo(request.getLogo());
 
         datiAziendaRepository.save(dati);
@@ -57,8 +60,19 @@ public class DatiAziendaService {
                 dati.getRagioneSociale(),
                 dati.getIndirizzo(),
                 dati.getMatriculeFiscale(),
+                dati.getTelefono(),
+                dati.getEmail(),
+                dati.getSitoWeb(),
                 dati.getLogo()
         );
+    }
+
+    /** I campi facoltativi lasciati vuoti restano null, non stringhe vuote. */
+    private String normalizza(String valore) {
+        if (valore == null || valore.isBlank()) {
+            return null;
+        }
+        return valore.trim();
     }
 
     private Long risolviAdminId(Long utenteId, Long boutiqueId, String ruolo) {

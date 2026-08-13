@@ -23,6 +23,13 @@ public class DatiAzienda {
 
     private String matriculeFiscale;
 
+    // Contatti facoltativi, stampati a piè di fattura se valorizzati.
+    private String telefono;
+
+    private String email;
+
+    private String sitoWeb;
+
     @Lob
     @Column(columnDefinition = "TEXT")
     private String logo; // base64

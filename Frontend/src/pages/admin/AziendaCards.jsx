@@ -1,4 +1,4 @@
-import { Building2, FileText, ImageUp, MapPin, Pencil } from "lucide-react";
+import { Building2, FileText, Globe, ImageUp, Mail, MapPin, Pencil, Phone } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { isConfigured } from "./aziendaHelpers";
@@ -100,6 +100,13 @@ export function CompanyCard({ company, logoSrc, loading, onEdit }) {
             <InfoLine icon={Building2} label="Ragione sociale" value={company.ragioneSociale} />
             <InfoLine icon={FileText} label="Matricule fiscale" value={company.matriculeFiscale} />
             <InfoLine icon={MapPin} label="Indirizzo" value={company.indirizzo} />
+            {(company.telefono || company.email || company.sitoWeb) && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {company.telefono && <InfoLine icon={Phone} label="Telefono" value={company.telefono} />}
+                {company.email && <InfoLine icon={Mail} label="Email" value={company.email} />}
+                {company.sitoWeb && <InfoLine icon={Globe} label="Sito web" value={company.sitoWeb} />}
+              </div>
+            )}
           </div>
         </div>
       ) : (

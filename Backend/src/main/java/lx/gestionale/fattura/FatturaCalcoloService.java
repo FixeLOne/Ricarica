@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -86,8 +87,27 @@ public class FatturaCalcoloService {
     }
 
     private BigDecimal calcolaTvaSuBaseNetta(Fattura fattura, BigDecimal totaleHT, BigDecimal remiseGlobale) {
+        return calcolaRiepilogoTva(fattura, totaleHT, remiseGlobale).stream()
+                .map(RigaRiepilogoTva::imposta)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /**
+     * Dettaglio per aliquota: base imponibile (al netto della quota di remise
+     * globale ripartita in proporzione) e imposta. E la stessa scomposizione
+     * usata per il totale TVA, esposta perche il documento possa stamparne il
+     * riepilogo quando ci sono piu aliquote.
+     */
+    public List<RigaRiepilogoTva> calcolaRiepilogoTva(Fattura fattura) {
+        BigDecimal totaleHT = fattura.getRighe().stream()
+                .map(RigaFattura::getMontanteHT)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return calcolaRiepilogoTva(fattura, totaleHT, valoreOrZero(fattura.getRemiseGlobale()));
+    }
+
+    private List<RigaRiepilogoTva> calcolaRiepilogoTva(Fattura fattura, BigDecimal totaleHT, BigDecimal remiseGlobale) {
         if (totaleHT.compareTo(BigDecimal.ZERO) == 0) {
-            return BigDecimal.ZERO;
+            return List.of();
         }
 
         Map<BigDecimal, BigDecimal> basiPerAliquota = fattura.getRighe().stream()
@@ -97,8 +117,24 @@ public class FatturaCalcoloService {
                 ));
 
         return basiPerAliquota.entrySet().stream()
-                .map(entry -> calcolaTvaAliquota(entry.getValue(), entry.getKey(), totaleHT, remiseGlobale))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> {
+                    BigDecimal baseHT = entry.getValue();
+                    BigDecimal quotaRemise = remiseGlobale
+                            .multiply(baseHT)
+                            .divide(totaleHT, 6, RoundingMode.HALF_UP);
+                    BigDecimal baseNetta = baseHT.subtract(quotaRemise);
+                    return new RigaRiepilogoTva(
+                            entry.getKey(),
+                            scalaImporto(baseNetta),
+                            calcolaTvaAliquota(baseHT, entry.getKey(), totaleHT, remiseGlobale)
+                    );
+                })
+                .toList();
+    }
+
+    /** Riga del riepilogo TVA calcolata dal dominio (aliquota, base, imposta). */
+    public record RigaRiepilogoTva(BigDecimal aliquota, BigDecimal imponibile, BigDecimal imposta) {
     }
 
     private BigDecimal calcolaTvaAliquota(BigDecimal baseHT, BigDecimal aliquotaTVA, BigDecimal totaleHT, BigDecimal remiseGlobale) {

@@ -35,7 +35,10 @@ const NAV_ITEMS = [
 
 function NavItem({ item, collapsed, onClick }) {
   const { pathname } = useLocation();
-  const isActive = pathname === item.path;
+  // Anche le sotto-rotte tengono accesa la voce di menu: l'editor fattura
+  // (/fatture/nuova, /fatture/:id) fa parte della sezione Fatture, e con un
+  // confronto esatto la sidebar sembrava non essere in nessuna pagina.
+  const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
 
   return (
     <motion.div whileTap={{ scale: 0.95 }} transition={{ duration: 0.1, ease: "easeOut" }}>

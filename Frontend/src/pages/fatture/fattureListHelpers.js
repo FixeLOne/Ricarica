@@ -38,6 +38,28 @@ export function getStatoLabel(stato) {
   return STATO_OPTIONS.find((item) => item.value === stato)?.label?.replace(/e$/, "a") ?? stato ?? "-";
 }
 
+/**
+ * Contributo di un documento al fatturato.
+ *
+ * Gli importi restano positivi nel documento (la stampa deve corrispondere a
+ * quanto emesso): e qui che si applica il segno contabile.
+ *
+ *  - AVOIR         → negativo: storna la fattura che rettifica. La fattura
+ *                    originale resta contata in positivo, e la somma dei due
+ *                    da zero — non va esclusa, altrimenti si sconterebbe due
+ *                    volte lo stesso storno.
+ *  - DEVIS / BL    → zero: preventivo e bolla non generano ricavo, la fattura
+ *                    corrispondente lo fara.
+ *  - BOZZA         → zero: non e un documento emesso.
+ */
+export function contributoFatturato(fattura) {
+  if (!fattura || fattura.stato === "BOZZA") return 0;
+  if (fattura.tipo === "DEVIS" || fattura.tipo === "BON_DE_LIVRAISON") return 0;
+
+  const importo = Number(fattura.totaleNet ?? 0);
+  return fattura.tipo === "AVOIR" ? -importo : importo;
+}
+
 export function compactParams(params) {
   return Object.entries(params).reduce((result, [key, value]) => {
     if (value !== undefined && value !== null && value !== "" && value !== ALL_VALUE) {

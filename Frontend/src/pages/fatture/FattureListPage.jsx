@@ -20,7 +20,7 @@ import { EmptyState, FatturaCards, FatturaTable, LoadingTable } from "./FatturaT
 import { SummaryTile } from "./FatturaPills";
 import FattureFilters from "./FattureFilters";
 import InvoicePreviewDialog from "./InvoicePreviewDialog";
-import { ALL_VALUE, compactParams } from "./fattureListHelpers";
+import { ALL_VALUE, compactParams, contributoFatturato } from "./fattureListHelpers";
 import { useFatture } from "./useFatture";
 
 const FILTRI_INIZIALI = {
@@ -70,13 +70,15 @@ export default function FattureListPage() {
   const summary = useMemo(() => {
     const bozze = fatture.filter((fattura) => fattura.stato === "BOZZA").length;
     const emesse = fatture.filter((fattura) => fattura.stato === "EMESSA").length;
-    const totaleVista = fatture.reduce((totale, fattura) => totale + Number(fattura.totaleNet ?? 0), 0);
+    // Somma contabile, non somma grezza: gli avoir si sottraggono, preventivi
+    // e bozze non contano (vedi contributoFatturato).
+    const fatturato = fatture.reduce((totale, fattura) => totale + contributoFatturato(fattura), 0);
 
     return {
       totale: pageInfo.totalElements,
       bozze,
       emesse,
-      totaleVista: formatMoney(totaleVista),
+      fatturato: formatMoney(fatturato),
     };
   }, [fatture, pageInfo.totalElements]);
 
@@ -153,7 +155,12 @@ export default function FattureListPage() {
         <SummaryTile label="Totale" value={summary.totale} hint="documenti nella ricerca" icon={ReceiptText} highlighted />
         <SummaryTile label="Bozze" value={summary.bozze} hint="modificabili prima emissione" icon={Clock3} />
         <SummaryTile label="Emesse" value={summary.emesse} hint="pronte per stampa o Avoir" icon={CheckCircle2} />
-        <SummaryTile label="Valore vista" value={summary.totaleVista} hint="somma della pagina corrente" icon={FilePenLine} />
+        <SummaryTile
+          label="Fatturato"
+          value={summary.fatturato}
+          hint="emesse − avoir, solo in pagina"
+          icon={FilePenLine}
+        />
       </section>
 
       <FattureFilters

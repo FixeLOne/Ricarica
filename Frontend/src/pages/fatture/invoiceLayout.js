@@ -31,7 +31,12 @@ export function reconcilePageIndexes(pages, rowCount) {
         return valid;
       }),
     )
-    .filter((page) => page.length > 0);
+    // Le pagine senza righe si scartano, tranne l'ultima: quando i totali
+    // non entrano sotto l'ultima riga, la paginazione crea apposta una
+    // pagina finale senza righe che li ospita. Scartandola i totali
+    // finirebbero in overflow sulla pagina precedente, che ha
+    // overflow-hidden, e verrebbero tagliati via dalla stampa.
+    .filter((page, index, tutte) => page.length > 0 || index === tutte.length - 1);
 
   if (reconciled.length === 0) reconciled.push([]);
 
@@ -62,11 +67,14 @@ export function paginateRowsByHeight(
       (pageIndex === 0
         ? metrics.firstPageFixedHeight
         : metrics.continuationFixedHeight);
-    const requiredHeight = rowHeight + (isLastRow ? metrics.totalsHeight : 0);
 
+    // Ogni riga va dove entra, i totali non entrano in questo calcolo:
+    // sommarli all'ultima riga la spingerebbe a pagina nuova anche quando
+    // sulla pagina corrente c'e ancora spazio, lasciando un buco a meta
+    // documento e una riga orfana in fondo.
     if (
       pages[pageIndex].length > 0 &&
-      usedHeight + requiredHeight > availableHeight
+      usedHeight + rowHeight > availableHeight
     ) {
       pages.push([]);
       pageIndex += 1;
@@ -78,6 +86,7 @@ export function paginateRowsByHeight(
     pages[pageIndex].push(rowIndex);
     usedHeight += rowHeight;
 
+    // Solo i totali traboccano, e solo se davvero non ci stanno.
     if (
       isLastRow &&
       usedHeight + metrics.totalsHeight > availableHeight
