@@ -7,6 +7,9 @@ Progettato per un  super admin principale (proprietario del gestionale) che può
 Stack: **Spring Boot 4 + Spring Security (JWT) + JPA/Hibernate + PostgreSQL**.
 Frontend separato (non incluso in questo documento).
 
+Le scelte fiscali ancora da confermare con un commercialista sono raccolte in
+[`QUESTIONI-FISCALI.md`](../QUESTIONI-FISCALI.md) nella radice del repository.
+
 ---
 
 ## Modello di Ruoli (Multi-Tenant)
@@ -215,7 +218,7 @@ Questi dati sono considerati pubblici per la produzione dei documenti fiscali/co
 **Stati fattura:** `BOZZA`, `EMESSA`, `ANNULLATA`
 
 **Logica chiave:**
-- Numerazione automatica annuale per Admin: `FAC-YYYY-NNNN` — gestita da `ContatoreFatturaService` con `@Lock(PESSIMISTIC_WRITE)` per evitare race condition
+- Numerazione automatica annuale per Admin **e per tipo documento**: `FAC-YYYY-NNNN`, `AV-YYYY-NNNN`, `DEV-YYYY-NNNN`, `BL-YYYY-NNNN` — ogni serie ha il suo progressivo, quindi nessuna presenta salti. Gestita da `ContatoreFatturaService` con `@Lock(PESSIMISTIC_WRITE)` per evitare race condition
 - Il calcolo dei totali (HT, TVA, Timbre, Netto) avviene in `FatturaCalcoloService`, mai nell'entity
 - Un AVOIR creato tramite `POST /api/v2/fatture` o `POST /api/v2/fatture/{id}/avoir` viene emesso direttamente in stato `EMESSA` e la fattura origine passa in `ANNULLATA`
 - Non è possibile emettere un AVOIR su un documento che è già un AVOIR

@@ -16,7 +16,7 @@ public class ContatoreFatturaService {
     private final ContatoreFatturaRepository contatoreFatturaRepository;
 
     /**
-     * Genera il prossimo numero documento per l'admin e il tipo indicati.
+     * Genera il prossimo numero della serie documentale (admin, anno, tipo).
      * MANDATORY: questo metodo deve essere chiamato all'interno di una transazione
      * già aperta (quella di FatturaService). Se viene invocato fuori transazione
      * Spring lancia IllegalTransactionStateException — comportamento voluto,
@@ -26,13 +26,13 @@ public class ContatoreFatturaService {
     public String generaNumero(Utente admin, TipoDocumento tipo) {
         int anno = LocalDate.now().getYear();
 
-        ContatoreFattura contatore = contatoreFatturaRepository.findByAdminAndAnno(admin, anno)
-                .orElseGet(() -> {
-                    ContatoreFattura nuovo = new ContatoreFattura();
-                    nuovo.setAdmin(admin);
-                    nuovo.setAnno(anno);
-                    return contatoreFatturaRepository.save(nuovo);
-                });
+        // Il contatore dell'anno in corso esiste gia (inizializzaContatore lo
+        // pre-crea alla nascita dell'admin) e la SELECT lo blocca in scrittura:
+        // due emissioni contemporanee si serializzano. L'orElseGet copre il
+        // primo documento dopo il cambio d'anno; li il vincolo di unicita fa da
+        // rete, al costo di far fallire una delle due richieste in corsa.
+        ContatoreFattura contatore = contatoreFatturaRepository.findByAdminAndAnnoAndTipo(admin, anno, tipo)
+                .orElseGet(() -> creaContatore(admin, anno, tipo));
         contatore.setUltimoNumero(contatore.getUltimoNumero() + 1);
         contatoreFatturaRepository.save(contatore);
 
@@ -49,11 +49,18 @@ public class ContatoreFatturaService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void inizializzaContatore(Utente admin) {
         int anno = LocalDate.now().getYear();
-        if (contatoreFatturaRepository.findByAdminAndAnno(admin, anno).isEmpty()) {
-            ContatoreFattura nuovo = new ContatoreFattura();
-            nuovo.setAdmin(admin);
-            nuovo.setAnno(anno);
-            contatoreFatturaRepository.save(nuovo);
+        for (TipoDocumento tipo : TipoDocumento.values()) {
+            if (contatoreFatturaRepository.findByAdminAndAnnoAndTipo(admin, anno, tipo).isEmpty()) {
+                creaContatore(admin, anno, tipo);
+            }
         }
+    }
+
+    private ContatoreFattura creaContatore(Utente admin, int anno, TipoDocumento tipo) {
+        ContatoreFattura nuovo = new ContatoreFattura();
+        nuovo.setAdmin(admin);
+        nuovo.setAnno(anno);
+        nuovo.setTipo(tipo);
+        return contatoreFatturaRepository.save(nuovo);
     }
 }
