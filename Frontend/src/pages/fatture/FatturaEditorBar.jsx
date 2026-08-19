@@ -12,7 +12,7 @@ import { formatMoney } from "@/lib/format";
  * altezza alla colonna di compilazione. Sotto, dove la barra e' gia' stretta,
  * resta un blocco di pagina impilato e le azioni tornano in fondo alla colonna.
  */
-export function EditorBar({ layout, titolo, autosaveLabel, totals, isAvoir, onBack, azioni }) {
+export function EditorBar({ layout, titolo, autosaveLabel, totals, isAvoir, onBack }) {
   const inBarra = layout === "barra";
 
   const indietro = (
@@ -44,13 +44,11 @@ export function EditorBar({ layout, titolo, autosaveLabel, totals, isAvoir, onBa
         </h1>
         {stato}
 
-        {/* Tre gruppi distinti invece di una fila unica: i numeri sono
-            informazione, i bottoni sono azioni del documento, e la riga
-            verticale chiude il territorio della pagina — dopo di essa
-            cominciano i comandi dell'app (tema, profilo). */}
+        {/* La barra dice cosa e questo documento; cosa farci lo dice il piede
+            sotto l'anteprima. La riga verticale chiude il territorio della
+            pagina: dopo di essa cominciano i comandi dell'app. */}
         <div className="ml-auto flex items-center gap-5">
           <TotaliInline totals={totals} isAvoir={isAvoir} />
-          <div className="flex items-center gap-2">{azioni}</div>
           <span className="h-6 w-px shrink-0 bg-stone-200 dark:bg-stone-800" aria-hidden="true" />
         </div>
       </div>

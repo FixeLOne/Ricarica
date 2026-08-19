@@ -236,7 +236,16 @@ export default function FatturaEditorPage() {
     if (saved) window.setTimeout(() => window.print(), 120);
   };
 
-  const askEmit = () => setPendingAction({ type: "emit", fattura: documento });
+  // Il pulsante resta cliccabile anche quando il documento non e emettibile:
+  // ora che una bozza si salva pure a meta, le righe incomplete sono normali,
+  // e un pulsante spento che non spiega perche' e peggio di uno che lo dice.
+  const askEmit = () => {
+    if (validation.messaggio) {
+      setAttemptedEmit(true);
+      return;
+    }
+    setPendingAction({ type: "emit", fattura: documento });
+  };
   const askAvoir = () => setPendingAction({ type: "avoir", fattura: documento });
   const askLeave = () => setPendingAction({ type: "leave" });
 
@@ -486,7 +495,7 @@ export default function FatturaEditorPage() {
           // non e stata salvata almeno una volta ed e valida.
           <Button
             type="button"
-            disabled={!documento.id || saving || actionWorking || Boolean(validation.messaggio)}
+            disabled={!documento.id || saving || actionWorking}
             onClick={askEmit}
             className={`brand-primary ${forma} font-semibold`}
           >
@@ -534,7 +543,6 @@ export default function FatturaEditorPage() {
       totals={totals}
       isAvoir={isAvoir}
       onBack={goToList}
-      azioni={barraInAlto ? renderAzioni(true) : null}
     />
   );
 
@@ -811,18 +819,33 @@ export default function FatturaEditorPage() {
           )}
         </aside>
 
-        <section
-          className="min-h-0 overflow-auto rounded-2xl border border-stone-200 bg-stone-100/60 p-4 dark:border-stone-800 dark:bg-stone-950/35"
-          style={{ scrollbarGutter: "stable both-edges" }}
-        >
-          <FatturaDocumentPreview
-            documento={{ ...documento, ...totals }}
-            azienda={azienda}
-            fitPageToViewport
-            activeRowIndex={activeRowIndex}
-            editable={!readOnly}
-          />
-        </section>
+        <div className="flex min-h-0 flex-col gap-3">
+          <section
+            className="min-h-0 flex-1 overflow-auto rounded-2xl border border-stone-200 bg-stone-100/60 p-4 dark:border-stone-800 dark:bg-stone-950/35"
+            style={{ scrollbarGutter: "stable both-edges" }}
+          >
+            <FatturaDocumentPreview
+              documento={{ ...documento, ...totals }}
+              azienda={azienda}
+              fitPageToViewport
+              activeRowIndex={activeRowIndex}
+              editable={!readOnly}
+            />
+          </section>
+
+          {/* Le azioni sul documento stanno sotto il documento: e li che finisce
+              l'occhio dopo averlo riletto, ed e li che si decide. Emettere e
+              irreversibile — da quel momento la fattura non si tocca piu e per
+              correggerla serve un avoir con un suo numero — quindi tenerlo
+              lontano dai comandi dell'app e voluto.
+              flex-row-reverse mette l'azione principale a destra tenendo il
+              frammento nell'ordine in cui e scritto. */}
+          {barraInAlto && (
+            <div className="flex shrink-0 flex-row-reverse items-center justify-start gap-2">
+              {renderAzioni(false)}
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmActionDialog
