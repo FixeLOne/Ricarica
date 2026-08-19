@@ -36,6 +36,7 @@ import FatturaDocumentPreview from "./FatturaDocumentPreview";
 import { TopbarPortal } from "@/components/layout/TopbarSlot";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { EditorBar } from "./FatturaEditorBar";
+import { INVOICE_PAGE_WIDTH } from "./invoiceLayout";
 import { FieldLabel, RowEditor, SoftSection, ToggleRow } from "./FatturaEditorFields";
 import {
   createDocumento,
@@ -481,23 +482,24 @@ export default function FatturaEditorPage() {
   const titolo = isNew ? "Nuova bozza" : documento.numero;
   const isAvoir = documento.tipo === "AVOIR";
 
-  const renderAzioni = (compatto) => {
-    const forma = compatto ? "h-8 rounded-lg px-3" : "h-11 rounded-xl";
-    // Su una bozza l'azione e "Emetti": la stampa resta a portata ma senza
-    // etichetta, per non allineare tre bottoni di pari peso nella barra.
-    // Su un documento gia emesso la stampa e invece l'azione principale.
-    const stampaSoloIcona = compatto && !readOnly;
+  const renderAzioni = () => {
+    const forma = "h-11 rounded-xl font-semibold";
+    // Su una bozza la stampa e un controllo, non una decisione: sta accanto a
+    // Emetti come sola icona. Su un documento gia emesso e l'unica azione
+    // rimasta, e si riprende etichetta e peso.
+    const stampaSoloIcona = !readOnly;
     return (
       <>
         {!readOnly && (
           // Sempre presente (non compare dal nulla al primo salvataggio, che
-          // sposterebbe tutta la barra): resta disabilitato finche la bozza
-          // non e stata salvata almeno una volta ed e valida.
+          // sposterebbe tutta la riga): resta disabilitato solo mentre una
+          // richiesta e in volo. Se il documento non e emettibile il pulsante
+          // si preme lo stesso e dice cosa manca — vedi askEmit.
           <Button
             type="button"
             disabled={!documento.id || saving || actionWorking}
             onClick={askEmit}
-            className={`brand-primary ${forma} font-semibold`}
+            className={`brand-primary ${forma} min-w-[240px]`}
           >
             <Send className="h-4 w-4" />
             Emetti
@@ -509,7 +511,7 @@ export default function FatturaEditorPage() {
             variant="outline"
             disabled={actionWorking}
             onClick={askAvoir}
-            className={`${forma} border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]`}
+            className={`${forma} border-[var(--brand-border)] bg-[var(--brand-soft)] text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]`}
           >
             <Undo2 className="h-4 w-4" />
             Crea Avoir
@@ -524,8 +526,8 @@ export default function FatturaEditorPage() {
           title="Stampa / PDF"
           className={
             readOnly
-              ? `brand-primary ${forma} font-semibold`
-              : `${forma} ${stampaSoloIcona ? "w-8 px-0" : ""} border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800`
+              ? `brand-primary ${forma}`
+              : `${forma} w-11 px-0 border-stone-200 bg-white text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800`
           }
         >
           <Printer className="h-4 w-4" />
@@ -814,7 +816,7 @@ export default function FatturaEditorPage() {
               fondo alla colonna, dove restano raggiungibili senza scorrere. */}
           {!barraInAlto && (
             <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95">
-              {renderAzioni(false)}
+              {renderAzioni()}
             </div>
           )}
         </aside>
@@ -838,11 +840,22 @@ export default function FatturaEditorPage() {
               irreversibile — da quel momento la fattura non si tocca piu e per
               correggerla serve un avoir con un suo numero — quindi tenerlo
               lontano dai comandi dell'app e voluto.
-              flex-row-reverse mette l'azione principale a destra tenendo il
-              frammento nell'ordine in cui e scritto. */}
+              La riga prende la larghezza del foglio e non della colonna: cosi
+              i bordi combaciano con quelli della pagina sopra invece di
+              sporgere di 27px per lato. flex-row-reverse mette l'azione
+              principale a destra tenendo il frammento nell'ordine in cui e
+              scritto. */}
           {barraInAlto && (
-            <div className="flex shrink-0 flex-row-reverse items-center justify-start gap-2">
-              {renderAzioni(false)}
+            <div
+              className="mx-auto flex w-full shrink-0 items-center gap-4"
+              style={{ maxWidth: INVOICE_PAGE_WIDTH }}
+            >
+              {!readOnly && (
+                <p className="min-w-0 flex-1 text-xs leading-relaxed text-stone-500 dark:text-stone-400">
+                  Emettendo, il documento prende il numero definitivo e non sarà più modificabile.
+                </p>
+              )}
+              <div className="ml-auto flex flex-row-reverse items-center gap-2">{renderAzioni()}</div>
             </div>
           )}
         </div>
