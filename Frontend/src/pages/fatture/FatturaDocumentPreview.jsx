@@ -620,15 +620,33 @@ export default function FatturaDocumentPreview({
     const vistaBox = vista.getBoundingClientRect();
 
     let delta = 0;
-    if (rigaBox.top < vistaBox.top + MARGINE) {
-      delta = rigaBox.top - vistaBox.top - MARGINE;
-    } else if (rigaBox.bottom > vistaBox.bottom - MARGINE) {
-      delta = rigaBox.bottom - vistaBox.bottom + MARGINE;
+
+    // Sull'ultima riga si inquadra la fine del documento invece della sola
+    // riga: quello che stai riempiendo e il totale che alimenta. Non e un
+    // compromesso, la coda (totali, importo in lettere, piede) misura 280-400px
+    // contro un pannello da 740 in su, quindi la riga resta comunque in vista.
+    // La condizione guarda la posizione, non l'azione: duplicare una riga a
+    // meta documento continua a portare li, e sarebbe sbagliato mostrare i
+    // totali. Se la coda e insolitamente alta — molte aliquote nel riepilogo,
+    // importo in lettere su piu righe — si ripiega sulla sola riga.
+    const pagina = contenitore.firstElementChild;
+    if (pagina && activeRowIndex === rows.length - 1) {
+      const versoLaFine = pagina.getBoundingClientRect().bottom - vistaBox.bottom + MARGINE;
+      const rigaResterebbeInVista = rigaBox.top - versoLaFine >= vistaBox.top + MARGINE;
+      if (versoLaFine > 0 && rigaResterebbeInVista) delta = versoLaFine;
+    }
+
+    if (delta === 0) {
+      if (rigaBox.top < vistaBox.top + MARGINE) {
+        delta = rigaBox.top - vistaBox.top - MARGINE;
+      } else if (rigaBox.bottom > vistaBox.bottom - MARGINE) {
+        delta = rigaBox.bottom - vistaBox.bottom + MARGINE;
+      }
     }
     if (delta === 0) return;
 
     vista.scrollTo({ top: vista.scrollTop + delta, behavior: "smooth" });
-  }, [editable, activeRowIndex]);
+  }, [editable, activeRowIndex, rows.length]);
 
   // Porta in vista la pagina che contiene la riga in modifica nell'editor.
   // Rilevante solo quando la vista paginata e quella mostrata a schermo
