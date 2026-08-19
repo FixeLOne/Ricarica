@@ -104,13 +104,21 @@ class DataInitializerService {
                 .getResultList()
                 .forEach(fattura -> {
                     int seme = fattura.getId().intValue();
-                    LocalDateTime istante = fattura.getDataEmissione().atTime(9 + seme % 8, (seme * 17) % 60);
+                    // Mai nel futuro: per un documento emesso oggi l'orario di
+                    // ufficio potrebbe non essere ancora arrivato.
+                    LocalDateTime istante = min(
+                            fattura.getDataEmissione().atTime(9 + seme % 8, (seme * 17) % 60),
+                            LocalDateTime.now());
                     entityManager.createQuery(
                                     "update Fattura f set f.dataCreazione = :istante, f.dataUltimaModifica = :istante where f.id = :id")
                             .setParameter("istante", istante)
                             .setParameter("id", fattura.getId())
                             .executeUpdate();
                 });
+    }
+
+    private static LocalDateTime min(LocalDateTime a, LocalDateTime b) {
+        return a.isBefore(b) ? a : b;
     }
 
     private void salvaDatiAzienda(Utente admin, String ragioneSociale, String indirizzo, String matriculeFiscale,

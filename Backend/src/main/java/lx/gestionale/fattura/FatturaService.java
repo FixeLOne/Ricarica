@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -88,6 +89,7 @@ public class FatturaService {
                 .forEach(fattura.getRighe()::add);
 
         fatturaCalcoloService.calcolaTotali(fattura);
+        segnaModifica(fattura);
         fatturaRepository.save(fattura);
         return fatturaMapper.toResponse(fattura);
     }
@@ -103,6 +105,7 @@ public class FatturaService {
         String numeroReale = contatoreFatturaService.generaNumero(fattura.getAdmin(), fattura.getTipo());
         fattura.setNumero(numeroReale);
         fattura.setStato(StatoFattura.EMESSA);
+        segnaModifica(fattura);
 
         fatturaRepository.save(fattura);
         return fatturaMapper.toResponse(fattura);
@@ -120,6 +123,7 @@ public class FatturaService {
         String numero = contatoreFatturaService.generaNumero(origine.getAdmin(), TipoDocumento.AVOIR);
 
         origine.setStato(StatoFattura.ANNULLATA);
+        segnaModifica(origine);
         fatturaRepository.save(origine);
 
         return assemblaSalvaErispondi(
@@ -180,6 +184,24 @@ public class FatturaService {
             throw new IllegalArgumentException("Solo le fatture BOZZA possono essere eliminate. Per annullare una fattura emessa, emettere un Avoir.");
         }
         fatturaRepository.deleteById(id);
+    }
+
+    /**
+     * Marca il documento come toccato adesso.
+     *
+     * Non basta @UpdateTimestamp: quello scatta solo quando Hibernate emette
+     * un UPDATE sulla riga della fattura, e le righe vivono in una tabella a
+     * parte. Cambiare solo la descrizione di un articolo sporca la collezione,
+     * non la fattura — nessun UPDATE, nessun timestamp nuovo, e il documento
+     * appena modificato restava in fondo alla lista.
+     *
+     * Scrivere il campo rende la fattura sporca, quindi l'UPDATE parte e
+     * l'annotazione (che resta come rete per i percorsi futuri) riscrive lo
+     * stesso istante. Come effetto secondario la risposta torna col valore
+     * giusto invece di quello precedente al flush.
+     */
+    private void segnaModifica(Fattura fattura) {
+        fattura.setDataUltimaModifica(LocalDateTime.now());
     }
 
     private void validaOrigineAvoir(Fattura origine) {
