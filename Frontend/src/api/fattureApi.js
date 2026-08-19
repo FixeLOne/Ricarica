@@ -1,7 +1,11 @@
 import axiosClient from "./axiosClient";
 
 /**
- * GET /api/v2/fatture?page=0&size=20&sort=dataEmissione,desc
+ * GET /api/v2/fatture?page=0&size=20
+ *
+ * Nessun "sort": l'ordinamento lo decide il backend (ultimo salvataggio in
+ * cima). Mandarlo da qui lo sovrascriveva, ed era il motivo per cui una
+ * fattura appena emessa non risaliva la lista.
  *
  * Filtri opzionali:
  *   { stato, tipo, dal, al, boutiqueId, search }
@@ -11,7 +15,7 @@ import axiosClient from "./axiosClient";
  */
 export const getFatture = (page = 0, size = 20, filters = {}) =>
     axiosClient.get("/fatture", {
-        params: { page, size, sort: "dataEmissione,desc", ...filters },
+        params: { page, size, ...filters },
     });
 
 export const getFatturaById = (id) =>

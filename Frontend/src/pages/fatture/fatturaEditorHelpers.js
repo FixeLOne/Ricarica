@@ -102,16 +102,41 @@ function validaRiga(riga) {
  * messaggio generico in cima al form.
  */
 /**
- * Validazione di cio che verrebbe davvero spedito: le righe vuote non fanno
- * parte del salvataggio, quindi non devono impedirlo. Da usare per autosave e
- * uscita dalla pagina; l'emissione continua a validare il documento intero,
- * cosi una riga lasciata a meta viene segnalata invece di sparire in silenzio.
+ * Cosa impedisce di *salvare* una bozza: quasi niente.
+ *
+ * Una bozza e un blocco per appunti e si salva com'e, anche a meta. Le regole
+ * vere — descrizione obbligatoria, quantita positiva — valgono all'emissione,
+ * che e il momento in cui il documento diventa fiscale e prende un numero.
+ *
+ * Prima bastava svuotare un prezzo per rendere l'intero documento non
+ * salvabile, e uscendo dalla pagina compariva "le modifiche andranno perse".
+ * Qui restano solo i vincoli che il backend continua a imporre anche in
+ * bozza, perche' violarli farebbe fallire la richiesta davvero.
  */
 export function validaSalvataggio(documento, totaleHT) {
-  return validaDocumento(
-    { ...documento, righe: (documento.righe ?? []).filter((riga) => !rigaVuota(riga)) },
-    totaleHT,
+  const vuota = new Map();
+  const righe = (documento.righe ?? []).filter((riga) => !rigaVuota(riga));
+
+  if (!documento.tipo) return { messaggio: "Tipo documento obbligatorio.", righeInvalide: vuota };
+  if (!documento.dataEmissione) return { messaggio: "Data documento obbligatoria.", righeInvalide: vuota };
+  if (!righe.length) return { messaggio: "Inserisci almeno una riga.", righeInvalide: vuota };
+
+  const problema = righe.findIndex(
+    (riga) =>
+      !TVA_OPTIONS.includes(String(riga.aliquotaTVA)) ||
+      Number(riga.prezzoUnitarioHT) < 0 ||
+      Number(riga.quantita) < 0 ||
+      Number(riga.scontoPercentuale) < 0 ||
+      Number(riga.scontoPercentuale) > 100,
   );
+  if (problema >= 0) {
+    return { messaggio: `Valori non ammessi nella riga ${problema + 1}.`, righeInvalide: vuota };
+  }
+
+  if (Number(documento.remiseGlobale) > totaleHT) {
+    return { messaggio: "La remise globale non puo superare il totale HT.", righeInvalide: vuota };
+  }
+  return { messaggio: null, righeInvalide: vuota };
 }
 
 export function validaDocumento(documento, totaleHT) {

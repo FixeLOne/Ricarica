@@ -463,7 +463,7 @@ export default function FatturaEditorPage() {
     ? null
     : saveStatus === "error"
       ? { text: "Non salvato", tone: "text-red-600 dark:text-red-400", icon: AlertCircle }
-      : saving || (isDirty && !validation.messaggio)
+      : saving || (isDirty && !validationSalvataggio.messaggio)
         ? { text: "Salvataggio...", tone: "text-stone-400 dark:text-stone-500", icon: Loader2, spin: saving }
         : documento.id && !isDirty
           ? { text: "Salvato", tone: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 }

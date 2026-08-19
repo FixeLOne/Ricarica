@@ -101,6 +101,7 @@ public class FatturaService {
         if (fattura.getStato() != StatoFattura.BOZZA) {
             throw new IllegalArgumentException("Solo le fatture in stato BOZZA possono essere emesse");
         }
+        validaRigheEmissione(fattura);
 
         String numeroReale = contatoreFatturaService.generaNumero(fattura.getAdmin(), fattura.getTipo());
         fattura.setNumero(numeroReale);
@@ -202,6 +203,27 @@ public class FatturaService {
      */
     private void segnaModifica(Fattura fattura) {
         fattura.setDataUltimaModifica(LocalDateTime.now());
+    }
+
+    /**
+     * Le righe possono restare incomplete finche il documento e una bozza: qui
+     * si chiude il cerchio. E il momento in cui il documento diventa fiscale e
+     * prende un numero di serie, quindi e qui che le regole devono valere —
+     * prima della generazione del numero, per non bruciarne uno su un
+     * documento che non passa.
+     */
+    private void validaRigheEmissione(Fattura fattura) {
+        List<RigaFattura> righe = fattura.getRighe();
+        for (int i = 0; i < righe.size(); i++) {
+            RigaFattura riga = righe.get(i);
+            int numeroRiga = i + 1;
+            if (riga.getDescrizione() == null || riga.getDescrizione().isBlank()) {
+                throw new IllegalArgumentException("Riga " + numeroRiga + ": serve una descrizione per emettere il documento");
+            }
+            if (riga.getQuantita() == null || riga.getQuantita().signum() <= 0) {
+                throw new IllegalArgumentException("Riga " + numeroRiga + ": la quantita deve essere maggiore di zero per emettere il documento");
+            }
+        }
     }
 
     private void validaOrigineAvoir(Fattura origine) {

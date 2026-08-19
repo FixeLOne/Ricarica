@@ -203,7 +203,7 @@ export function normalizzaDocumentoPerApi(documento) {
     righe: (documento.righe ?? []).filter((riga) => !rigaVuota(riga)).map((riga) => ({
       reference: riga.reference?.trim() || null,
       descrizione: riga.descrizione?.trim() || "",
-      quantita: toMoneyString(riga.quantita || 1),
+      quantita: toMoneyString(riga.quantita),
       prezzoUnitarioHT: toMoneyString(riga.prezzoUnitarioHT),
       aliquotaTVA: String(riga.aliquotaTVA ?? "19"),
       scontoPercentuale: Number(riga.scontoPercentuale ?? 0).toFixed(2),
