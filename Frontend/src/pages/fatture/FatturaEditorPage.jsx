@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertCircle,
-  ArrowLeft,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -32,9 +31,11 @@ import { getDatiAzienda } from "@/api/aziendaApi";
 import { getBoutique } from "@/api/boutiqueApi";
 import { creaAvoir, creaFattura, emettiFattura, getFatturaById, modificaFattura } from "@/api/fattureApi";
 import { useAuth } from "@/context/AuthContext";
-import { formatMoney } from "@/lib/format";
 import ConfirmActionDialog from "./ConfirmActionDialog";
 import FatturaDocumentPreview from "./FatturaDocumentPreview";
+import { TopbarPortal } from "@/components/layout/TopbarSlot";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { EditorBar } from "./FatturaEditorBar";
 import { FieldLabel, RowEditor, SoftSection, ToggleRow } from "./FatturaEditorFields";
 import {
   createDocumento,
@@ -76,6 +77,12 @@ export default function FatturaEditorPage() {
 
   const readOnly = documento.stato && documento.stato !== "BOZZA";
   const totals = useMemo(() => calcolaTotaliDocumento(documento, TIMBRE_FISCAL_DEFAULT), [documento]);
+
+  // Da 1440px in su intestazione, totali e azioni salgono nella barra alta
+  // dell'app. Sotto quella soglia le due colonne non ci stanno senza
+  // restringere il foglio sotto la sua misura di stampa: meglio impilarle,
+  // cosi la compilazione prende tutta la larghezza e il documento resta fedele.
+  const barraInAlto = useMediaQuery("(min-width: 1440px)");
   const validation = useMemo(() => validaDocumento(documento, totals.totaleHT), [documento, totals.totaleHT]);
   const isDirty = useMemo(
     () => JSON.stringify(normalizzaDocumentoPerApi(documento)) !== savedSnapshot,
@@ -449,53 +456,72 @@ export default function FatturaEditorPage() {
           ? { text: "Salvato", tone: "text-emerald-600 dark:text-emerald-400", icon: CheckCircle2 }
           : null;
 
-  return (
-    <div className="flex min-h-0 flex-col gap-4 xl:h-full">
-      <div className="flex flex-col gap-3 border-b border-stone-200 pb-4 dark:border-stone-800 xl:flex-row xl:items-center xl:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
+  const titolo = isNew ? "Nuova bozza" : documento.numero;
+  const isAvoir = documento.tipo === "AVOIR";
+
+  const renderAzioni = (compatto) => {
+    const forma = compatto ? "h-8 rounded-lg px-3" : "h-11 rounded-xl";
+    return (
+      <>
+        {!readOnly && (
+          // Sempre presente (non compare dal nulla al primo salvataggio, che
+          // sposterebbe tutta la barra): resta disabilitato finche la bozza
+          // non e stata salvata almeno una volta ed e valida.
+          <Button
+            type="button"
+            disabled={!documento.id || saving || actionWorking || Boolean(validation.messaggio)}
+            onClick={askEmit}
+            className={`brand-primary ${forma} font-semibold`}
+          >
+            <Send className="h-4 w-4" />
+            Emetti
+          </Button>
+        )}
+        {canAvoir && (
           <Button
             type="button"
             variant="outline"
-            size="icon"
-            onClick={goToList}
-            className="mt-0.5 h-9 w-9 rounded-xl border-stone-200 text-stone-600 dark:border-stone-800 dark:text-stone-300"
-            aria-label="Torna alle fatture"
+            disabled={actionWorking}
+            onClick={askAvoir}
+            className={`${forma} border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]`}
           >
-            <ArrowLeft className="h-4 w-4" />
+            <Undo2 className="h-4 w-4" />
+            Crea Avoir
           </Button>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-stone-950 dark:text-stone-50">
-                {isNew ? "Nuova bozza" : documento.numero}
-              </h1>
-              {autosaveLabel && (
-                <span className={`inline-flex min-w-[7.5rem] items-center gap-1 text-xs font-medium ${autosaveLabel.tone}`}>
-                  <autosaveLabel.icon className={`h-3.5 w-3.5 ${autosaveLabel.spin ? "animate-spin" : ""}`} />
-                  {autosaveLabel.text}
-                </span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">
-              Modifica righe, timbre, remise e resa grafica del documento.
-            </p>
-          </div>
-        </div>
+        )}
+        <Button
+          type="button"
+          variant={readOnly ? "default" : "outline"}
+          disabled={saving}
+          onClick={saveAndPrint}
+          className={
+            readOnly
+              ? `brand-primary ${forma} font-semibold`
+              : `${forma} border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800`
+          }
+        >
+          <Printer className="h-4 w-4" />
+          Stampa/PDF
+        </Button>
+      </>
+    );
+  };
 
-        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center">
-          <div className="rounded-xl border border-stone-200 bg-white px-3 py-2 dark:border-stone-800 dark:bg-stone-900">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">HT net</p>
-            <p className="text-sm font-semibold tabular-nums text-stone-950 dark:text-stone-50">{formatMoney(totals.totaleHTNet)}</p>
-          </div>
-          <div className="rounded-xl border border-stone-200 bg-white px-3 py-2 dark:border-stone-800 dark:bg-stone-900">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">TVA</p>
-            <p className="text-sm font-semibold tabular-nums text-stone-950 dark:text-stone-50">{formatMoney(totals.totaleTVA)}</p>
-          </div>
-          <div className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-soft)] px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--brand-text)]">Net a payer</p>
-            <p className="text-sm font-semibold tabular-nums text-stone-950 dark:text-stone-50">{formatMoney(totals.totaleNet)}</p>
-          </div>
-        </div>
-      </div>
+  const intestazione = (
+    <EditorBar
+      layout={barraInAlto ? "barra" : "pagina"}
+      titolo={titolo}
+      autosaveLabel={autosaveLabel}
+      totals={totals}
+      isAvoir={isAvoir}
+      onBack={goToList}
+      azioni={barraInAlto ? renderAzioni(true) : null}
+    />
+  );
+
+  return (
+    <div className="flex min-h-0 flex-col gap-4 min-[1440px]:h-full">
+      {barraInAlto ? <TopbarPortal>{intestazione}</TopbarPortal> : intestazione}
 
       {displayError && (
         <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 dark:border-red-800/70 dark:bg-red-500/10 dark:text-red-300">
@@ -514,9 +540,13 @@ export default function FatturaEditorPage() {
         </div>
       )}
 
-      <div className="grid gap-5 xl:min-h-0 xl:flex-1 xl:grid-cols-[460px_1fr]">
-        <aside className="flex flex-col xl:min-h-0">
-          <div className="space-y-4 pb-2 pr-1 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+      {/* La colonna del foglio ha una misura naturale (640px di documento piu
+          aria) e non guadagna nulla oltre: e la compilazione a prendersi tutto
+          lo spazio in piu, invece di lasciarlo diventare vuoto attorno al
+          foglio — erano 532px sprecati su un monitor da 1920. */}
+      <div className="mx-auto grid w-full max-w-[1800px] gap-5 min-[1440px]:min-h-0 min-[1440px]:flex-1 min-[1440px]:grid-cols-[minmax(440px,1fr)_694px]">
+        <aside className="flex flex-col min-[1440px]:min-h-0">
+          <div className="@container space-y-4 pb-2 pr-1 min-[1440px]:min-h-0 min-[1440px]:flex-1 min-[1440px]:overflow-y-auto">
             <SoftSection title="Mittente" icon={Building2}>
               {azienda?.ragioneSociale ? (
                 <div className="rounded-2xl border border-stone-200 bg-stone-50/80 p-3 dark:border-stone-800 dark:bg-stone-950/35">
@@ -547,8 +577,8 @@ export default function FatturaEditorPage() {
               )}
             </SoftSection>
 
-          <SoftSection title="Documento" icon={FileText}>
-            <div className="grid grid-cols-2 gap-3">
+          <SoftSection title="Documento" icon={FileText} griglia>
+            <div className="grid grid-cols-2 gap-3 @[560px]:col-span-2">
               <div>
                 <FieldLabel htmlFor="doc-tipo">Tipo</FieldLabel>
                 {documento.tipo === "AVOIR" ? (
@@ -625,7 +655,7 @@ export default function FatturaEditorPage() {
             )}
           </SoftSection>
 
-          <SoftSection title="Cliente e finanze" icon={ReceiptText}>
+          <SoftSection title="Cliente e finanze" icon={ReceiptText} griglia>
             <div>
               <FieldLabel htmlFor="doc-cliente" right={<span className="text-[10px] text-stone-400">{documento.nomeCliente?.length ?? 0} / 150</span>}>Nome cliente</FieldLabel>
               <Input
@@ -674,14 +704,6 @@ export default function FatturaEditorPage() {
                 className="h-10 rounded-xl border-stone-200 bg-stone-50 shadow-none dark:border-stone-800 dark:bg-stone-950/40"
               />
             </div>
-            <ToggleRow
-              icon={ReceiptText}
-              title="Timbre fiscal"
-              description={documento.timbreFiscal ? "Applicato al totale" : "Non applicato"}
-              checked={documento.timbreFiscal}
-              disabled={readOnly}
-              onChange={(checked) => updateDocumento({ timbreFiscal: checked })}
-            />
             <div>
               <FieldLabel htmlFor="doc-remise">Remise globale (DT)</FieldLabel>
               <Input
@@ -693,6 +715,16 @@ export default function FatturaEditorPage() {
                 disabled={readOnly}
                 onChange={(event) => updateDocumento({ remiseGlobale: event.target.value })}
                 className="h-10 rounded-xl border-stone-200 bg-stone-50 text-right shadow-none dark:border-stone-800 dark:bg-stone-950/40"
+              />
+            </div>
+            <div className="@[560px]:col-span-2">
+              <ToggleRow
+                icon={ReceiptText}
+                title="Timbre fiscal"
+                description={documento.timbreFiscal ? "Applicato al totale" : "Non applicato"}
+                checked={documento.timbreFiscal}
+                disabled={readOnly}
+                onChange={(checked) => updateDocumento({ timbreFiscal: checked })}
               />
             </div>
           </SoftSection>
@@ -718,7 +750,7 @@ export default function FatturaEditorPage() {
             </SoftSection>
           )}
 
-          <section className="space-y-3">
+          <section className="space-y-3 @[660px]:space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-stone-400">
               Articoli <span className="rounded-full bg-[var(--brand-primary)] px-2 py-0.5 text-[var(--brand-on-primary)]">{documento.righe.length}</span>
             </p>
@@ -733,6 +765,7 @@ export default function FatturaEditorPage() {
                 onRemove={() => removeRow(riga.localId)}
                 onDuplicate={() => duplicateRow(riga.localId)}
                 onFieldFocus={() => setActiveRowId(riga.localId)}
+                etichetteVisibili={index === 0}
                 invalidFields={attemptedEmit ? (validation.righeInvalide.get(riga.localId) ?? []) : []}
               />
             ))}
@@ -750,48 +783,13 @@ export default function FatturaEditorPage() {
             </section>
           </div>
 
-          <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95">
-            {!readOnly && (
-              // Sempre presente (non compare dal nulla al primo salvataggio,
-              // che sposterebbe tutta la colonna): resta disabilitato finche
-              // la bozza non e stata salvata almeno una volta ed e valida.
-              <Button
-                type="button"
-                disabled={!documento.id || saving || actionWorking || Boolean(validation.messaggio)}
-                onClick={askEmit}
-                className="brand-primary h-11 rounded-xl font-semibold"
-              >
-                <Send className="h-4 w-4" />
-                Emetti
-              </Button>
-            )}
-            {canAvoir && (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={actionWorking}
-                onClick={askAvoir}
-                className="h-11 rounded-xl border-[var(--brand-border)] bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)] hover:bg-[var(--brand-soft-strong)]"
-              >
-                <Undo2 className="h-4 w-4" />
-                Crea Avoir
-              </Button>
-            )}
-            <Button
-              type="button"
-              variant={readOnly ? "default" : "outline"}
-              disabled={saving}
-              onClick={saveAndPrint}
-              className={
-                readOnly
-                  ? "brand-primary h-11 rounded-xl font-semibold"
-                  : "h-11 rounded-xl border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800"
-              }
-            >
-              <Printer className="h-4 w-4" />
-              Stampa/PDF
-            </Button>
-          </div>
+          {/* Sopra i 1400px le azioni stanno nella barra alta: qui tornano in
+              fondo alla colonna, dove restano raggiungibili senza scorrere. */}
+          {!barraInAlto && (
+            <div className="z-20 grid shrink-0 gap-2 border-t border-stone-200 bg-stone-50/95 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95">
+              {renderAzioni(false)}
+            </div>
+          )}
         </aside>
 
         <section

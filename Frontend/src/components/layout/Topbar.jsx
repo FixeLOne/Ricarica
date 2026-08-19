@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import ThemeToggle from "@/components/shared/ThemeToggle";
+import { TopbarSlot } from "./TopbarSlot";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 
@@ -42,8 +43,8 @@ export default function Topbar({ onMenuClick }) {
         <Menu size={20} />
       </button>
 
-      {/* Spacer — su md+ la sinistra è vuota */}
-      <div className="hidden md:block" />
+      {/* Le pagine montano qui titolo e azioni: la barra era 1220px di vuoto. */}
+      <TopbarSlot />
 
       {/* Destra: toggle tema + badge boutique + avatar dropdown */}
       <div className="flex items-center gap-3">
