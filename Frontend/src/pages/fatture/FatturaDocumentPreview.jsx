@@ -293,6 +293,7 @@ function InvoiceRow({ riga, measure = false, isActive = false }) {
   return (
     <tr
       data-invoice-row-measure={measure ? "" : undefined}
+      data-riga-attiva={!measure && isActive ? "" : undefined}
       className={[
         "border-b border-stone-100 align-top text-[13px]",
         isActive ? "bg-[var(--invoice-accent-soft)]" : "",
@@ -600,6 +601,35 @@ export default function FatturaDocumentPreview({
     fitPageToViewport,
   });
 
+  const flowRef = useRef(null);
+
+  // In modifica il documento e una pagina continua: qui si porta in vista la
+  // riga su cui si sta scrivendo. Si scorre solo se la riga e davvero fuori
+  // dalla finestra visibile — altrimenti ogni clic su una riga gia in vista
+  // farebbe sobbalzare l'anteprima. Vale lo stesso divieto di scrollIntoView
+  // spiegato sotto: si muove a mano il solo contenitore.
+  useEffect(() => {
+    if (!editable || activeRowIndex == null) return;
+    const contenitore = flowRef.current;
+    const vista = contenitore?.parentElement;
+    const riga = contenitore?.querySelector("[data-riga-attiva]");
+    if (!riga || !vista) return;
+
+    const MARGINE = 24;
+    const rigaBox = riga.getBoundingClientRect();
+    const vistaBox = vista.getBoundingClientRect();
+
+    let delta = 0;
+    if (rigaBox.top < vistaBox.top + MARGINE) {
+      delta = rigaBox.top - vistaBox.top - MARGINE;
+    } else if (rigaBox.bottom > vistaBox.bottom - MARGINE) {
+      delta = rigaBox.bottom - vistaBox.bottom + MARGINE;
+    }
+    if (delta === 0) return;
+
+    vista.scrollTo({ top: vista.scrollTop + delta, behavior: "smooth" });
+  }, [editable, activeRowIndex]);
+
   // Porta in vista la pagina che contiene la riga in modifica nell'editor.
   // Rilevante solo quando la vista paginata e quella mostrata a schermo
   // (documento non modificabile): mentre si edita e nascosta fuori schermo
@@ -636,7 +666,7 @@ export default function FatturaDocumentPreview({
       />
 
       {editable && (
-        <div className="flex w-full justify-center">
+        <div ref={flowRef} className="flex w-full justify-center">
           <FlowPage
             documento={documento}
             azienda={azienda}
