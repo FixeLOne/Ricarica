@@ -364,7 +364,7 @@ export default function RicaricaForm({
                   <Label className={`${labelCn} mb-1.5 block`}>Costo effettivo (DT)</Label>
                   <Input
                     type="number" step="0.001" min="0" placeholder="0.000"
-                    className={`${numInputCn} w-36 ${errors.costoEffettivo ? "border-red-400" : ""}`}
+                    className={`${numInputCn} no-spinner w-36 ${errors.costoEffettivo ? "border-red-400" : ""}`}
                     {...register("costoEffettivo")}
                   />
                   {errors.costoEffettivo && <p className="mt-1 text-[11px] text-red-500">{errors.costoEffettivo.message}</p>}
@@ -373,7 +373,7 @@ export default function RicaricaForm({
                   <Label className={`${labelCn} mb-1.5 block`}>Prezzo cliente (DT)</Label>
                   <Input
                     type="number" step="0.001" min="0" placeholder="0.000"
-                    className={`${numInputCn} w-36 ${errors.costoCliente ? "border-red-400" : ""}`}
+                    className={`${numInputCn} no-spinner w-36 ${errors.costoCliente ? "border-red-400" : ""}`}
                     {...register("costoCliente")}
                   />
                   {errors.costoCliente && <p className="mt-1 text-[11px] text-red-500">{errors.costoCliente.message}</p>}

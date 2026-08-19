@@ -393,3 +393,20 @@
     color: var(--brand-text);
   }
 }
+
+/* Campi importo.
+
+   Le frecce di incremento di un input numerico saltano di uno "step" alla
+   volta: sui prezzi lo step e 0.001, quindi servirebbero mille clic per
+   spostarsi di un dinaro. Non le usa nessuno e rubano spazio al numero.
+   Restano dove lo step e un'unita intera e ha senso cliccarle (i giga). */
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

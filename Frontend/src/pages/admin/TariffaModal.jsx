@@ -122,7 +122,7 @@ export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting, s
               <Label className={`${labelCn} mb-1.5 block`}>Costo acquisto (DT)</Label>
               <Input
                 type="number" step="0.001" min="0" placeholder="0.000"
-                className={`${inputCn} w-full ${errors.costoAcquisto ? "border-red-400" : ""}`}
+                className={`${inputCn} no-spinner w-full ${errors.costoAcquisto ? "border-red-400" : ""}`}
                 {...register("costoAcquisto")}
               />
               {errors.costoAcquisto && <p className="mt-1 text-[11px] text-red-500">{errors.costoAcquisto.message}</p>}
@@ -131,7 +131,7 @@ export default function TariffaModal({ tariffa, onSave, onClose, isSubmitting, s
               <Label className={`${labelCn} mb-1.5 block`}>Prezzo cliente (DT)</Label>
               <Input
                 type="number" step="0.001" min="0" placeholder="0.000"
-                className={`${inputCn} w-full ${errors.prezzoVendita ? "border-red-400" : ""}`}
+                className={`${inputCn} no-spinner w-full ${errors.prezzoVendita ? "border-red-400" : ""}`}
                 {...register("prezzoVendita")}
               />
               {errors.prezzoVendita && <p className="mt-1 text-[11px] text-red-500">{errors.prezzoVendita.message}</p>}

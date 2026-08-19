@@ -733,7 +733,7 @@ export default function FatturaEditorPage() {
                 value={documento.remiseGlobale}
                 disabled={readOnly}
                 onChange={(event) => updateDocumento({ remiseGlobale: event.target.value })}
-                className="h-10 rounded-xl border-stone-200 bg-stone-50 text-right shadow-none dark:border-stone-800 dark:bg-stone-950/40"
+                className="no-spinner h-10 rounded-xl border-stone-200 bg-stone-50 text-right shadow-none dark:border-stone-800 dark:bg-stone-950/40"
               />
             </div>
             <div className="@[560px]:col-span-2">

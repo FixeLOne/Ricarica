@@ -39,6 +39,8 @@ public class FatturaMapper {
                 fattura.getTipo(),
                 fattura.getStato(),
                 fattura.getDataEmissione(),
+                fattura.getDataCreazione(),
+                fattura.getDataUltimaModifica(),
                 fattura.getNomeCliente(),
                 fattura.getIndirizzoCliente(),
                 fattura.getMatriculeFiscaleCliente(),

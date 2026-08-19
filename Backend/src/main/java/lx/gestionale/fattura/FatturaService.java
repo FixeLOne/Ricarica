@@ -9,7 +9,9 @@ import lx.gestionale.fattura.riga.RigaFattura;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.utente.Utente;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -146,8 +148,23 @@ public class FatturaService {
     @Transactional(readOnly = true)
     public Page<FatturaResponse> getFatture(Long utenteId, Long boutiqueId, String ruolo, Pageable pageable, FiltroFatture filtro) {
         validaFiltro(filtro);
-        return fatturaAccessService.trovaFattureAccessibili(utenteId, boutiqueId, ruolo, pageable, filtro)
+        return fatturaAccessService.trovaFattureAccessibili(utenteId, boutiqueId, ruolo, ordinamentoPredefinito(pageable), filtro)
                 .map(fatturaMapper::toResponse);
+    }
+
+    /**
+     * Senza un ordinamento esplicito la lista arrivava nell'ordine deciso dal
+     * database, che non e un ordine. Il documento toccato per ultimo va in
+     * cima: e quello su cui si sta lavorando.
+     */
+    private Pageable ordinamentoPredefinito(Pageable pageable) {
+        if (pageable.getSort().isSorted()) {
+            return pageable;
+        }
+        return PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "dataUltimaModifica"));
     }
 
     @Transactional(readOnly = true)

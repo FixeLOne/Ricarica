@@ -8,6 +8,7 @@ import lx.gestionale.fattura.riga.dto.RigaFatturaResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -19,6 +20,8 @@ public class FatturaResponse {
     private TipoDocumento tipo;
     private StatoFattura stato;
     private LocalDate dataEmissione;
+    private LocalDateTime dataCreazione;
+    private LocalDateTime dataUltimaModifica;
     private String nomeCliente;
     private String indirizzoCliente;        // nullable (vendita al banco)
     private String matriculeFiscaleCliente; // nullable (vendita al banco)

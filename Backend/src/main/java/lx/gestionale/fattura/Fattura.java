@@ -5,9 +5,12 @@ import lombok.*;
 import lx.gestionale.fattura.riga.RigaFattura;
 import lx.gestionale.negozio.Boutique;
 import lx.gestionale.utente.Utente;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +40,17 @@ public class Fattura {
 
     @Column(nullable = false)
     private LocalDate dataEmissione;
+
+    // Data del documento e data del salvataggio sono cose diverse: la prima e
+    // scelta dall'utente e finisce sulla carta, queste due raccontano quando il
+    // record e stato toccato e servono a ordinare la lista di lavoro.
+    @CreationTimestamp
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime dataCreazione;
+
+    @UpdateTimestamp
+    @Column(nullable = false)
+    private LocalDateTime dataUltimaModifica;
 
     private String nomeCliente;
 

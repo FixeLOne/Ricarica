@@ -83,7 +83,7 @@ export function RowEditor({
   // solo sulla prima: fanno da intestazione di tabella per quelle sotto.
   const etichettaCn = etichetteVisibili ? "" : " @[660px]:hidden";
   const inputCn = "h-10 rounded-xl border-stone-200 bg-white shadow-none dark:border-stone-800 dark:bg-stone-900";
-  const numeroCn = `${inputCn} px-2 text-right`;
+  const numeroCn = `${inputCn} no-spinner px-2 text-right`;
 
   return (
     <div

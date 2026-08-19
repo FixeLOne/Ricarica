@@ -1,7 +1,10 @@
 package lx.gestionale.config;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import lx.gestionale.fattura.Fattura;
 import lx.gestionale.fattura.FatturaService;
 import lx.gestionale.fattura.TipoDocumento;
 import lx.gestionale.fattura.dto.CreaFatturaRequest;
@@ -23,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -36,6 +40,9 @@ class DataInitializerService {
     private final PasswordEncoder passwordEncoder;
     private final FatturaService fatturaService;
     private final DatiAziendaRepository datiAziendaRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Transactional
     public void eseguiInizializzazione() {
@@ -72,6 +79,7 @@ class DataInitializerService {
         salvaTariffeAdminA(adminA);
         salvaTariffeAdminB(adminB);
         salvaFattureDemo(adminA, adminB, boutiqueA1, boutiqueB1);
+        sparpagliaTimestampDemo();
 
         log.info("[DEV] Database inizializzato.");
         log.info("[DEV]   Utenti   : {} | adminA | adminB | adminC | dipA1 | dipA2 | dipB1 | dipB2", superAdmin.getUsername());
@@ -80,6 +88,29 @@ class DataInitializerService {
         log.info("[DEV]   Tariffe  : AdminA=21 | AdminB=6 | AdminC=0");
         log.info("[DEV]   Azienda  : AdminA=completa | AdminB=senza contatti | AdminC=da configurare");
         log.info("[DEV]   Fatture  : AdminA=5 documenti | AdminB=1 documento");
+    }
+
+    /**
+     * I documenti demo nascono tutti nel medesimo istante: la colonna
+     * "modificato" della lista mostrerebbe cinque volte la stessa ora e non si
+     * capirebbe che la lista e ordinata per ultimo salvataggio. Qui li si
+     * distribuisce sull'orario di lavoro del rispettivo giorno di emissione.
+     *
+     * Va in UPDATE diretto perche @UpdateTimestamp sovrascriverebbe il valore
+     * a ogni save. Serve solo al seed di sviluppo.
+     */
+    private void sparpagliaTimestampDemo() {
+        entityManager.createQuery("select f from Fattura f", Fattura.class)
+                .getResultList()
+                .forEach(fattura -> {
+                    int seme = fattura.getId().intValue();
+                    LocalDateTime istante = fattura.getDataEmissione().atTime(9 + seme % 8, (seme * 17) % 60);
+                    entityManager.createQuery(
+                                    "update Fattura f set f.dataCreazione = :istante, f.dataUltimaModifica = :istante where f.id = :id")
+                            .setParameter("istante", istante)
+                            .setParameter("id", fattura.getId())
+                            .executeUpdate();
+                });
     }
 
     private void salvaDatiAzienda(Utente admin, String ragioneSociale, String indirizzo, String matriculeFiscale,

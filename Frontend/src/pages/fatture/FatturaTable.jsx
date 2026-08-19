@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format";
 import { StatusPill, TypePill } from "./FatturaPills";
 
 function InvoiceActions({ fattura, working, onPreview, onEdit, onAskAction }) {
@@ -93,6 +93,7 @@ export function FatturaTable({ fatture, workingId, onPreview, onEdit, onAskActio
             <th className="px-4 py-3">Cliente</th>
             <th className="px-4 py-3">Stato</th>
             <th className="px-4 py-3">Boutique</th>
+            <th className="px-4 py-3">Modificato</th>
             <th className="px-4 py-3 text-right">Totale</th>
             <th className="px-5 py-3 text-right">Azioni</th>
           </tr>
@@ -123,6 +124,11 @@ export function FatturaTable({ fatture, workingId, onPreview, onEdit, onAskActio
               <td className="px-4 py-4">
                 <p className="max-w-[160px] truncate text-sm text-stone-600 dark:text-stone-300">
                   {fattura.nomeBoutique || "Admin"}
+                </p>
+              </td>
+              <td className="px-4 py-4">
+                <p className="whitespace-nowrap text-sm text-stone-600 dark:text-stone-300">
+                  {formatDateTime(fattura.dataUltimaModifica)}
                 </p>
               </td>
               <td className="px-4 py-4 text-right">
@@ -167,6 +173,7 @@ export function FatturaCards({ fatture, workingId, onPreview, onEdit, onAskActio
             <div className="min-w-0 text-xs text-stone-500 dark:text-stone-400">
               <p>{formatDate(fattura.dataEmissione)}</p>
               <p className="truncate">{fattura.nomeBoutique || "Admin"}</p>
+              <p className="truncate">Modificato {formatDateTime(fattura.dataUltimaModifica)}</p>
             </div>
             <InvoiceActions
               fattura={fattura}
