@@ -1,5 +1,5 @@
 // Stato iniziale, conversioni documento <-> API e validazione dell'editor fatture.
-import { TVA_OPTIONS } from "./fatturaHelpers";
+import { rigaVuota, TVA_OPTIONS } from "./fatturaHelpers";
 
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -101,6 +101,19 @@ function validaRiga(riga) {
  * cosi l'editor puo evidenziare la riga e il campo esatti invece di un
  * messaggio generico in cima al form.
  */
+/**
+ * Validazione di cio che verrebbe davvero spedito: le righe vuote non fanno
+ * parte del salvataggio, quindi non devono impedirlo. Da usare per autosave e
+ * uscita dalla pagina; l'emissione continua a validare il documento intero,
+ * cosi una riga lasciata a meta viene segnalata invece di sparire in silenzio.
+ */
+export function validaSalvataggio(documento, totaleHT) {
+  return validaDocumento(
+    { ...documento, righe: (documento.righe ?? []).filter((riga) => !rigaVuota(riga)) },
+    totaleHT,
+  );
+}
+
 export function validaDocumento(documento, totaleHT) {
   const righeInvalide = new Map();
   documento.righe.forEach((riga) => {

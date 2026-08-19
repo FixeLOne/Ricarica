@@ -44,9 +44,14 @@ export function EditorBar({ layout, titolo, autosaveLabel, totals, isAvoir, onBa
         </h1>
         {stato}
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* Tre gruppi distinti invece di una fila unica: i numeri sono
+            informazione, i bottoni sono azioni del documento, e la riga
+            verticale chiude il territorio della pagina — dopo di essa
+            cominciano i comandi dell'app (tema, profilo). */}
+        <div className="ml-auto flex items-center gap-5">
           <TotaliInline totals={totals} isAvoir={isAvoir} />
           <div className="flex items-center gap-2">{azioni}</div>
+          <span className="h-6 w-px shrink-0 bg-stone-200 dark:bg-stone-800" aria-hidden="true" />
         </div>
       </div>
     );

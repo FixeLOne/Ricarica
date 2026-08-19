@@ -43,6 +43,7 @@ import {
   mergeDocumentoSalvato,
   responseToDocumento,
   validaDocumento,
+  validaSalvataggio,
 } from "./fatturaEditorHelpers";
 import {
   calcolaTotaliDocumento,
@@ -84,6 +85,12 @@ export default function FatturaEditorPage() {
   // cosi la compilazione prende tutta la larghezza e il documento resta fedele.
   const barraInAlto = useMediaQuery("(min-width: 1440px)");
   const validation = useMemo(() => validaDocumento(documento, totals.totaleHT), [documento, totals.totaleHT]);
+  // Cosa impedisce di salvare (righe vuote escluse) e cosa impedisce di
+  // emettere sono due domande diverse: vedi validaSalvataggio.
+  const validationSalvataggio = useMemo(
+    () => validaSalvataggio(documento, totals.totaleHT),
+    [documento, totals.totaleHT],
+  );
   const isDirty = useMemo(
     () => JSON.stringify(normalizzaDocumentoPerApi(documento)) !== savedSnapshot,
     [documento, savedSnapshot],
@@ -175,7 +182,7 @@ export default function FatturaEditorPage() {
   const performSave = useCallback(async ({ silent = false } = {}) => {
     const doc = documentoRef.current;
     const totaleHT = calcolaTotaliDocumento(doc, TIMBRE_FISCAL_DEFAULT).totaleHT;
-    const currentValidation = validaDocumento(doc, totaleHT);
+    const currentValidation = validaSalvataggio(doc, totaleHT);
 
     if (currentValidation.messaggio) {
       if (!silent) setAttemptedEmit(true);
@@ -238,7 +245,7 @@ export default function FatturaEditorPage() {
       navigate("/fatture");
       return;
     }
-    if (validation.messaggio) {
+    if (validationSalvataggio.messaggio) {
       // Contenuto non valido: non c'e nulla da salvare automaticamente,
       // chiediamo conferma prima di scartarlo (come prima).
       askLeave();
@@ -353,12 +360,12 @@ export default function FatturaEditorPage() {
   // salvataggio delle modifiche scritte mentre la richiesta precedente era
   // ancora in volo (a quel punto isDirty e ancora true).
   useEffect(() => {
-    if (readOnly || saving || !isDirty || validation.messaggio) return undefined;
+    if (readOnly || saving || !isDirty || validationSalvataggio.messaggio) return undefined;
     const timeoutId = window.setTimeout(() => {
       void performSave({ silent: true });
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => window.clearTimeout(timeoutId);
-  }, [readOnly, saving, isDirty, validation.messaggio, documento, performSave]);
+  }, [readOnly, saving, isDirty, validationSalvataggio.messaggio, documento, performSave]);
 
   // Salvataggio "best effort" quando l'utente chiude la scheda o cambia
   // pagina/app: niente piu dialog nativo che blocca l'uscita, si tenta solo
@@ -373,7 +380,7 @@ export default function FatturaEditorPage() {
       const snapshot = JSON.stringify(normalizzaDocumentoPerApi(doc));
       if (snapshot === savedSnapshotRef.current) return;
       const totaleHT = calcolaTotaliDocumento(doc, TIMBRE_FISCAL_DEFAULT).totaleHT;
-      if (validaDocumento(doc, totaleHT).messaggio) return;
+      if (validaSalvataggio(doc, totaleHT).messaggio) return;
 
       const token = localStorage.getItem("token");
       const baseURL = axiosClient.defaults.baseURL;
@@ -402,6 +409,12 @@ export default function FatturaEditorPage() {
     return () => {
       document.removeEventListener("visibilitychange", visibilityHandler);
       window.removeEventListener("pagehide", flush);
+      // Anche uscire dall'editor restando nell'app (un link della sidebar)
+      // deve spedire le modifiche: senza questo, quanto scritto negli ultimi
+      // 1500ms — il tempo del debounce — andava perso senza dirlo a nessuno.
+      // La freccia "indietro" salva gia da se e qui trova lo snapshot
+      // aggiornato, quindi non spedisce due volte.
+      flush();
     };
   }, []);
 
@@ -461,6 +474,10 @@ export default function FatturaEditorPage() {
 
   const renderAzioni = (compatto) => {
     const forma = compatto ? "h-8 rounded-lg px-3" : "h-11 rounded-xl";
+    // Su una bozza l'azione e "Emetti": la stampa resta a portata ma senza
+    // etichetta, per non allineare tre bottoni di pari peso nella barra.
+    // Su un documento gia emesso la stampa e invece l'azione principale.
+    const stampaSoloIcona = compatto && !readOnly;
     return (
       <>
         {!readOnly && (
@@ -494,14 +511,16 @@ export default function FatturaEditorPage() {
           variant={readOnly ? "default" : "outline"}
           disabled={saving}
           onClick={saveAndPrint}
+          aria-label="Stampa o esporta in PDF"
+          title="Stampa / PDF"
           className={
             readOnly
               ? `brand-primary ${forma} font-semibold`
-              : `${forma} border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800`
+              : `${forma} ${stampaSoloIcona ? "w-8 px-0" : ""} border-stone-200 bg-white font-semibold text-stone-700 hover:bg-stone-50 dark:border-stone-800 dark:bg-stone-900 dark:text-stone-200 dark:hover:bg-stone-800`
           }
         >
           <Printer className="h-4 w-4" />
-          Stampa/PDF
+          {!stampaSoloIcona && "Stampa/PDF"}
         </Button>
       </>
     );

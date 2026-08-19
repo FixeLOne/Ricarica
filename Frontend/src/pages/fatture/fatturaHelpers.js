@@ -174,6 +174,20 @@ export function importoInLettere(valore) {
   return `${parteDinari} ${interoInLettere(millimes)} ${millimes === 1 ? "millime" : "millimes"}`;
 }
 
+/**
+ * Riga appena aggiunta e non ancora toccata: nessun riferimento, nessuna
+ * descrizione, prezzo a zero. Non porta informazione, quindi non viene
+ * salvata — altrimenti basterebbe premere "Aggiungi articolo" per rendere
+ * il documento non valido e bloccare l'autosave di tutto il resto.
+ */
+export function rigaVuota(riga) {
+  return (
+    !riga.reference?.trim() &&
+    !riga.descrizione?.trim() &&
+    !(Number(riga.prezzoUnitarioHT) > 0)
+  );
+}
+
 export function normalizzaDocumentoPerApi(documento) {
   return {
     tipo: documento.tipo,
@@ -186,7 +200,7 @@ export function normalizzaDocumentoPerApi(documento) {
     logoWatermarkVisibile: Boolean(documento.logoWatermarkVisibile),
     remiseGlobale: toMoneyString(documento.remiseGlobale),
     boutiqueId: documento.boutiqueId ? Number(documento.boutiqueId) : null,
-    righe: (documento.righe ?? []).map((riga) => ({
+    righe: (documento.righe ?? []).filter((riga) => !rigaVuota(riga)).map((riga) => ({
       reference: riga.reference?.trim() || null,
       descrizione: riga.descrizione?.trim() || "",
       quantita: toMoneyString(riga.quantita || 1),
